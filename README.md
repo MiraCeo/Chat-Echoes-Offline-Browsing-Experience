@@ -1,4 +1,4 @@
-# Chat Export & Offline Browsing Experience
+# Chat Echoes: Offline Browsing Experience
 
 **CEOBE**
 
@@ -6,9 +6,11 @@
 
 Save your ChatGPT web conversations locally and revisit them in a familiar interface.
 
-当前版本以保存的 ChatGPT 官方 HTML、CSS 和消息 DOM 为视觉基准，并使用独立的 CEOBE JSON 保存 conversation 数据。界面按钮暂为静态外观。
+Chat Echoes: Offline Browsing Experience（CEOBE）以保存的 ChatGPT 官方 HTML、CSS 和消息 DOM 为视觉基准，并使用独立、稳定的 CEOBE JSON 保存 conversation 数据。CEOBE 仍是正式名称的自然缩写，也是内部 Schema 与文件格式的稳定标识。
 
-已支持测试对话中四个文件的右侧预览：点击附件卡片或文件引用打开，关闭按钮或 Escape 关闭。TXT/DOCX 复用官方正文，PDF 使用原文件渲染的页面图片（暂不支持选择文字），XLSX 在官方面板内使用本地只读网格并支持工作表切换。其他按钮仍不执行操作，未接入通用附件导入。
+当前已支持分享链接归档、原始响应保留、CEOBE JSON、Markdown 副本、公开附件下载、本地多会话档案库、消息与代码复制、来源面板及对话跳转目录。没有本地语义的官方按钮继续保持静态外观。
+
+测试对话中的文件预览已覆盖 TXT、DOCX、PDF 和 XLSX：点击附件卡片或文件引用打开，关闭按钮或 Escape 关闭。TXT/DOCX 复用官方正文，PDF 使用原文件渲染的页面图片（暂不支持选择文字），XLSX 在官方面板内使用本地只读网格并支持工作表切换。通用归档附件可以离线显示或下载，但尚未自动生成所有文件类型的完整预览。
 
 预览构建需要 Python 的 `pypdfium2` 与 `openpyxl`。脚本优先使用 `CEOBE_PYTHON`，其次系统 Python，最后尝试 Codex 本地运行时。其他环境可安装这两个依赖后设置 `CEOBE_PYTHON`。原始 PDF/XLSX 不会被修改。
 
