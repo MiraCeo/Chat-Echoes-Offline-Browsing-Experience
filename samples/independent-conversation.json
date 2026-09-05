@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0.0",
+  "id": "independent-example",
+  "title": "独立输入测试",
+  "linear_message_ids": ["question", "answer", "followup", "clarification", "last"],
+  "messages": {
+    "question": {"id": "question", "role": "user", "visible": true, "content": {"type": "text", "blocks": [{"type": "text", "text": "这是新的对话，不使用旧样本正文。"}]}},
+    "answer": {"id": "answer", "role": "assistant", "visible": true, "content": {"type": "text", "blocks": [{"type": "text", "text": "## 独立回答\n\n来自指定 JSON。\n\n| 项目 | 结果 |\n| --- | --- |\n| 输入解耦 | 正常 |\n\n<script>window.UNSAFE = true</script>\n\n[不可执行](javascript:alert(1))"}]}},
+    "followup": {"id": "followup", "role": "user", "visible": true, "content": {"type": "text", "blocks": [{"type": "text", "text": "这是第二次输入。"}]}},
+    "clarification": {"id": "clarification", "role": "user", "visible": true, "content": {"type": "text", "blocks": [{"type": "text", "text": "连续的用户输入也需要保留。"}]}},
+    "last": {"id": "last", "role": "assistant", "visible": true, "content": {"type": "text", "blocks": [{"type": "code", "language": "kotlin", "text": "val independent = true"}]}}
+  }
+}

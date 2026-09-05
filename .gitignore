@@ -1,0 +1,19 @@
+node_modules/
+dist/
+replay/
+public/data/conversation.json
+
+__pycache__/
+*.py[cod]
+
+# Local third-party inspection copy; CEOBE does not import or redistribute it.
+ChatPeek-master/
+
+# Original personal source material retained locally but not used by the build.
+评价观点*
+
+archive/*
+!archive/.gitkeep
+
+data/private/*
+attachments/private/*

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ceobe.local/schema/conversation-1.0.0.json",
+  "title": "CEOBE Conversation",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "kind",
+    "id",
+    "title",
+    "source",
+    "linear_node_ids",
+    "linear_message_ids",
+    "nodes",
+    "messages"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "kind": { "const": "ceobe.conversation" },
+    "id": { "type": ["string", "null"] },
+    "title": { "type": "string" },
+    "created_at": { "type": ["number", "null"] },
+    "updated_at": { "type": ["number", "null"] },
+    "current_node_id": { "type": ["string", "null"] },
+    "source": {
+      "type": "object",
+      "required": ["type", "share_id", "sha256", "format"],
+      "properties": {
+        "type": { "const": "chatgpt_share" },
+        "share_id": { "type": ["string", "null"] },
+        "url": { "type": ["string", "null"] },
+        "file": { "type": ["string", "null"] },
+        "captured_at": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "format": { "const": "chatgpt_react_flight_html" }
+      },
+      "additionalProperties": true
+    },
+    "linear_node_ids": { "type": "array", "items": { "type": "string" } },
+    "linear_message_ids": { "type": "array", "items": { "type": "string" } },
+    "nodes": { "type": "object", "additionalProperties": { "$ref": "#/$defs/node" } },
+    "messages": { "type": "object", "additionalProperties": { "$ref": "#/$defs/message" } },
+    "metadata": { "type": "object" }
+  },
+  "$defs": {
+    "node": {
+      "type": "object",
+      "required": ["id", "parent_id", "children", "message_id", "raw"],
+      "properties": {
+        "id": { "type": "string" },
+        "parent_id": { "type": ["string", "null"] },
+        "children": { "type": "array", "items": { "type": "string" } },
+        "message_id": { "type": ["string", "null"] },
+        "raw": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "message": {
+      "type": "object",
+      "required": [
+        "id", "role", "content", "attachments", "citations",
+        "content_references", "metadata", "visible", "raw"
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "role": { "type": ["string", "null"] },
+        "content": {
+          "type": "object",
+          "required": ["type", "blocks", "raw"],
+          "properties": {
+            "type": { "type": ["string", "null"] },
+            "blocks": { "type": "array", "items": { "type": "object" } },
+            "raw": { "type": "object" }
+          }
+        },
+        "attachments": { "type": "array", "items": { "type": "object" } },
+        "citations": { "type": "array" },
+        "content_references": { "type": "array" },
+        "metadata": { "type": "object" },
+        "visible": { "type": "boolean" },
+        "raw": { "type": "object" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
+
