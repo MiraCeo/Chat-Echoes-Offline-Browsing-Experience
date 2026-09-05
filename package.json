@@ -1,0 +1,32 @@
+{
+  "name": "ceobe",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "archive:share": "node scripts/archive-share.mjs",
+    "library": "node scripts/build-library.mjs",
+    "vendor:ui-assets": "node scripts/vendor-ui-assets.mjs",
+    "import": "node scripts/import-markdown.mjs",
+    "import:share": "python scripts/import-chatgpt-share.py",
+    "replay": "node scripts/build-official-replay.mjs",
+    "replay:sample": "npm run replay -- --input fixtures/chatgpt-share/6a9849f6-3bec-83ee-b032-618d95fc0917/conversation.ceobe.json --sample-assets",
+    "verify:replay": "node scripts/verify-replay.mjs",
+    "verify:library": "node scripts/test-library-browser.mjs",
+    "test": "python -m unittest discover -s tests && node scripts/test-official-citations.mjs && node scripts/test-reader-rendering.mjs && node scripts/test-copy-content.mjs && node scripts/test-archive-resources.mjs && node scripts/test-conversation-input.mjs && npm run replay:sample && npm run verify:replay && node scripts/test-file-previews.mjs",
+    "dev": "vite replay",
+    "build": "vite build replay --config vite.config.mjs --outDir ../dist --emptyOutDir",
+    "preview": "vite preview --outDir dist"
+  },
+  "dependencies": {
+    "dompurify": "^3.2.6",
+    "highlight.js": "^11.12.0",
+    "katex": "^0.18.5",
+    "linkedom": "^0.18.13",
+    "marked": "^15.0.12"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0",
+    "vite": "^6.3.5"
+  }
+}
