@@ -84,9 +84,30 @@ const enhanceCodeBlocks = (document, container) => {
   }
 };
 
-const enhanceTables = (document, container) => {
+const enhanceTables = (document, container, officialTableTemplate) => {
   for (const table of [...container.querySelectorAll("table")]) {
     if (table.parentElement?.classList.contains("TyagGW_tableWrapper")) continue;
+    if (officialTableTemplate) {
+      const holder = document.createElement('div');
+      holder.innerHTML = htmlSafeSvg(officialTableTemplate);
+      const wrapper = holder.firstElementChild;
+      const capturedTable = wrapper?.querySelector('table');
+      if (wrapper && capturedTable) {
+        table.className = capturedTable.className;
+        for (const cell of table.querySelectorAll('th, td')) {
+          const sourceCell = capturedTable.querySelector(cell.localName);
+          if (sourceCell) {
+            cell.className = sourceCell.className;
+            for (const attribute of sourceCell.attributes) {
+              if (attribute.name !== 'class') cell.setAttribute(attribute.name, attribute.value);
+            }
+          }
+        }
+        table.replaceWith(wrapper);
+        capturedTable.replaceWith(table);
+        continue;
+      }
+    }
     table.className = "w-fit min-w-(--thread-content-width)";
     for (const cell of table.querySelectorAll("th, td")) {
       cell.setAttribute("data-col-size", "sm");
@@ -107,7 +128,7 @@ const enhanceTables = (document, container) => {
 export const renderAssistantMarkdown = (
   document,
   source,
-  { officialChartTemplates = {}, contentReferences = [], officialCitations, generatedFiles } = {},
+  { officialChartTemplates = {}, officialTableTemplate, contentReferences = [], officialCitations, generatedFiles } = {},
 ) => {
   const math = [];
   const sources = [];
@@ -206,6 +227,6 @@ export const renderAssistantMarkdown = (
     }
   }
   enhanceCodeBlocks(document, container);
-  enhanceTables(document, container);
+  enhanceTables(document, container, officialTableTemplate);
   return htmlSafeSvg(container.innerHTML);
 };

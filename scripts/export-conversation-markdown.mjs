@@ -1,12 +1,12 @@
 import { parseHTML } from 'linkedom';
-import { conversationToView } from './conversation-to-view.mjs';
+import { conversationToMarkdownView } from './conversation-to-markdown-view.mjs';
 import { messageCopyContent } from './copy-controls.mjs';
 
 export function exportConversationMarkdown(conversation) {
   const { document } = parseHTML('<html><body></body></html>');
   const output = [`# ${conversation.title.replace(/[\r\n]/g, ' ')}`, '',
     '> 本文件为当前阅读分支的 Markdown 副本；完整消息树、内部记录和原始字段保留在 conversation.ceobe.json。', ''];
-  for (const turn of conversationToView(conversation)) {
+  for (const turn of conversationToMarkdownView(conversation)) {
     const parts = turn.parts.filter(part => part.type === 'markdown');
     if (!parts.length) continue;
     output.push(`## ${turn.role === 'user' ? 'User' : 'Assistant'}`, '');

@@ -22,11 +22,12 @@ ChatGPT Share HTML
 Share Importer
         ↓
 CEOBE canonical JSON
-        ↓
-Official HTML based replay
+       ↙  ↘
+Markdown   Official HTML based replay
+export     (typed DOM renderer)
 ```
 
-Importer 会保留消息树、角色、原始消息、引用元数据、附件指针、网页来源和结构化图表数据。Markdown 是可读交换格式，不是完整档案的唯一数据源。
+CEOBE JSON 是唯一规范化数据源。Importer 会保留消息树、角色、原始消息、引用元数据、附件指针、网页来源和结构化图表数据。Markdown 与离线 HTML 是两个平级输出端：Markdown 是便于传递的有损副本；HTML renderer 直接读取 JSON 中带类型的消息和内容块，只有普通正文块进入 Markdown 排版，不以 Markdown 作为 conversation 的中间数据层。
 
 ## 本地运行
 

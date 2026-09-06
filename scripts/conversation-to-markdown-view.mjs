@@ -1,4 +1,4 @@
-export function conversationToView(conversation) {
+export function conversationToMarkdownView(conversation) {
   if (!conversation || typeof conversation.title !== 'string' || !conversation.messages || !Array.isArray(conversation.linear_message_ids)) {
     throw new Error('Expected CEOBE JSON with title, messages and linear_message_ids.');
   }
@@ -39,3 +39,4 @@ export function conversationToView(conversation) {
   }
   return messages;
 }
+

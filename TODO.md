@@ -5,7 +5,7 @@
 - [x] 补齐 ChatGPT 页面引用的官方 SVG sprite 资源，并将 `/cdn/assets/...` 改写为本地路径。
 - [x] 以保存的官方 HTML、DOM 层级和 CSS 为视觉实现主体，不再手写近似版 ChatGPT 界面。
 - [x] 合并顶部、中部、底部三份 HTML 中捕获到的官方 message DOM 模板。
-- [x] 从完整 Markdown 解析 conversation，并克隆官方 User / Assistant message DOM 模板填充内容。
+- [x] 让 HTML renderer 直接读取 CEOBE JSON 的 typed messages；仅在普通正文块内部使用 Markdown 排版。
 - [x] 保留官方侧栏、顶部区域、Composer、消息操作区等组件的静态外观；第一阶段不实现按钮功能。
 - [x] 为 Markdown 补齐 LaTeX、软换行、代码高亮、表格和结构化图表的静态渲染。
 - [x] 以 ChatGPT Share HTML 中的引用元数据恢复网页引用与文件引用的精确挂载位置；Markdown 仅作为有损后备来源。
@@ -22,6 +22,8 @@
 ## 长对话归档
 
 - [x] 阅读器接收 `--input`，移除固定消息数量/turn 编号，默认按 JSON 重建正文；样本资源仅通过显式演示入口使用。
+- [x] 将 Markdown 与 HTML 拆为两个平级输出端；HTML 路径不再消费 Markdown 导出投影。
+- [x] 从 typed HTML view 逐项恢复分支来源、停止思考、图片生成、结构化图表、表格和上传附件的官方 DOM。
 - [ ] 从保存页面中抽取独立官方视觉模板包，进一步去除构建对“测试消息/图表”源目录的依赖。
 
 - [ ] 处理 ChatGPT 长对话的虚拟化渲染：浏览器保存的 HTML 可能只包含保存当时进入 DOM 的部分 conversation turns。

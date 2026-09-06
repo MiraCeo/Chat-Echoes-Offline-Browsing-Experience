@@ -2,11 +2,11 @@ import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { readArchivedResource, assetKey } from './archive-resources.mjs';
 import { parseHTML } from "linkedom";
-import { marked } from "marked";
+import { marked, Renderer } from "marked";
 import { renderAssistantMarkdown } from "./render-markdown.mjs";
 import { createOfficialCitations } from "./official-citations.mjs";
 import { buildFilePreviews } from "./build-file-previews.mjs";
-import { conversationToView } from "./conversation-to-view.mjs";
+import { conversationToHtmlView } from "./conversation-to-html-view.mjs";
 import { parseArgs } from "node:util";
 import { htmlSafeSvg } from './serialize-html.mjs';
 import { createGeneratedFiles } from './generated-files.mjs';
@@ -30,7 +30,7 @@ const canonicalConversationPath = resolve(values.input);
 const useSampleAssets = values["sample-assets"];
 // Validate before touching the generated output directory.
 const canonicalConversation = JSON.parse(await readFile(canonicalConversationPath, "utf8"));
-const messages = conversationToView(canonicalConversation);
+const turns = conversationToHtmlView(canonicalConversation);
 const archivedResources = canonicalConversation.resources || [];
 const resourceBytes = new Map();
 for (const resource of archivedResources.filter(r => r.status === 'downloaded')) {
@@ -76,9 +76,13 @@ const officialCitations = createOfficialCitations([
   ...snapshotDocuments.map(item => item.document), chartSnapshotDocument,
 ]);
 const officialChart = chartSnapshotDocument.querySelector(".chart-widget-container");
+const officialTableWrapper = snapshotDocuments
+  .map(({ document }) => document.querySelector('.TyagGW_tableWrapper'))
+  .find(Boolean);
+const officialTableTemplate = officialTableWrapper ? htmlSafeSvg(officialTableWrapper.outerHTML) : null;
 const generatedFiles = createGeneratedFiles(chartSnapshotDocument);
 const officialChartTemplates = {};
-if (officialChart && useSampleAssets) {
+if (officialChart) {
   const title = officialChart.querySelector("section")?.getAttribute("aria-label");
   if (title) {
     officialChartTemplates[title] = htmlSafeSvg(officialChart.outerHTML)
@@ -116,34 +120,244 @@ const setTurnIdentity = (section, turnNumber, role) => {
   }
 };
 
-const plainUserText = (parts) => parts
-  .map((part) => part.markdown)
+const blockMarkdown = (block) => {
+  if (block.type === 'text') return block.text || '';
+  if (['file_citation', 'web_citation', 'widget', 'url', 'embedded_reference'].includes(block.type)) return block.raw || '';
+  if (block.type === 'code') {
+    const fence = '`'.repeat(Math.max(3, ...[...(block.text || '').matchAll(/`+/g)].map(match => match[0].length + 1)));
+    return `${fence}${block.language || ''}\n${block.text || ''}\n${fence}`;
+  }
+  return '';
+};
+
+const recordMarkdown = (message) => (message.content?.blocks || []).map(blockMarkdown).join('');
+
+const plainUserText = (entries) => entries
+  .filter(entry => entry.kind === 'user')
+  .map(entry => recordMarkdown(entry.message))
   .join("\n\n")
   .replace(/^\*Image '[^']+' not included in export \([^\n]+\)\.\*\s*/gm, "")
   .trim();
 
-const assistantMarkdown = (parts) => parts
-  .filter((part) => part.type === "markdown")
-  .map((part) => part.markdown)
+const renderUserText = (source) => {
+  const renderer = new Renderer();
+  renderer.html = token => String(token.text)
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+  const holder = baseDocument.createElement('div');
+  holder.innerHTML = htmlSafeSvg(marked.parseInline(source, { renderer, gfm: true, breaks: true }));
+  for (const link of holder.querySelectorAll('a[href]')) {
+    const href = (link.getAttribute('href') || '').replace(/[\u0000-\u0020]/g, '');
+    if (!/^(https?:|mailto:)/i.test(href)) link.removeAttribute('href');
+  }
+  return htmlSafeSvg(holder.innerHTML);
+};
+
+const assistantMarkdown = (entries) => entries
+  .filter(entry => entry.kind === 'document')
+  .map(entry => recordMarkdown(entry.message))
   .join("\n\n")
   .trim();
 
-const assistantReferences = (parts) => parts
-  .filter((part) => part.type === "markdown")
-  .flatMap((part) => part.contentReferences || []);
+const assistantReferences = (entries) => entries
+  .filter(entry => entry.kind === 'document')
+  .flatMap(entry => entry.message.content_references || []);
+
+// Copying is an output concern of the HTML page. This adapter is intentionally
+// local and does not become the input model used to construct the DOM.
+const copyParts = (entries) => entries
+  .filter(entry => entry.kind === 'user' || entry.kind === 'document')
+  .map(({ message }) => ({
+    id: message.id,
+    type: 'markdown',
+    markdown: recordMarkdown(message),
+    contentReferences: message.content_references || [],
+  }));
 
 const templates = [...sectionCandidates.values()];
 const laterUserTemplate = templates.find(s => s.querySelector('.user-message-bubble-color .whitespace-pre-wrap') && !s.querySelector('[data-testid="library-file-icon"]'));
 const assistantTemplate = templates.find(s => s.querySelector('[data-message-author-role="assistant"] .markdown'));
-if (!laterUserTemplate || !assistantTemplate) throw new Error("Official message templates are missing.");
+const stoppedThinkingTemplate = templates.find(s => [...s.querySelectorAll('button')].some(button => button.textContent.trim() === '已停止思考'));
+const generatedImageTemplate = templates.find(s => s.querySelector('img[alt^="已生成图片"]'));
+const userImageTemplates = new Map();
+for (const section of templates.filter(section => section.getAttribute('data-turn') === 'user')) {
+  const images = section.querySelectorAll('[class~="group/message-image"] img');
+  if (images.length && !userImageTemplates.has(images.length)) {
+    userImageTemplates.set(images.length, images[0].closest('.flex.w-\\[var\\(--user-chat-width\\,70\\%\\)\\]'));
+  }
+}
+const branchFooterTemplate = templates
+  .map(section => [...section.querySelectorAll('p')].find(p => /从\s*.+\s*建立的分支/.test(p.textContent)))
+  .find(Boolean)?.parentElement?.parentElement;
+const fileTileTemplates = new Map();
+for (const tile of chartSnapshotDocument.querySelectorAll('[class*="group/file-tile"]')) {
+  const key = tile.querySelector('[data-library-file-icon-key]')?.getAttribute('data-library-file-icon-key');
+  if (key && !fileTileTemplates.has(key)) fileTileTemplates.set(key, tile);
+}
+const fileTileRowTemplate = chartSnapshotDocument.querySelector('[class*="group/file-tile"]')?.parentElement;
+if (!laterUserTemplate || !assistantTemplate || !stoppedThinkingTemplate || !generatedImageTemplate || !branchFooterTemplate || !fileTileRowTemplate || !officialTableTemplate) {
+  throw new Error("Official message templates are missing.");
+}
+
+const resourcesForMessage = (messageId) => archivedResources.filter(resource => resource.message_ids.includes(messageId));
+const downloadedResourceForMessage = (messageId, mimePrefix = '') => resourcesForMessage(messageId)
+  .find(resource => resource.status === 'downloaded' && (!mimePrefix || resource.mime_type?.startsWith(mimePrefix)));
+
+const fileIconKey = (attachment) => {
+  const mime = attachment.mime_type || '';
+  const extension = attachment.name?.split('.').pop()?.toLowerCase();
+  if (mime === 'application/pdf' || extension === 'pdf') return 'pdf';
+  if (mime.includes('spreadsheet') || ['xls', 'xlsx', 'csv'].includes(extension)) return 'xls';
+  if (mime.includes('wordprocessingml') || ['doc', 'docx'].includes(extension)) return 'document';
+  if (mime.startsWith('text/') || ['txt', 'md', 'log'].includes(extension)) return 'text';
+  return fileTileTemplates.has(extension) ? extension : 'document';
+};
+
+const fileTypeLabel = (attachment) => {
+  const key = fileIconKey(attachment);
+  if (key === 'pdf') return 'PDF';
+  if (key === 'xls') return '电子表格';
+  return '文档';
+};
+
+const buildFileTile = (attachment, messageId) => {
+  const template = fileTileTemplates.get(fileIconKey(attachment)) || fileTileTemplates.get('document');
+  const tile = cloneIntoBase(template);
+  tile.setAttribute('aria-label', attachment.name);
+  tile.setAttribute('data-ceobe-attachment-id', attachment.id || '');
+  tile.querySelector('button[aria-label]')?.setAttribute('aria-label', attachment.name);
+  const labelBox = [...tile.querySelectorAll('.overflow-hidden')].at(-1);
+  const labels = labelBox?.children || [];
+  if (labels[0]) labels[0].textContent = attachment.name;
+  if (labels[1]) labels[1].textContent = fileTypeLabel(attachment);
+  const resource = resourcesForMessage(messageId).find(item => item.key === attachment.id);
+  if (resource?.status === 'downloaded') {
+    tile.setAttribute('data-ceobe-local-resource', resource.key);
+    tile.setAttribute('data-ceobe-download', `./archive-resources/${basename(resource.local_path)}`);
+  } else {
+    tile.setAttribute('data-ceobe-resource-status', resource?.status || 'unresolved');
+  }
+  return tile;
+};
+
+const appendFileTiles = (section, entries) => {
+  const userMessage = section.querySelector('[data-message-author-role="user"]');
+  const stack = userMessage?.firstElementChild;
+  const bubble = stack?.querySelector('.user-message-bubble-color')?.parentElement;
+  if (!stack || !bubble) return;
+  for (const entry of entries) {
+    const attachments = (entry.message.attachments || []).filter(attachment => attachment.type === 'attachment' && !attachment.mime_type?.startsWith('image/'));
+    if (!attachments.length) continue;
+    const row = cloneIntoBase(fileTileRowTemplate);
+    row.replaceChildren(...attachments.map(attachment => buildFileTile(attachment, entry.id)));
+    stack.insertBefore(row, bubble);
+  }
+};
+
+const appendUserImages = (section, entries) => {
+  const userMessage = section.querySelector('[data-message-author-role="user"]');
+  const stack = userMessage?.firstElementChild;
+  const bubble = stack?.querySelector('.user-message-bubble-color')?.parentElement;
+  if (!stack || !bubble) return;
+  for (const entry of entries) {
+    const attachments = (entry.message.attachments || [])
+      .filter(attachment => attachment.type === 'attachment' && attachment.mime_type?.startsWith('image/'));
+    if (!attachments.length) continue;
+    const template = userImageTemplates.get(attachments.length);
+    if (!template) continue;
+    const imageRow = cloneIntoBase(template);
+    const images = [...imageRow.querySelectorAll('[class~="group/message-image"] img')];
+    const buttons = [...imageRow.querySelectorAll('[class~="group/message-image"] button')];
+    for (const [index, attachment] of attachments.entries()) {
+      const image = images[index];
+      const button = buttons[index];
+      const resource = resourcesForMessage(entry.id).find(item => item.key === attachment.id && item.status === 'downloaded');
+      if (!image || !resource) continue;
+      image.src = `./archive-resources/${basename(resource.local_path)}`;
+      image.alt = attachment.name;
+      image.width = attachment.width || image.width;
+      image.height = attachment.height || image.height;
+      image.classList.remove('opacity-0');
+      image.classList.add('opacity-100');
+      image.setAttribute('data-ceobe-local-resource', resource.key);
+      if (button) {
+        button.setAttribute('aria-label', attachments.length === 1
+          ? `打开图片：${attachment.name}`
+          : `打开第 ${index + 1} 张（共 ${attachments.length} 张）图片：${attachment.name}`);
+      }
+    }
+    stack.insertBefore(imageRow, bubble);
+  }
+};
+
+const appendBranchFooter = (section, entries) => {
+  const branch = entries.map(entry => entry.message.metadata || {}).find(metadata => metadata.branching_from_conversation_id);
+  if (!branch) return;
+  const footer = cloneIntoBase(branchFooterTemplate);
+  const paragraph = [...footer.querySelectorAll('p')].find(p => /建立的分支/.test(p.textContent));
+  const link = paragraph?.querySelector('a');
+  if (!paragraph || !link) return;
+  link.textContent = branch.branching_from_conversation_title || '原对话';
+  link.href = `https://chatgpt.com/c/${branch.branching_from_conversation_id}`;
+  paragraph.replaceChildren(baseDocument.createTextNode('从 '), link, baseDocument.createTextNode(' 建立的分支'));
+  const agentTurn = section.querySelector('.agent-turn');
+  const trailingScreenshot = [...agentTurn?.children || []].findLast(child => child.hasAttribute('data-conversation-screenshot-content'));
+  if (agentTurn) agentTurn.insertBefore(footer, trailingScreenshot || null);
+};
+
+const buildStoppedThinkingSection = (turnNumber, turn) => {
+  const section = cloneIntoBase(stoppedThinkingTemplate);
+  setTurnIdentity(section, turnNumber, 'assistant');
+  const entry = turn.entries.find(item => item.kind === 'activity');
+  const label = entry?.message.content?.raw?.content
+    || entry?.message.content?.blocks?.find(block => block.type === 'reasoning_recap')?.data?.content
+    || '已停止思考';
+  const button = [...section.querySelectorAll('button')].find(item => item.textContent.trim() === '已停止思考');
+  if (button) {
+    for (const child of [...button.childNodes]) if (child.nodeType === 3) child.remove();
+    button.insertBefore(baseDocument.createTextNode(label), button.firstChild);
+  }
+  return section;
+};
+
+const buildGeneratedImageSection = (turnNumber, turn) => {
+  const section = cloneIntoBase(generatedImageTemplate);
+  setTurnIdentity(section, turnNumber, 'assistant');
+  const entry = turn.entries.find(item => item.kind === 'media');
+  const resource = entry && downloadedResourceForMessage(entry.id, 'image/');
+  const block = entry?.message.content?.blocks?.find(item => item.type === 'asset' && item.asset_type === 'image');
+  const dimensions = block?.raw?.metadata?.generation || block?.raw || {};
+  const title = entry?.message.metadata?.image_gen_title || resource?.name || '图片';
+  const imageRoot = section.querySelector('[class~="group/imagegen-image"]');
+  const primaryImage = section.querySelector('img[alt^="已生成图片"]');
+  const imageId = `ceobe-generated-image-${entry?.id || turnNumber}`;
+  if (imageRoot) imageRoot.id = `image-${entry?.id || turnNumber}`;
+  if (primaryImage) {
+    primaryImage.id = imageId;
+    primaryImage.alt = `已生成图片：${title}`;
+  }
+  section.querySelector('[aria-labelledby]')?.setAttribute('aria-labelledby', imageId);
+  if (resource) {
+    const source = `./archive-resources/${basename(resource.local_path)}`;
+    for (const image of section.querySelectorAll('img')) {
+      image.src = source;
+      image.removeAttribute('srcset');
+      image.setAttribute('data-ceobe-local-resource', resource.key);
+      if (dimensions.width) image.width = dimensions.width;
+      if (dimensions.height) image.height = dimensions.height;
+    }
+  }
+  return section;
+};
 
 const buildUserSection = (turnNumber, message) => {
   const section = cloneIntoBase(laterUserTemplate);
   setTurnIdentity(section, turnNumber, "user");
   const content = section.querySelector(".user-message-bubble-color .whitespace-pre-wrap")
     || section.querySelector('[data-message-author-role="user"]');
-  content.textContent = plainUserText(message.parts);
-  appendUnavailableContent(content, message);
+  content.innerHTML = renderUserText(plainUserText(message.entries));
+  appendUserImages(section, message.entries);
+  appendFileTiles(section, message.entries);
+  appendUnavailableContent(content, message, { skipFileAttachments: true, skipImages: true });
   return section;
 };
 
@@ -153,23 +367,24 @@ const buildAssistantSection = (turnNumber, message) => {
   const markdownContainer = section.querySelector(".markdown.prose") || section.querySelector(".markdown");
   markdownContainer.innerHTML = renderAssistantMarkdown(
     baseDocument,
-    assistantMarkdown(message.parts),
+    assistantMarkdown(message.entries),
     {
       officialChartTemplates,
+      officialTableTemplate,
       officialCitations,
       generatedFiles,
-      contentReferences: assistantReferences(message.parts),
+      contentReferences: assistantReferences(message.entries),
     },
   );
   appendUnavailableContent(markdownContainer, message);
+  appendBranchFooter(section, message.entries);
   return section;
 };
 
-function appendUnavailableContent(container, message) {
-  for (const part of message.parts) {
+function appendUnavailableContent(container, message, { skipFileAttachments = false, skipImages = false } = {}) {
+  for (const { message: record } of message.entries) {
     // Internal execution records remain in the source JSON, not the reader.
-    if (part.type !== 'markdown') continue;
-    const localResources = archivedResources.filter(r => r.status === 'downloaded' && r.message_ids.includes(part.id));
+    const localResources = archivedResources.filter(r => r.status === 'downloaded' && r.message_ids.includes(record.id));
     for (const resource of localResources) {
       const link = baseDocument.createElement('a');
       link.href = `./archive-resources/${basename(resource.local_path)}`;
@@ -188,20 +403,11 @@ function appendUnavailableContent(container, message) {
         .filter(node => resource.pointers.includes(node.getAttribute('data-ceobe-generated-file')));
       if (matches.length) {
         for (const node of matches) { const replacement = link.cloneNode(true); replacement.className = node.className; node.replaceWith(replacement); }
-      } else container.append(link);
+      } else if (resource.mime_type?.startsWith('image/') && !skipImages) container.append(link);
     }
-    for (const attachment of part.attachments) {
-      if (localResources.some(r => r.key === assetKey(attachment))) continue;
-      if (attachment.type === 'generated_file' && [...container.querySelectorAll('[data-ceobe-generated-file]')]
-        .some(node => node.getAttribute('data-ceobe-generated-file') === attachment.pointer)) continue;
-      const note = baseDocument.createElement('p');
-      note.setAttribute('data-ceobe-unresolved-asset', '');
-      note.className = 'text-token-text-secondary text-sm';
-      note.textContent = '附件尚未关联本地资源：' + (attachment.name || attachment.filename || attachment.id || '附件');
-      container.append(note);
-    }
-    for (const block of part.unsupported) {
-      if (block.type === 'asset' && (part.attachments.some(a => assetKey(a) === assetKey(block)) || localResources.some(r => r.key === assetKey(block)))) continue;
+    for (const block of record.content?.blocks || []) {
+      if (['text','code','file_citation','web_citation','widget','url','embedded_reference'].includes(block.type)) continue;
+      if (block.type === 'asset' && ((record.attachments || []).some(a => assetKey(a) === assetKey(block)) || localResources.some(r => r.key === assetKey(block)))) continue;
       if (['model_editable_context', 'reasoning_recap', 'thoughts'].includes(block.type)) continue;
       const note = baseDocument.createElement('p');
       note.setAttribute('data-ceobe-unresolved-asset', '');
@@ -217,17 +423,24 @@ const messageList = firstSection.parentElement.parentElement;
 // No prompt rail, branch footer or captured message content survives into new data.
 messageList.replaceChildren();
 let reusedSections = 0;
-for (const [index, message] of messages.entries()) {
+for (const [index, message] of turns.entries()) {
   const turnNumber = index + 1;
   const captured = useSampleAssets
-    ? message.parts.map(p => sectionCandidates.get(p.id)).find(Boolean)
+    ? message.entries.map(entry => sectionCandidates.get(entry.id)).find(Boolean)
     : null;
+  const isStoppedThinking = message.entries.some(entry => entry.kind === 'activity' && entry.message.metadata?.reasoning_status === 'reasoning_cancelled')
+    && !message.entries.some(entry => entry.kind === 'document');
+  const hasGeneratedImage = message.entries.some(entry => entry.kind === 'media');
   const section = captured ? cloneIntoBase(captured)
     : message.role === "user" ? buildUserSection(turnNumber, message)
+    : hasGeneratedImage ? buildGeneratedImageSection(turnNumber, message)
+    : isStoppedThinking ? buildStoppedThinkingSection(turnNumber, message)
     : buildAssistantSection(turnNumber, message);
   if (captured) reusedSections += 1;
   setTurnIdentity(section, turnNumber, message.role);
-  section.setAttribute("data-ceobe-message-ids", JSON.stringify(message.parts.map(p => p.id)));
+  section.setAttribute("data-ceobe-message-ids", JSON.stringify(message.entries.map(entry => entry.id)));
+  section.setAttribute("data-ceobe-content-types", JSON.stringify(message.entries.map(entry => entry.message.content?.type || null)));
+  section.setAttribute("data-ceobe-message-kinds", JSON.stringify(message.entries.map(entry => entry.kind)));
   const wrapper = baseDocument.createElement("div");
   wrapper.setAttribute("data-turn-id-container", `ceobe-replay-turn-${turnNumber}`);
   wrapper.setAttribute("data-is-intersecting", "true");
@@ -278,8 +491,9 @@ for (const frame of [...baseDocument.querySelectorAll("iframe")]) frame.remove()
 for (const element of baseDocument.querySelectorAll("button, textarea, input")) {
   element.setAttribute("tabindex", "-1");
 }
+baseDocument.documentElement.setAttribute('data-ceobe-render-source', 'canonical-json');
 for (const [index, section] of [...messageList.querySelectorAll('section[data-testid^="conversation-turn-"]')].entries()) {
-  attachCopyControls(section, messages[index].parts);
+  attachCopyControls(section, copyParts(turns[index].entries));
 }
 
 const staticStyle = baseDocument.createElement("style");
@@ -403,7 +617,7 @@ await writeFile(outputPage, output, "utf8");
 
 console.log([
   `Built official replay from CEOBE JSON and ${snapshotNames[0]}.`,
-  `${messages.length} logical conversation messages restored.`,
+  `${turns.length} typed conversation turns restored directly from CEOBE JSON.`,
   `${reusedSections} captured sample sections reused (only with --sample-assets).`,
   `${copiedFiles.size} local resources collected.`,
   `${officialSpriteNames.length} official icon sprites restored.`,
