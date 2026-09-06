@@ -1,7 +1,6 @@
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { readArchivedResource, assetKey } from './archive-resources.mjs';
-import { parseHTML } from "linkedom";
 import { marked, Renderer } from "marked";
 import { renderAssistantMarkdown } from "./render-markdown.mjs";
 import { createOfficialCitations } from "./official-citations.mjs";
@@ -12,11 +11,9 @@ import { htmlSafeSvg } from './serialize-html.mjs';
 import { createGeneratedFiles } from './generated-files.mjs';
 import { attachCopyControls } from './copy-controls.mjs';
 import { buildSourcesPanel } from './build-sources-panel.mjs';
+import { loadOfficialTemplatePackage } from './official-template-package.mjs';
 
 const projectRoot = resolve(import.meta.dirname, "..");
-const testRoot = join(projectRoot, "测试消息");
-const chartSnapshotRoot = join(projectRoot, "图表");
-const chartSnapshotName = "图表.html";
 const { values } = parseArgs({ options: {
   input: { type: "string" },
   "sample-assets": { type: "boolean", default: false },
@@ -52,35 +49,14 @@ const officialSpriteNames = [
   "sprites-shell-097001e7.svg",
 ];
 const officialFontName = 'OpenAISans-Semibold.woff2';
-const snapshotNames = [
-  "分支 · 测试消息.html",
-  "分支 · 测试消息1.html",
-  "分支 · 测试消息2.html",
-];
-
 marked.setOptions({ gfm: true, breaks: true });
 
-const snapshotDocuments = [];
-for (const name of snapshotNames) {
-  const source = await readFile(join(testRoot, name), "utf8");
-  snapshotDocuments.push({ name, document: parseHTML(source).document });
-}
-
-const baseDocument = snapshotDocuments[0].document;
-const chartSnapshotSource = await readFile(
-  join(chartSnapshotRoot, chartSnapshotName),
-  "utf8",
-);
-const chartSnapshotDocument = parseHTML(chartSnapshotSource).document;
-const officialCitations = createOfficialCitations([
-  ...snapshotDocuments.map(item => item.document), chartSnapshotDocument,
-]);
-const officialChart = chartSnapshotDocument.querySelector(".chart-widget-container");
-const officialTableWrapper = snapshotDocuments
-  .map(({ document }) => document.querySelector('.TyagGW_tableWrapper'))
-  .find(Boolean);
-const officialTableTemplate = officialTableWrapper ? htmlSafeSvg(officialTableWrapper.outerHTML) : null;
-const generatedFiles = createGeneratedFiles(chartSnapshotDocument);
+const officialTemplates = await loadOfficialTemplatePackage(projectRoot);
+const baseDocument = officialTemplates.document;
+const officialCitations = createOfficialCitations([officialTemplates.templateDocument]);
+const officialChart = officialTemplates.clone('widget:chart');
+const officialTableTemplate = officialTemplates.templates['markdown:table'];
+const generatedFiles = createGeneratedFiles(officialTemplates.templateDocument);
 const officialChartTemplates = {};
 if (officialChart) {
   const title = officialChart.querySelector("section")?.getAttribute("aria-label");
@@ -92,12 +68,12 @@ if (officialChart) {
 }
 // Match optional captured visual assets by message identity, never by turn number.
 const sectionCandidates = new Map();
-for (const { document } of snapshotDocuments) {
-  for (const section of document.querySelectorAll('section[data-testid^="conversation-turn-"]')) {
-    const id = section.querySelector("[data-message-id]")?.getAttribute("data-message-id")
-      || section.getAttribute("data-turn-id");
-    const previous = sectionCandidates.get(id);
-    if (!previous || section.outerHTML.length > previous.outerHTML.length) sectionCandidates.set(id, section);
+if (useSampleAssets) {
+  const sampleSections = JSON.parse(await readFile(join(dirname(canonicalConversationPath), 'official-sections.json'), 'utf8'));
+  for (const [id, source] of Object.entries(sampleSections)) {
+    const holder = baseDocument.createElement('div');
+    holder.innerHTML = htmlSafeSvg(source);
+    sectionCandidates.set(id, holder.firstElementChild);
   }
 }
 
@@ -144,10 +120,15 @@ const renderUserText = (source) => {
   renderer.html = token => String(token.text)
     .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
   const holder = baseDocument.createElement('div');
-  holder.innerHTML = htmlSafeSvg(marked.parseInline(source, { renderer, gfm: true, breaks: true }));
+  holder.innerHTML = htmlSafeSvg(marked.parse(source, { renderer, gfm: true, breaks: true }));
   for (const link of holder.querySelectorAll('a[href]')) {
     const href = (link.getAttribute('href') || '').replace(/[\u0000-\u0020]/g, '');
     if (!/^(https?:|mailto:)/i.test(href)) link.removeAttribute('href');
+    else {
+      link.className = 'font-medium [&&]:underline [&&]:decoration-current [&&]:underline-offset-2 [&&]:hover:no-underline';
+      link.setAttribute('target', '_blank');
+      link.setAttribute('rel', 'noopener noreferrer');
+    }
   }
   return htmlSafeSvg(holder.innerHTML);
 };
@@ -173,30 +154,18 @@ const copyParts = (entries) => entries
     contentReferences: message.content_references || [],
   }));
 
-const templates = [...sectionCandidates.values()];
-const laterUserTemplate = templates.find(s => s.querySelector('.user-message-bubble-color .whitespace-pre-wrap') && !s.querySelector('[data-testid="library-file-icon"]'));
-const assistantTemplate = templates.find(s => s.querySelector('[data-message-author-role="assistant"] .markdown'));
-const stoppedThinkingTemplate = templates.find(s => [...s.querySelectorAll('button')].some(button => button.textContent.trim() === '已停止思考'));
-const generatedImageTemplate = templates.find(s => s.querySelector('img[alt^="已生成图片"]'));
-const userImageTemplates = new Map();
-for (const section of templates.filter(section => section.getAttribute('data-turn') === 'user')) {
-  const images = section.querySelectorAll('[class~="group/message-image"] img');
-  if (images.length && !userImageTemplates.has(images.length)) {
-    userImageTemplates.set(images.length, images[0].closest('.flex.w-\\[var\\(--user-chat-width\\,70\\%\\)\\]'));
-  }
-}
-const branchFooterTemplate = templates
-  .map(section => [...section.querySelectorAll('p')].find(p => /从\s*.+\s*建立的分支/.test(p.textContent)))
-  .find(Boolean)?.parentElement?.parentElement;
-const fileTileTemplates = new Map();
-for (const tile of chartSnapshotDocument.querySelectorAll('[class*="group/file-tile"]')) {
-  const key = tile.querySelector('[data-library-file-icon-key]')?.getAttribute('data-library-file-icon-key');
-  if (key && !fileTileTemplates.has(key)) fileTileTemplates.set(key, tile);
-}
-const fileTileRowTemplate = chartSnapshotDocument.querySelector('[class*="group/file-tile"]')?.parentElement;
-if (!laterUserTemplate || !assistantTemplate || !stoppedThinkingTemplate || !generatedImageTemplate || !branchFooterTemplate || !fileTileRowTemplate || !officialTableTemplate) {
-  throw new Error("Official message templates are missing.");
-}
+const laterUserTemplate = officialTemplates.clone('message:user');
+const assistantTemplate = officialTemplates.clone('message:assistant');
+const stoppedThinkingTemplate = officialTemplates.clone('message:stopped-thinking');
+const generatedImageTemplate = officialTemplates.clone('message:generated-image');
+const branchFooterTemplate = officialTemplates.clone('message:branch-footer');
+const userImageTemplates = new Map([
+  [1, officialTemplates.clone('message:user-images-1')],
+  [3, officialTemplates.clone('message:user-images-3')],
+]);
+const fileTileTemplates = new Map(['document', 'pdf', 'text', 'xls']
+  .map(key => [key, officialTemplates.clone(`message:file-tile-${key}`)]));
+const fileTileRowTemplate = officialTemplates.clone('message:file-tile-row');
 
 const resourcesForMessage = (messageId) => archivedResources.filter(resource => resource.message_ids.includes(messageId));
 const downloadedResourceForMessage = (messageId, mimePrefix = '') => resourcesForMessage(messageId)
@@ -300,8 +269,9 @@ const appendBranchFooter = (section, entries) => {
   link.href = `https://chatgpt.com/c/${branch.branching_from_conversation_id}`;
   paragraph.replaceChildren(baseDocument.createTextNode('从 '), link, baseDocument.createTextNode(' 建立的分支'));
   const agentTurn = section.querySelector('.agent-turn');
-  const trailingScreenshot = [...agentTurn?.children || []].findLast(child => child.hasAttribute('data-conversation-screenshot-content'));
-  if (agentTurn) agentTurn.insertBefore(footer, trailingScreenshot || null);
+  // In the official DOM the branch divider is a sibling of the agent turn.
+  // Nesting it inside `.agent-turn` makes its flex width collapse to the label.
+  if (agentTurn?.parentElement) agentTurn.after(footer);
 };
 
 const buildStoppedThinkingSection = (turnNumber, turn) => {
@@ -352,7 +322,8 @@ const buildGeneratedImageSection = (turnNumber, turn) => {
 const buildUserSection = (turnNumber, message) => {
   const section = cloneIntoBase(laterUserTemplate);
   setTurnIdentity(section, turnNumber, "user");
-  const content = section.querySelector(".user-message-bubble-color .whitespace-pre-wrap")
+  const content = section.querySelector(".user-message-bubble-color .markdown.prose")
+    || section.querySelector(".user-message-bubble-color .whitespace-pre-wrap")
     || section.querySelector('[data-message-author-role="user"]');
   content.innerHTML = renderUserText(plainUserText(message.entries));
   appendUserImages(section, message.entries);
@@ -418,8 +389,8 @@ function appendUnavailableContent(container, message, { skipFileAttachments = fa
   }
 }
 
-const firstSection = baseDocument.querySelector('section[data-testid^="conversation-turn-"]');
-const messageList = firstSection.parentElement.parentElement;
+const messageList = baseDocument.querySelector('[data-ceobe-message-list]');
+if (!messageList) throw new Error('Official shell message list is missing.');
 // No prompt rail, branch footer or captured message content survives into new data.
 messageList.replaceChildren();
 let reusedSections = 0;
@@ -532,9 +503,7 @@ const existingStylesheets = new Set(
   [...baseDocument.querySelectorAll('link[rel="stylesheet"]')]
     .map((link) => basename(link.getAttribute("href") || "")),
 );
-const chartStylesheetNames = [...chartSnapshotDocument.querySelectorAll('link[rel="stylesheet"]')]
-  .map((link) => basename(link.getAttribute("href") || ""))
-  .filter((name) => /^(?:react-|chart-widget-container-|WidgetRenderer-)/.test(name));
+const chartStylesheetNames = officialTemplates.manifest.chart_stylesheets;
 for (const stylesheetName of chartStylesheetNames) {
   if (existingStylesheets.has(stylesheetName)) continue;
   const link = baseDocument.createElement("link");
@@ -565,50 +534,33 @@ for (const spriteName of officialSpriteNames) {
 await cp(join(officialAssetsRoot, officialFontName), join(outputAssets, officialFontName));
 
 const copiedFiles = new Set();
-for (const snapshotName of snapshotNames) {
-  const resourceName = `${basename(snapshotName, ".html")}_files`;
-  const resourceDirectory = join(testRoot, resourceName);
-  for (const entry of await readdir(resourceDirectory, { withFileTypes: true })) {
-    if (!entry.isFile() || copiedFiles.has(entry.name)) continue;
-    if (!useSampleAssets && !entry.name.endsWith('.css') && !baseDocument.documentElement.outerHTML.includes(entry.name)) continue;
-    await cp(join(resourceDirectory, entry.name), join(outputAssets, entry.name));
-    copiedFiles.add(entry.name);
-  }
-}
-for (const filename of copiedFiles) {
-  if (!filename.endsWith('.css')) continue;
-  const path = join(outputAssets, filename);
-  const css = await readFile(path, 'utf8');
-  await writeFile(path, css.replaceAll(
-    'https://cdn.openai.com/common/fonts/openai-sans/v4/OpenAISans-Semibold.woff2',
-    './OpenAISans-Semibold.woff2',
-  ));
-}
-
-const chartResourceDirectory = join(
-  chartSnapshotRoot,
-  `${basename(chartSnapshotName, ".html")}_files`,
-);
-for (const entry of await readdir(chartResourceDirectory, { withFileTypes: true })) {
-  if (!entry.isFile() || copiedFiles.has(entry.name)) continue;
-  if (!useSampleAssets && !entry.name.endsWith('.css') && !baseDocument.documentElement.outerHTML.includes(entry.name)) continue;
-  await cp(join(chartResourceDirectory, entry.name), join(outputAssets, entry.name));
+for (const entry of await readdir(join(officialTemplates.root, 'assets'), { withFileTypes: true })) {
+  if (!entry.isFile()) continue;
+  await cp(join(officialTemplates.root, 'assets', entry.name), join(outputAssets, entry.name));
   copiedFiles.add(entry.name);
 }
 
-if (useSampleAssets) await buildFilePreviews(baseDocument, projectRoot, outputRoot, canonicalConversation);
-await buildSourcesPanel(baseDocument, projectRoot, outputRoot, canonicalConversation, snapshotDocuments.map(s => s.document));
+await buildFilePreviews(
+  baseDocument,
+  projectRoot,
+  outputRoot,
+  canonicalConversation,
+  officialTemplates,
+  dirname(canonicalConversationPath),
+  useSampleAssets,
+);
+await buildSourcesPanel(baseDocument, projectRoot, outputRoot, canonicalConversation, officialTemplates);
+const availablePreviewKeys = new Set([...baseDocument.querySelectorAll('template[data-ceobe-preview]')]
+  .map(template => template.getAttribute('data-ceobe-preview')));
+for (const opener of baseDocument.querySelectorAll('[data-ceobe-open-preview]')) {
+  if (!availablePreviewKeys.has(opener.getAttribute('data-ceobe-open-preview'))) opener.removeAttribute('data-ceobe-open-preview');
+}
 await cp(join(projectRoot, 'scripts/clipboard.js'), join(outputRoot, 'clipboard.js'));
 const clipboardScript = baseDocument.createElement('script');
 clipboardScript.type = 'module';
 clipboardScript.src = './clipboard.js';
 baseDocument.body.append(clipboardScript);
-await cp(join(chartResourceDirectory, 'favicons'), join(outputAssets, 'favicons.png'));
-
 let output = `<!DOCTYPE html>\n${htmlSafeSvg(baseDocument.documentElement.outerHTML)}`;
-for (const snapshotName of snapshotNames) {
-  output = output.replaceAll(`./${basename(snapshotName, ".html")}_files/`, "./assets/");
-}
 if (nestedPage) output = output.replaceAll('href="./', 'href="../').replaceAll('src="./', 'src="../');
 
 
@@ -616,9 +568,9 @@ await mkdir(dirname(outputPage), { recursive: true });
 await writeFile(outputPage, output, "utf8");
 
 console.log([
-  `Built official replay from CEOBE JSON and ${snapshotNames[0]}.`,
+  `Built official replay from CEOBE JSON and official template package v${officialTemplates.manifest.version}.`,
   `${turns.length} typed conversation turns restored directly from CEOBE JSON.`,
   `${reusedSections} captured sample sections reused (only with --sample-assets).`,
-  `${copiedFiles.size} local resources collected.`,
+  `${copiedFiles.size} official template assets copied.`,
   `${officialSpriteNames.length} official icon sprites restored.`,
 ].join("\n"));

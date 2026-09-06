@@ -7,6 +7,7 @@
     "archive:share": "node scripts/archive-share.mjs",
     "library": "node scripts/build-library.mjs",
     "vendor:ui-assets": "node scripts/vendor-ui-assets.mjs",
+    "extract:templates": "node scripts/extract-official-templates.mjs",
     "import": "node scripts/import-markdown.mjs",
     "import:share": "python scripts/import-chatgpt-share.py",
     "replay": "node scripts/build-official-replay.mjs",
@@ -14,7 +15,7 @@
     "verify:replay": "node scripts/verify-replay.mjs",
     "verify:library": "node scripts/test-library-browser.mjs",
     "verify:official-dom": "node scripts/verify-official-message-dom.mjs",
-    "test": "python -m unittest discover -s tests && node scripts/test-official-citations.mjs && node scripts/test-reader-rendering.mjs && node scripts/test-copy-content.mjs && node scripts/test-archive-resources.mjs && node scripts/test-conversation-input.mjs && npm run replay:sample && npm run verify:replay && node scripts/test-file-previews.mjs",
+    "test": "python -m unittest discover -s tests && node scripts/test-official-template-package.mjs && node scripts/test-official-citations.mjs && node scripts/test-reader-rendering.mjs && node scripts/test-copy-content.mjs && node scripts/test-archive-resources.mjs && node scripts/test-conversation-input.mjs && npm run replay:sample && npm run verify:replay && node scripts/test-file-previews.mjs && npm run library && node scripts/test-archived-file-previews.mjs",
     "dev": "vite replay",
     "build": "vite build replay --config vite.config.mjs --outDir ../dist --emptyOutDir",
     "preview": "vite preview --outDir dist"

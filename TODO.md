@@ -24,7 +24,9 @@
 - [x] 阅读器接收 `--input`，移除固定消息数量/turn 编号，默认按 JSON 重建正文；样本资源仅通过显式演示入口使用。
 - [x] 将 Markdown 与 HTML 拆为两个平级输出端；HTML 路径不再消费 Markdown 导出投影。
 - [x] 从 typed HTML view 逐项恢复分支来源、停止思考、图片生成、结构化图表、表格和上传附件的官方 DOM。
-- [ ] 从保存页面中抽取独立官方视觉模板包，进一步去除构建对“测试消息/图表”源目录的依赖。
+- [x] 从保存页面中抽取独立官方视觉模板包；普通 renderer 不再依赖“测试消息/图表/新界面”源目录。
+- [x] 将六种样本文件预览 DOM 与专用 CSS 迁入模板包，去除 `--sample-assets` 对“文件”源目录的依赖。
+- [x] 将已下载的 PDF、DOCX、XLSX 和 TXT 归档资源按 JSON 元数据自动接入官方预览 DOM。
 
 - [ ] 处理 ChatGPT 长对话的虚拟化渲染：浏览器保存的 HTML 可能只包含保存当时进入 DOM 的部分 conversation turns。
 - [ ] 研究保存前自动滚动整个 conversation、分段捕获 DOM 或从其他数据源补齐全部 turns 的方案。

@@ -1,17 +1,16 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { parseHTML } from 'linkedom';
 import { createOfficialCitations } from './official-citations.mjs';
 import { renderAssistantMarkdown } from './render-markdown.mjs';
+import { loadOfficialTemplatePackage } from './official-template-package.mjs';
 
-const documents = await Promise.all([
-  '测试消息/分支 · 测试消息1.html', '图表/图表.html',
-].map(async path => parseHTML(await readFile(path, 'utf8')).document));
+const templates = await loadOfficialTemplatePackage(process.cwd());
+const documents = [templates.templateDocument];
 const citations = createOfficialCitations(documents);
 const file = { id: 'test-file', name: '<测试>.txt', source: 'my_files', snippet: '<script>alert(1)</script>', input_pointer: { line_range_start: 10, line_range_end: 20 } };
 const parsed = html => parseHTML('<html><body>' + html + '</body></html>').document.body.firstElementChild;
 const node = parsed(citations.file(file));
-const template = documents[0].querySelector('[data-file-citation-group-size="1"]');
+const template = templates.clone('citation:file');
 const structure = element => [element.localName, element.className, [...element.children].map(structure)];
 assert.deepEqual(structure(node), structure(template));
 assert.equal(node.querySelector('p').textContent, '<测试>');
@@ -23,7 +22,7 @@ assert.equal(node.querySelector('script'), null);
 
 for (const count of [0, 1]) {
   const web = parsed(citations.web({ items: [{ url: 'https://help.openai.com/test', attribution: 'OpenAI Help Center', supporting_websites: Array(count).fill({url: 'https://example.com'}) }] }));
-  const original = [...documents[1].querySelectorAll('[data-testid="webpage-citation-pill"]')].find(e => e.textContent.endsWith('+1') === Boolean(count));
+  const original = templates.clone(count ? 'citation:web-count' : 'citation:web');
   assert.deepEqual(structure(web), structure(original));
   assert.equal(web.getAttribute('style'), original.getAttribute('style'));
   assert.equal(web.querySelector('img').getAttribute('src'), './assets/favicons.png');
@@ -46,7 +45,7 @@ for (const source of [`\uE200url\uE202${title}\uE202${url}\uE201`, `url${title}$
   assert.ok(link);
   assert.equal(link.textContent, title);
   assert.equal(link.getAttribute('href'), url);
-  assert.equal(link.getAttribute('target'), '_blank');
+  assert.equal(link.getAttribute('target'), templates.clone('citation:url').getAttribute('target'));
   assert.ok(link.querySelector('svg use'));
   assert.equal(paragraph.querySelector('[data-testid="webpage-citation-pill"]'), null);
   assert.equal(link.querySelector('.truncate'), null);

@@ -1,11 +1,14 @@
-const toggle = document.querySelector('[data-ceobe-sources-toggle]');
+const toggles = [...document.querySelectorAll('[data-ceobe-sources-toggle]')];
+const toggle = toggles[0];
 const panel = document.querySelector('[data-ceobe-sources-panel]');
 const rail = document.querySelector('[data-ceobe-prompt-rail]');
 let expanded = false;
 function setOpen(open) {
   panel.hidden = !open;
-  toggle.setAttribute('aria-pressed', String(open));
-  toggle.setAttribute('aria-expanded', String(open));
+  for (const control of toggles) {
+    control.setAttribute('aria-pressed', String(open));
+    control.setAttribute('aria-expanded', String(open));
+  }
   if (rail) rail.hidden = open;
 }
 function filter() {
@@ -17,7 +20,7 @@ function filter() {
     if (more) { more.hidden = Boolean(query) || rows.length <= 6; more.textContent = expanded ? '收起' : `再显示 ${rows.length - 6} 个`; }
   }
 }
-toggle.addEventListener('click', () => setOpen(panel.hidden));
+for (const control of toggles) control.addEventListener('click', () => setOpen(panel.hidden));
 panel.querySelector('input').addEventListener('input', filter);
 document.addEventListener('click', event => {
   const collapse = event.target.closest('[data-ceobe-source-collapse]');

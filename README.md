@@ -10,7 +10,7 @@ Chat Echoes: Offline Browsing Experience（CEOBE）以保存的 ChatGPT 官方 H
 
 当前已支持分享链接归档、原始响应保留、CEOBE JSON、Markdown 副本、公开附件下载、本地多会话档案库、消息与代码复制、来源面板及对话跳转目录。没有本地语义的官方按钮继续保持静态外观。
 
-测试对话中的文件预览已覆盖 TXT、DOCX、PDF 和 XLSX：点击附件卡片或文件引用打开，关闭按钮或 Escape 关闭。TXT/DOCX 复用官方正文，PDF 使用原文件渲染的页面图片（暂不支持选择文字），XLSX 在官方面板内使用本地只读网格并支持工作表切换。通用归档附件可以离线显示或下载，但尚未自动生成所有文件类型的完整预览。
+文件预览已覆盖 TXT、DOCX、PDF 和 XLSX：点击附件卡片或文件引用打开，关闭按钮或 Escape 关闭。普通档案构建会直接读取 JSON 中已下载的附件资源：TXT/DOCX 生成本地只读正文，PDF 渲染为页面图片（暂不支持选择文字），XLSX 在官方面板内使用本地只读网格并支持工作表切换。六种官方预览 DOM 与专用 CSS 已进入独立模板包，PDF/XLSX 验收原件位于对应 fixture 的 `preview-inputs/`；构建不再读取根目录 `文件/`。未下载或尚未支持的文件类型仍保留原始档案元数据与下载入口。
 
 预览构建需要 Python 的 `pypdfium2` 与 `openpyxl`。脚本优先使用 `CEOBE_PYTHON`，其次系统 Python，最后尝试 Codex 本地运行时。其他环境可安装这两个依赖后设置 `CEOBE_PYTHON`。原始 PDF/XLSX 不会被修改。
 
@@ -46,7 +46,7 @@ npm run replay:sample
 npm run dev
 ```
 
-演示入口才会启用 `--sample-assets`，按消息 ID 复用保存的正文/媒体快照及四个测试附件；普通输入不复用样本正文。官方保存的 HTML/CSS 当前仍作为视觉模板来源，尚未抽取为独立模板包。
+演示入口才会启用 `--sample-assets`，按消息 ID 复用保存的正文/媒体快照及四个测试附件；普通输入不复用样本正文。正常 renderer 只读取 `official-templates/` 中经过抽取的页面外壳、消息组件和 CSS，不再在构建时扫描 `测试消息/`、`图表/` 或 `新界面/`。原始保存页面仅作为可追溯的模板来源；需要主动更新模板包时运行 `npm run extract:templates`。
 
 构建当前生成页面：
 

@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { parseHTML } from 'linkedom';
 import { htmlSafeSvg } from './serialize-html.mjs';
 import { createGeneratedFiles } from './generated-files.mjs';
 import { renderAssistantMarkdown } from './render-markdown.mjs';
+import { loadOfficialTemplatePackage } from './official-template-package.mjs';
 
 let markup = '<div><svg viewBox="0 0 10 10"><title></title><desc></desc><path d="M0 0 L10 10" /></svg></div>';
 for (let pass = 0; pass < 4; pass++) {
@@ -12,9 +12,9 @@ for (let pass = 0; pass < 4; pass++) {
   assert.equal(document.querySelector('title').textContent, '');
   markup = htmlSafeSvg(document.firstElementChild.outerHTML);
 }
-const snapshot = parseHTML(readFileSync('图表/图表.html', 'utf8')).document;
+const templates = await loadOfficialTemplatePackage(process.cwd());
 const document = parseHTML('<html><body></body></html>').document;
-const generatedFiles = createGeneratedFiles(snapshot);
+const generatedFiles = createGeneratedFiles(templates.templateDocument);
 const rendered = renderAssistantMarkdown(document,
   '[新文件](sandbox:/mnt/data/%E6%96%B0.xlsx)\n\n[再次](sandbox:/mnt/data/新.xlsx)\n\n[网页](https://example.com)\n\n[危险](javascript:alert)',
   { generatedFiles });

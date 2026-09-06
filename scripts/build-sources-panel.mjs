@@ -1,16 +1,10 @@
-import { readFile, cp } from 'node:fs/promises';
+import { cp } from 'node:fs/promises';
 import { join } from 'node:path';
-import { parseHTML } from 'linkedom';
-import { htmlSafeSvg } from './serialize-html.mjs';
 
-export async function buildSourcesPanel(document, root, output, conversation, snapshots) {
-  const source = parseHTML(await readFile(join(root, '新界面/新界面.html'), 'utf8')).document;
-  const clone = node => {
-    const holder = document.createElement('div');
-    holder.innerHTML = htmlSafeSvg(node.outerHTML).replaceAll('sprites-core-ff27b486', 'sprites-core-26c3f2d4');
-    return holder.firstElementChild;
-  };
-  const toggle = clone([...source.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === '文件和来源'));
+export async function buildSourcesPanel(document, root, output, conversation, templates) {
+  const clone = name => templates.clone(name, document);
+  const cloneNode = node => node.cloneNode(true);
+  const toggle = clone('sources:toggle');
   toggle.setAttribute('data-ceobe-sources-toggle', '');
   toggle.setAttribute('aria-pressed', 'false');
   toggle.setAttribute('aria-expanded', 'false');
@@ -19,7 +13,7 @@ export async function buildSourcesPanel(document, root, output, conversation, sn
   for (const name of [...toggle.classList]) if (name.includes('bg-token-interactive-bg-secondary-selected')) toggle.classList.remove(name);
   const options = document.querySelector('[data-testid="conversation-options-button"]');
   options.parentElement.after(toggle);
-  const panel = clone(source.querySelector('aside').parentElement.parentElement);
+  const panel = clone('sources:panel');
   panel.id = 'ceobe-sources-panel';
   panel.setAttribute('data-ceobe-sources-panel', '');
   panel.hidden = true;
@@ -30,9 +24,9 @@ export async function buildSourcesPanel(document, root, output, conversation, sn
   }
   const sections = [...panel.querySelectorAll('section')];
   const fileList = sections[0].querySelector('ul');
-  const fileTemplates = [...fileList.children].map(clone);
+  const fileTemplates = [...fileList.children].map(cloneNode);
   const sourceList = sections[1].querySelector('ul');
-  const sourceTemplate = clone(sourceList.firstElementChild);
+  const sourceTemplate = cloneNode(sourceList.firstElementChild);
   fileList.replaceChildren(); sourceList.replaceChildren();
   for (const fade of panel.querySelectorAll('[data-testid^="sources-scroll-fade-"]')) fade.remove();
   const searchIcon = [...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === '搜索聊天')?.querySelector('svg');
@@ -66,8 +60,9 @@ export async function buildSourcesPanel(document, root, output, conversation, sn
   }
   for (const file of [...files.values()].sort((a,b) => Number(b.type === 'generated_file') - Number(a.type === 'generated_file'))) {
     const kind = /\.(xlsx?|ods)$/i.test(file.name) ? 'xls' : /\.(png|jpe?g|gif|webp)$/i.test(file.name) ? 'photo' : 'text';
-    const row = clone(fileTemplates.find(t => t.querySelector(`[data-library-file-icon-key="${kind}"]`)) || fileTemplates[0]);
+    const row = cloneNode(fileTemplates.find(t => t.querySelector(`[data-library-file-icon-key="${kind}"]`)) || fileTemplates[0]);
     const button = row.querySelector('button');
+    button.removeAttribute('data-ceobe-open-preview');
     button.setAttribute('aria-label', file.name);
     button.setAttribute('data-ceobe-source-file', '');
     button.setAttribute('tabindex', '0');
@@ -95,7 +90,7 @@ export async function buildSourcesPanel(document, root, output, conversation, sn
     fileList.append(row);
   }
   for (const [url, title] of urls) {
-    const row = clone(sourceTemplate), anchor = row.querySelector('a');
+    const row = cloneNode(sourceTemplate), anchor = row.querySelector('a');
     anchor.href = url; anchor.title = title; anchor.rel = 'noopener noreferrer';
     anchor.querySelector('span.truncate').textContent = title;
     // A captured favicon must not be assigned to a different website.
@@ -124,14 +119,13 @@ export async function buildSourcesPanel(document, root, output, conversation, sn
   options.closest('header').append(panel);
 
   // Rebuild the official prompt rail against this input's actual user turns.
-  const original = snapshots.map(d => d.querySelector('[data-toc-item-index]')).find(Boolean);
-  if (original) {
-    const rail = clone(original.closest('.fixed'));
+  {
+    const rail = clone('navigation:prompt-rail');
     rail.setAttribute('data-ceobe-prompt-rail', '');
     const list = rail.querySelector('[data-toc-item-index]').parentElement;
-    const template = clone(list.firstElementChild); list.replaceChildren();
+    const template = cloneNode(list.firstElementChild); list.replaceChildren();
     for (const [index, turn] of [...document.querySelectorAll('section[data-turn="user"]')].entries()) {
-      const button = clone(template);
+      const button = cloneNode(template);
       button.setAttribute('data-toc-item-index', index);
       button.setAttribute('data-ceobe-jump', turn.getAttribute('data-testid'));
       button.setAttribute('aria-label', `跳转到第 ${index + 1} 条用户消息`);
