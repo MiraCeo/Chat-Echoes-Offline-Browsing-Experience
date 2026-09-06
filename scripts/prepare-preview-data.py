@@ -6,16 +6,13 @@ from html import escape
 from pathlib import Path
 from xml.etree import ElementTree
 
-import pypdfium2 as pdfium
-from openpyxl import load_workbook
-from openpyxl.utils import get_column_letter
-
 source, output = map(Path, sys.argv[1:3])
 kind = sys.argv[3]
 output.mkdir(parents=True, exist_ok=True)
-data = {'pages': [], 'sheets': [], 'html': ''}
+data = {'pages': [], 'sheets': [], 'html': '', 'text': None, 'text_metadata': None}
 
 if kind == 'pdf':
+    import pypdfium2 as pdfium
     pdf = pdfium.PdfDocument(source)
     for index in range(len(pdf)):
         page = pdf[index]
@@ -32,6 +29,8 @@ def rgb(color, default):
     return '#' + color.rgb[-6:] if color is not None and color.type == 'rgb' else default
 
 if kind == 'xlsx':
+    from openpyxl import load_workbook
+    from openpyxl.utils import get_column_letter
     book = load_workbook(source, data_only=True)
     for sheet in book:
         rows = []
@@ -53,7 +52,23 @@ if kind == 'xlsx':
     book.close()
 
 if kind == 'txt':
-    text = source.read_text(encoding='utf-8', errors='replace')
+    raw = source.read_bytes()
+    encoding = 'utf-8-sig' if raw.startswith(b'\xef\xbb\xbf') else 'utf-8'
+    try:
+        text = raw.decode(encoding)
+    except UnicodeDecodeError:
+        encoding = 'utf-16' if raw.startswith((b'\xff\xfe', b'\xfe\xff')) else 'gb18030'
+        text = raw.decode(encoding, errors='replace')
+    data['text'] = text
+    data['text_metadata'] = {
+        'bytes': len(raw), 'characters': len(text), 'lines': len(text.splitlines()),
+        'encoding': encoding, 'replacement_characters': text.count('\ufffd'),
+        'line_endings': {
+            'crlf': text.count('\r\n'),
+            'lf': text.count('\n') - text.count('\r\n'),
+            'cr': text.count('\r') - text.count('\r\n'),
+        },
+    }
     data['html'] = '<pre class="ceobe-text-preview">' + escape(text) + '</pre>'
 
 if kind == 'docx':

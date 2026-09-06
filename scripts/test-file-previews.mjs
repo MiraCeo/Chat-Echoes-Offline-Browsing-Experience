@@ -16,9 +16,12 @@ for (const template of templates) {
   assert.equal(content.querySelector('script'), null);
   if (template.getAttribute('data-ceobe-preview') === 'pasted-reference') {
     assert.ok(content.querySelector('[data-ceobe-pasted-reference] .cm-content'));
-    assert.ok(content.querySelector('[data-ceobe-incomplete-preview]'));
+    assert.equal(content.querySelector('[data-ceobe-incomplete-preview]'), null);
+    assert.equal(content.querySelector('[data-ceobe-complete-preview]')?.getAttribute('data-ceobe-complete-preview'), 'clipboard-recovery');
+    assert.equal(content.querySelectorAll('.cm-content > .cm-line').length, 374);
     assert.equal(content.querySelector('.cm-gap'), null);
-    assert.ok(content.body.textContent.includes(':app:assembleRelease'));
+    assert.ok(content.body.textContent.includes("'.\\gradlew.bat' ':app' '--console=plain'"));
+    assert.ok(content.body.textContent.includes('BUILD SUCCESSFUL in 4m 42s'));
   }
   if (template.getAttribute('data-ceobe-preview') === 'pdf') {
     const images = [...content.querySelectorAll('[data-testid^="artifact-pdf-page-"] img')];

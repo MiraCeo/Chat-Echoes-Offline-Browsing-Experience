@@ -3,7 +3,7 @@ import { resolve, join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
-import { downloadResources } from './archive-resources.mjs';
+import { downloadResources, resourceMatches } from './archive-resources.mjs';
 import { exportConversationMarkdown } from './export-conversation-markdown.mjs';
 import { resolveShareResources } from './resolve-share-resources.mjs';
 
@@ -42,13 +42,13 @@ conversation.import_report.resources = conversation.resources;
 conversation.import_report.resource_counts = Object.fromEntries(['downloaded', 'unresolved', 'failed'].map(status =>
   [status, conversation.resources.filter(resource => resource.status === status).length]));
 for (const asset of conversation.import_report.assets) {
-  const key = asset.id || /(?:sediment:\/\/)([^?]+)/.exec(asset.pointer || '')?.[1] || asset.pointer || asset.name;
-  const resource = conversation.resources.find(item => item.key === key);
+  const resource = conversation.resources.find(item => resourceMatches(item, asset));
   asset.local_status = resource?.status || 'unresolved';
   if (resource?.local_path) asset.local_path = resource.local_path;
 }
 conversation.import_report.complete_offline_archive = conversation.resources.every(resource => resource.status === 'downloaded') &&
-  conversation.import_report.status === 'structure_checked';
+  conversation.import_report.status === 'structure_checked' &&
+  conversation.completeness?.structured_payload?.status === 'usable';
 await writeFile(join(folder, 'conversation.ceobe.json'), JSON.stringify(conversation, null, 2));
 await writeFile(join(folder, 'conversation.md'), exportConversationMarkdown(conversation), { flag: 'wx' });
 await writeFile(join(folder, 'import-report.json'), JSON.stringify(conversation.import_report, null, 2), { flag: 'wx' });

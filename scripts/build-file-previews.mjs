@@ -2,16 +2,17 @@ import { readFile, cp, mkdir } from 'node:fs/promises';
 import { join, basename, extname } from 'node:path';
 import { homedir } from 'node:os';
 import { spawnSync } from 'node:child_process';
+import { resourceMatches } from './archive-resources.mjs';
 
 const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 
-const previewKind = resource => {
+export const previewKind = resource => {
   const extension = extname(resource.name || resource.local_path || '').toLowerCase();
   const mime = resource.mime_type || '';
   if (mime === 'application/pdf' || extension === '.pdf') return 'pdf';
   if (mime.includes('spreadsheetml') || extension === '.xlsx') return 'xlsx';
   if (mime.includes('wordprocessingml') || extension === '.docx') return 'docx';
-  if (mime.startsWith('text/') || extension === '.txt') return 'txt';
+  if (mime.startsWith('text/') || ['.txt', '.md', '.log', '.csv', '.json'].includes(extension)) return 'txt';
   return null;
 };
 
@@ -22,34 +23,77 @@ const replaceText = (root, before, after) => {
   }
 };
 
+const restoreClipboardBlockquote = source => {
+  const lines = String(source || '').replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n');
+  const firstTask = lines.findIndex(line => /^Task\s+:/.test(line));
+  if (firstTask < 0) return lines.join('\n');
+  return lines.map((line, index) => index < firstTask ? line : line ? `> ${line}` : '>').join('\n');
+};
+
+const replacePastedProse = (document, container, source) => {
+  const lines = String(source || '').split('\n');
+  const firstQuote = lines.findIndex(line => /^>\s?/.test(line));
+  const appendLines = (parent, values, quote = false) => {
+    const paragraph = document.createElement('p');
+    values.forEach((value, index) => {
+      const span = document.createElement('span');
+      span.textContent = quote ? value.replace(/^>\s?/, '') : value;
+      paragraph.append(span);
+      if (index < values.length - 1) paragraph.append(document.createElement('br'));
+    });
+    parent.append(paragraph);
+  };
+  container.innerHTML = '';
+  const plain = (firstQuote < 0 ? lines : lines.slice(0, firstQuote)).filter((line, index, values) =>
+    line || values.slice(index + 1).some(Boolean));
+  if (plain.length) appendLines(container, plain);
+  if (firstQuote >= 0) {
+    const quote = document.createElement('blockquote');
+    appendLines(quote, lines.slice(firstQuote), true);
+    container.append(quote);
+  }
+};
+
 export async function buildFilePreviews(document, projectRoot, outputRoot, conversation, templates, sourceRoot, sampleAssets = false) {
   const assets = join(outputRoot, 'previews');
   await mkdir(assets, { recursive: true });
   const candidates = [process.env.CEOBE_PYTHON, 'python', join(homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe')].filter(Boolean);
-  const python = candidates.find(exe => spawnSync(exe, ['-c', 'import pypdfium2, openpyxl'], { windowsHide: true }).status === 0);
   const sampleRoot = join(sourceRoot, 'preview-inputs');
   const sampleSpecs = [
     { key: 'txt', kind: 'txt', name: 'apk构筑.txt' },
     { key: 'docx', kind: 'docx', name: 'LMS.docx' },
     { key: 'pdf', kind: 'pdf', name: '技术部-开发组-加分题.pdf', source: join(sampleRoot, '技术部-开发组-加分题.pdf') },
     { key: 'xlsx', kind: 'xlsx', name: '票据收集情况.xlsx', source: join(sampleRoot, '票据收集情况.xlsx') },
-    { key: 'pasted', kind: 'pasted', name: '粘贴的文本 (1).txt' },
-    { key: 'pasted-reference', kind: 'pasted-reference', name: '粘贴的文本 (1).txt' },
+    { key: 'pasted', kind: 'pasted', parserKind: 'txt', name: '粘贴的文本 (1).txt', source: join(sampleRoot, '粘贴的文本.txt'), restoreBlockquote: true, entryPoint: 'card' },
+    { key: 'pasted-reference', kind: 'pasted-reference', parserKind: 'txt', name: '粘贴的文本 (1).txt', source: join(sampleRoot, '粘贴的文本.txt'), restoreBlockquote: true, entryPoint: 'reference' },
   ];
+  const bigPasteAttachments = Object.values(conversation.messages || {}).flatMap(message =>
+    (message.attachments || []).filter(attachment => attachment.is_big_paste));
   const archivedSpecs = (conversation.resources || [])
     .filter(resource => resource.status === 'downloaded' && resource.local_path && previewKind(resource))
-    .map(resource => ({
-      key: `file-${resource.key}`,
-      kind: previewKind(resource),
-      name: resource.name,
-      resourceKey: resource.key,
-      source: join(sourceRoot, resource.local_path),
-    }));
+    .flatMap(resource => {
+      const isBigPaste = resource.is_big_paste || bigPasteAttachments.some(attachment => resourceMatches(resource, attachment));
+      const base = {
+        key: `file-${resource.key}`,
+        kind: isBigPaste ? 'pasted' : previewKind(resource),
+        parserKind: previewKind(resource),
+        name: resource.name,
+        resourceKey: resource.key,
+        source: join(sourceRoot, resource.local_path),
+        entryPoint: 'card',
+      };
+      return isBigPaste
+        ? [base, { ...base, key: `${base.key}-reference`, kind: 'pasted-reference', entryPoint: 'reference' }]
+        : [base];
+    });
   const specs = sampleAssets ? sampleSpecs : archivedSpecs;
   for (const element of document.querySelectorAll('[data-ceobe-open-preview]')) element.removeAttribute('data-ceobe-open-preview');
   if (!specs.length) return;
-  if (specs.some(spec => spec.source) && !python) throw new Error('File previews require Python with pypdfium2 and openpyxl. Set CEOBE_PYTHON to that Python executable.');
-  const names = new Map(specs.map(spec => [spec.name, spec.key]));
+  const imports = [...new Set(specs.flatMap(spec => (spec.parserKind || spec.kind) === 'pdf' ? ['pypdfium2'] : (spec.parserKind || spec.kind) === 'xlsx' ? ['openpyxl'] : []))];
+  const probe = imports.length ? `import ${imports.join(', ')}` : 'pass';
+  const python = candidates.find(exe => spawnSync(exe, ['-c', probe], { windowsHide: true }).status === 0);
+  if (specs.some(spec => spec.source) && !python) throw new Error(`File previews require Python${imports.length ? ` with ${imports.join(' and ')}` : ''}. Set CEOBE_PYTHON to a compatible executable.`);
+  const names = new Map(specs.filter(spec => spec.entryPoint !== 'reference').map(spec => [spec.name, spec.key]));
   // The same file has different official viewers at the card and citation entry points.
   names.set('粘贴的文本 (1).txt', 'pasted');
   const byId = new Map();
@@ -69,23 +113,25 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
       assetFolder = key.replace(/[^a-zA-Z0-9_-]/g, '_');
       const preparedRoot = join(assets, assetFolder);
       await mkdir(preparedRoot, { recursive: true });
-      const result = spawnSync(python, [join(projectRoot, 'scripts/prepare-preview-data.py'), spec.source, preparedRoot, kind], { encoding: 'utf8', windowsHide: true });
+      const result = spawnSync(python, [join(projectRoot, 'scripts/prepare-preview-data.py'), spec.source, preparedRoot, spec.parserKind || kind], { encoding: 'utf8', windowsHide: true });
       if (result.status !== 0) throw new Error(result.stderr || `Attachment preview preparation failed: ${name}`);
       console.log(result.stdout.trim());
       data = JSON.parse(await readFile(join(preparedRoot, 'manifest.json'), 'utf8'));
     }
-    if (key === 'pasted-reference') {
+    if (kind === 'pasted-reference') {
       pane.setAttribute('data-ceobe-pasted-reference', '');
-      const lines = pane.querySelectorAll('.cm-content > .cm-line').length;
-      for (const gap of pane.querySelectorAll('.cm-gap')) {
-        const notice = document.createElement('div');
-        notice.className = 'cm-line text-token-text-secondary';
-        notice.setAttribute('data-ceobe-incomplete-preview', '');
-        notice.textContent = `此网页快照仅捕获前 ${lines} 行，后续日志尚未保存。`;
-        gap.replaceWith(notice);
+      if (!data.text) {
+        const lines = pane.querySelectorAll('.cm-content > .cm-line').length;
+        for (const gap of pane.querySelectorAll('.cm-gap')) {
+          const notice = document.createElement('div');
+          notice.className = 'cm-line text-token-text-secondary';
+          notice.setAttribute('data-ceobe-incomplete-preview', '');
+          notice.textContent = `此网页快照仅捕获前 ${lines} 行，后续日志尚未保存。`;
+          gap.replaceWith(notice);
+        }
       }
     }
-    if (key === 'pasted') {
+    if (kind === 'pasted') {
       names.set(pane.querySelector('h2').textContent.trim(), key);
       // Silk's runtime-only attributes are replaced by the native dialog lifecycle.
       for (const element of [pane, ...pane.querySelectorAll('[data-silk]')]) element.removeAttribute('data-silk');
@@ -106,6 +152,22 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
       }
     }
     if (kind === 'txt' && data.html) pane.querySelector('.ProseMirror').innerHTML = data.html;
+    if (['pasted', 'pasted-reference'].includes(kind) && data.text) {
+      const text = spec.restoreBlockquote ? restoreClipboardBlockquote(data.text) : data.text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+      if (kind === 'pasted') replacePastedProse(document, pane.querySelector('.ProseMirror'), text);
+      else {
+        const content = pane.querySelector('.cm-content');
+        content.replaceChildren(...text.split('\n').map(value => {
+          const line = document.createElement('div');
+          line.className = 'cm-line';
+          line.textContent = value;
+          if (!value) line.append(document.createElement('br'));
+          return line;
+        }));
+        for (const gap of pane.querySelectorAll('.cm-gap')) gap.remove();
+        pane.setAttribute('data-ceobe-complete-preview', 'clipboard-recovery');
+      }
+    }
     if (kind === 'docx' && data.html) pane.querySelector('[data-testid="docx-preview-panel"]').innerHTML = data.html;
     if (kind === 'pdf') {
       const parent = pane.querySelector('[data-testid="artifact-pdf-preview-surface"] > div');
@@ -145,7 +207,10 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
     const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = `./assets/${filename}`;
     document.head.append(css);
   }
-  for (const spec of specs) if (spec.resourceKey) byId.set(spec.resourceKey, spec.key);
+  for (const spec of specs) if (spec.resourceKey) {
+    const resource = (conversation.resources || []).find(item => item.key === spec.resourceKey);
+    for (const identifier of [resource?.key, ...(resource?.aliases || []), ...(resource?.pointers || [])].filter(Boolean)) byId.set(identifier, spec.key);
+  }
   for (const citation of document.querySelectorAll('[data-file-citation-primary-file-id]')) {
     const key = byId.get(citation.getAttribute('data-file-citation-primary-file-id'));
     if (key) {

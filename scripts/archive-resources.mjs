@@ -13,21 +13,64 @@ export function allowedAssetUrl(value) {
 export function assetKey(asset) {
   return asset.id || /(?:sediment:\/\/)([^?]+)/.exec(asset.pointer || '')?.[1] || asset.pointer || asset.download_url || asset.file_url || asset.url || asset.name;
 }
+
+export function assetAliases(asset = {}) {
+  return [...new Set([
+    asset.id,
+    asset.library_file_id,
+    /(?:sediment:\/\/)([^?]+)/.exec(asset.pointer || '')?.[1],
+    asset.pointer,
+    asset.download_url,
+    asset.file_url,
+    asset.url,
+  ].filter(Boolean))];
+}
+
+export function resourceMatches(resource, asset = {}) {
+  const identifiers = new Set([resource.key, ...(resource.aliases || []), ...(resource.pointers || [])]);
+  return assetAliases(asset).some(identifier => identifiers.has(identifier));
+}
+
+const addAsset = (resources, messageId, asset) => {
+  const aliases = assetAliases(asset);
+  const existing = [...resources.values()].find(resource => aliases.some(alias =>
+    resource.key === alias || resource.aliases.includes(alias)));
+  const key = existing?.key || assetKey(asset);
+  if (!key) return;
+  const entry = existing || {
+    key,
+    aliases: [],
+    name: asset.name || asset.filename || key,
+    mime_type: asset.mime_type || null,
+    size_bytes: asset.size_bytes || asset.size || null,
+    is_big_paste: Boolean(asset.is_big_paste),
+    message_ids: [],
+    pointers: [],
+    candidate_urls: [],
+    status: 'unresolved',
+  };
+  for (const alias of aliases) if (!entry.aliases.includes(alias)) entry.aliases.push(alias);
+  if (!entry.message_ids.includes(messageId)) entry.message_ids.push(messageId);
+  if (asset.pointer && !entry.pointers.includes(asset.pointer)) entry.pointers.push(asset.pointer);
+  if ((!entry.name || entry.name === entry.key) && (asset.name || asset.filename)) entry.name = asset.name || asset.filename;
+  entry.mime_type ||= asset.mime_type || null;
+  entry.size_bytes ||= asset.size_bytes || asset.size || null;
+  entry.is_big_paste ||= Boolean(asset.is_big_paste);
+  for (const url of [asset.download_url, asset.file_url, asset.url, asset.pointer]) {
+    if (/^https?:\/\//.test(url || '') && !entry.candidate_urls.includes(url)) entry.candidate_urls.push(url);
+  }
+  resources.set(entry.key, entry);
+};
+
 export function collectResources(conversation) {
   const resources = new Map();
   for (const [messageId, message] of Object.entries(conversation.messages)) {
-    const assets = [...(message.attachments || []), ...(message.content?.blocks || []).filter(b => b.type === 'asset')];
-    for (const asset of assets) {
-      const key = assetKey(asset);
-      if (!key) continue;
-      const entry = resources.get(key) || { key, name: asset.name || asset.filename || key, mime_type: asset.mime_type || null, message_ids: [], pointers: [], candidate_urls: [], status: 'unresolved' };
-      if (!entry.message_ids.includes(messageId)) entry.message_ids.push(messageId);
-      if (asset.pointer && !entry.pointers.includes(asset.pointer)) entry.pointers.push(asset.pointer);
-      for (const url of [asset.download_url, asset.file_url, asset.url, asset.pointer]) {
-        if (/^https?:\/\//.test(url || '') && !entry.candidate_urls.includes(url)) entry.candidate_urls.push(url);
-      }
-      resources.set(key, entry);
-    }
+    const assets = [
+      ...(message.attachments || []),
+      ...(message.content?.blocks || []).filter(block => block.type === 'asset'),
+      ...(message.content_references || []).filter(reference => reference?.type === 'file'),
+    ];
+    for (const asset of assets) addAsset(resources, messageId, asset);
   }
   return [...resources.values()];
 }
@@ -36,7 +79,7 @@ export async function downloadResources(conversation, folder, { fetcher = fetch,
   const resources = collectResources(conversation);
   await mkdir(resolve(folder, 'assets'), { recursive: true });
   for (const resource of resources) {
-    const resolution = resolutions.find(item => item.key === resource.key);
+    const resolution = resolutions.find(item => item.key === resource.key || resource.aliases.includes(item.key));
     if (resolution) resource.resolution = resolution;
     if (resolution?.data?.download_url) resource.candidate_urls.push(resolution.data.download_url);
     resource.attempts = [];
@@ -70,8 +113,14 @@ export async function downloadResources(conversation, folder, { fetcher = fetch,
         const bytes = Buffer.concat(chunks);
         if (!bytes.length) throw new Error('Empty asset response');
         const sha256 = createHash('sha256').update(bytes).digest('hex');
-        const extension = /^\.[a-z0-9]{1,8}$/i.test(extname(resource.name)) ? extname(resource.name).toLowerCase() :
-          ({ 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'application/pdf': '.pdf', 'text/plain': '.txt' }[mime] || '.bin');
+        const pointerExtension = resource.pointers.map(pointer => extname(String(pointer).split(/[?#]/)[0])).find(value => /^\.[a-z0-9]{1,8}$/i.test(value));
+        const extension = /^\.[a-z0-9]{1,8}$/i.test(extname(resource.name)) ? extname(resource.name).toLowerCase() : pointerExtension?.toLowerCase() || ({
+          'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'application/pdf': '.pdf',
+          'text/plain': '.txt', 'text/markdown': '.md', 'text/csv': '.csv', 'application/json': '.json',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+          'application/msword': '.doc', 'application/vnd.ms-excel': '.xls',
+        }[mime] || '.bin');
         resource.local_path = `assets/${sha256}${extension}`;
         await writeFile(resolve(folder, resource.local_path), bytes, { flag: 'wx' }).catch(error => { if (error.code !== 'EEXIST') throw error; });
         Object.assign(resource, { status: 'downloaded', sha256, bytes: size, mime_type: mime || resource.mime_type, downloaded_from: url });

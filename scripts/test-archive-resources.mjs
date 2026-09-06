@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { parseHTML } from 'linkedom';
-import { allowedAssetUrl, collectResources, downloadResources, readArchivedResource } from './archive-resources.mjs';
+import { allowedAssetUrl, collectResources, downloadResources, readArchivedResource, resourceMatches } from './archive-resources.mjs';
 import { exportConversationMarkdown } from './export-conversation-markdown.mjs';
 
 const conversation = { title: 'Archive', messages: {
@@ -12,6 +12,14 @@ const conversation = { title: 'Archive', messages: {
   b: { role: 'assistant', attachments: [{ name: 'missing.xlsx', pointer: 'sandbox:/mnt/data/missing.xlsx' }], content: { blocks: [{ type: 'code', language: 'kotlin', text: 'val a = 1' }] } },
 }, linear_message_ids: ['a', 'b'] };
 assert.equal(collectResources(conversation).length, 2);
+const discovered = collectResources({ messages: { a: {
+  attachments: [{ id: 'file_same', library_file_id: 'lib_same', name: 'arbitrary-name.docx' }],
+  content_references: [{ type: 'file', id: 'file_same', name: 'citation-name.docx' }],
+  content: { blocks: [{ type: 'asset', pointer: 'sediment://file_same?share=id' }] },
+} } });
+assert.equal(discovered.length, 1);
+assert.ok(resourceMatches(discovered[0], { library_file_id: 'lib_same' }));
+assert.ok(resourceMatches(discovered[0], { pointer: 'sediment://file_same?other=id' }));
 assert.equal(allowedAssetUrl('https://files.oaiusercontent.com/test'), true);
 for (const url of ['http://127.0.0.1/x', 'https://chatgpt.com.evil.test/x', 'https://user:pass@chatgpt.com/x', 'https://chatgpt.com:8000/x']) assert.equal(allowedAssetUrl(url), false);
 const folder = await mkdtemp(join(tmpdir(), 'ceobe-resources-'));
@@ -33,6 +41,8 @@ assert.equal(replay.status, 0, replay.stderr);
 const document = parseHTML(await readFile('replay/index.html', 'utf8')).document;
 assert.equal(document.body.textContent.includes('附件尚未关联本地资源：test.txt'), false);
 assert.equal(document.querySelector('a[data-ceobe-local-resource="file_a"]'), null);
+assert.ok(document.querySelector('template[data-ceobe-preview="file-file_a"]'));
+assert.ok(document.querySelector('[data-ceobe-open-preview="file-file_a"]'));
 assert.equal((await readFile(join('replay/archive-resources', conversation.resources[0].local_path.split('/').at(-1)))).toString(), 'hello');
 await assert.rejects(readArchivedResource(folder, { local_path: '../secret', sha256: '' }));
 await writeFile(join(folder, conversation.resources[0].local_path), 'modified');
