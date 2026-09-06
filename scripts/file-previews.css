@@ -12,6 +12,7 @@ button[data-ceobe-close-preview], button[data-ceobe-sheet-tab] {
 .ceobe-pasted-dialog { position: fixed; inset: 0; margin: auto; width: fit-content; height: fit-content; padding: 0; border: 0; background: transparent; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow: visible; }
 .ceobe-pasted-dialog::backdrop { background: rgb(0 0 0 / 50%); }
 .ceobe-pasted-dialog > .content-sheet { width: min(780px, calc(100vw - 24px)); height: 80dvh; max-height: calc(100dvh - 24px); }
+.ceobe-text-preview { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
 @media (max-width: 900px) {
   .ceobe-preview-dock { position: absolute; inset: 0; width: 100%; z-index: 40; }
 }

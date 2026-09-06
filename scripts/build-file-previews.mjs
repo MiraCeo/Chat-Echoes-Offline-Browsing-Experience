@@ -1,29 +1,55 @@
-import { readFile, readdir, cp, mkdir } from 'node:fs/promises';
-import { join, basename } from 'node:path';
+import { readFile, cp, mkdir } from 'node:fs/promises';
+import { join, basename, extname } from 'node:path';
 import { homedir } from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { parseHTML } from 'linkedom';
 
 const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 
-export async function buildFilePreviews(document, projectRoot, outputRoot, conversation) {
-  const root = join(projectRoot, '文件');
+const previewKind = resource => {
+  const extension = extname(resource.name || resource.local_path || '').toLowerCase();
+  const mime = resource.mime_type || '';
+  if (mime === 'application/pdf' || extension === '.pdf') return 'pdf';
+  if (mime.includes('spreadsheetml') || extension === '.xlsx') return 'xlsx';
+  if (mime.includes('wordprocessingml') || extension === '.docx') return 'docx';
+  if (mime.startsWith('text/') || extension === '.txt') return 'txt';
+  return null;
+};
+
+const replaceText = (root, before, after) => {
+  for (const node of root.childNodes || []) {
+    if (node.nodeType === 3) node.nodeValue = node.nodeValue.replaceAll(before, after);
+    else replaceText(node, before, after);
+  }
+};
+
+export async function buildFilePreviews(document, projectRoot, outputRoot, conversation, templates, sourceRoot, sampleAssets = false) {
   const assets = join(outputRoot, 'previews');
   await mkdir(assets, { recursive: true });
   const candidates = [process.env.CEOBE_PYTHON, 'python', join(homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe')].filter(Boolean);
   const python = candidates.find(exe => spawnSync(exe, ['-c', 'import pypdfium2, openpyxl'], { windowsHide: true }).status === 0);
-  if (!python) throw new Error('File previews require Python with pypdfium2 and openpyxl. Set CEOBE_PYTHON to that Python executable.');
-  const result = spawnSync(python, [join(projectRoot, 'scripts/prepare-preview-data.py'), root, assets], { encoding: 'utf8', windowsHide: true });
-  if (result.status !== 0) throw new Error(result.stderr || 'Attachment preview preparation failed');
-  console.log(result.stdout.trim());
-  const data = JSON.parse(await readFile(join(assets, 'manifest.json'), 'utf8'));
-  const specs = [
-    ['txt', '文件', 'apk构筑.txt'], ['docx', 'docx', 'LMS.docx'],
-    ['pdf', 'pdf', '技术部-开发组-加分题.pdf'], ['xlsx', 'xlsx', '票据收集情况.xlsx'],
-    ['pasted', '粘贴的文本', '粘贴的文本 (1).txt'],
-    ['pasted-reference', '粘贴的文本2', '粘贴的文本 (1).txt'],
+  const sampleRoot = join(sourceRoot, 'preview-inputs');
+  const sampleSpecs = [
+    { key: 'txt', kind: 'txt', name: 'apk构筑.txt' },
+    { key: 'docx', kind: 'docx', name: 'LMS.docx' },
+    { key: 'pdf', kind: 'pdf', name: '技术部-开发组-加分题.pdf', source: join(sampleRoot, '技术部-开发组-加分题.pdf') },
+    { key: 'xlsx', kind: 'xlsx', name: '票据收集情况.xlsx', source: join(sampleRoot, '票据收集情况.xlsx') },
+    { key: 'pasted', kind: 'pasted', name: '粘贴的文本 (1).txt' },
+    { key: 'pasted-reference', kind: 'pasted-reference', name: '粘贴的文本 (1).txt' },
   ];
-  const names = new Map(specs.map(([key, , name]) => [name, key]));
+  const archivedSpecs = (conversation.resources || [])
+    .filter(resource => resource.status === 'downloaded' && resource.local_path && previewKind(resource))
+    .map(resource => ({
+      key: `file-${resource.key}`,
+      kind: previewKind(resource),
+      name: resource.name,
+      resourceKey: resource.key,
+      source: join(sourceRoot, resource.local_path),
+    }));
+  const specs = sampleAssets ? sampleSpecs : archivedSpecs;
+  for (const element of document.querySelectorAll('[data-ceobe-open-preview]')) element.removeAttribute('data-ceobe-open-preview');
+  if (!specs.length) return;
+  if (specs.some(spec => spec.source) && !python) throw new Error('File previews require Python with pypdfium2 and openpyxl. Set CEOBE_PYTHON to that Python executable.');
+  const names = new Map(specs.map(spec => [spec.name, spec.key]));
   // The same file has different official viewers at the card and citation entry points.
   names.set('粘贴的文本 (1).txt', 'pasted');
   const byId = new Map();
@@ -32,17 +58,27 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
       if (names.has(reference.name)) byId.set(reference.id, reference.name === '粘贴的文本 (1).txt' ? 'pasted-reference' : names.get(reference.name));
     }
   }
-  const copied = new Set();
-  for (const [key, snapshot, name] of specs) {
-    const source = parseHTML(await readFile(join(root, snapshot + '.html'), 'utf8')).document;
-    const pane = key === 'pasted' ? source.querySelector('.content-sheet.popup')
-      : source.querySelector('[data-testid="artifact-preview-side-pane-surface"]').closest('aside');
-    if (!pane) throw new Error(`Missing preview DOM in ${snapshot}.html`);
+  for (const spec of specs) {
+    const { key, kind, name } = spec;
+    const pane = templates.clone(`preview:${kind}`, document);
+    const originalName = { txt: 'apk构筑.txt', docx: 'LMS.docx', pdf: '技术部-开发组-加分题.pdf', xlsx: '票据收集情况.xlsx' }[kind];
+    if (originalName && originalName !== name) replaceText(pane, originalName, name);
+    let data = { pages: [], sheets: [], html: '' };
+    let assetFolder = '';
+    if (spec.source) {
+      assetFolder = key.replace(/[^a-zA-Z0-9_-]/g, '_');
+      const preparedRoot = join(assets, assetFolder);
+      await mkdir(preparedRoot, { recursive: true });
+      const result = spawnSync(python, [join(projectRoot, 'scripts/prepare-preview-data.py'), spec.source, preparedRoot, kind], { encoding: 'utf8', windowsHide: true });
+      if (result.status !== 0) throw new Error(result.stderr || `Attachment preview preparation failed: ${name}`);
+      console.log(result.stdout.trim());
+      data = JSON.parse(await readFile(join(preparedRoot, 'manifest.json'), 'utf8'));
+    }
     if (key === 'pasted-reference') {
       pane.setAttribute('data-ceobe-pasted-reference', '');
       const lines = pane.querySelectorAll('.cm-content > .cm-line').length;
       for (const gap of pane.querySelectorAll('.cm-gap')) {
-        const notice = source.createElement('div');
+        const notice = document.createElement('div');
         notice.className = 'cm-line text-token-text-secondary';
         notice.setAttribute('data-ceobe-incomplete-preview', '');
         notice.textContent = `此网页快照仅捕获前 ${lines} 行，后续日志尚未保存。`;
@@ -69,7 +105,9 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
         button.removeAttribute('aria-expanded');
       }
     }
-    if (key === 'pdf') {
+    if (kind === 'txt' && data.html) pane.querySelector('.ProseMirror').innerHTML = data.html;
+    if (kind === 'docx' && data.html) pane.querySelector('[data-testid="docx-preview-panel"]').innerHTML = data.html;
+    if (kind === 'pdf') {
       const parent = pane.querySelector('[data-testid="artifact-pdf-preview-surface"] > div');
       const pageTemplate = parent.firstElementChild.cloneNode(true);
       parent.innerHTML = '';
@@ -77,11 +115,11 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
         const node = pageTemplate.cloneNode(true);
         node.setAttribute('data-testid', `artifact-pdf-page-${index + 1}`);
         node.style.width = page.width + 'px'; node.style.height = page.height + 'px';
-        node.innerHTML = `<img src="./previews/${page.src}" alt="${escape(name)} 第 ${index + 1} 页" width="${page.width}" height="${page.height}" style="width:100%;height:100%;display:block" loading="lazy">`;
+        node.innerHTML = `<img src="./previews/${assetFolder}/${page.src}" alt="${escape(name)} 第 ${index + 1} 页" width="${page.width}" height="${page.height}" style="width:100%;height:100%;display:block" loading="lazy">`;
         parent.append(node);
       });
     }
-    if (key === 'xlsx') {
+    if (kind === 'xlsx') {
       const viewport = pane.querySelector('[data-testid="popcorn-viewport-host"]');
       viewport.classList.add('ceobe-sheet-viewport');
       viewport.innerHTML = data.sheets.map((sheet, index) => {
@@ -99,21 +137,15 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
     template.setAttribute('data-ceobe-preview', key);
     template.innerHTML = pane.outerHTML;
     document.body.append(template);
-    // Keep each snapshot's CSS in its own directory; do not overwrite other versions.
-    const resourceDir = snapshot + '_files';
-    await mkdir(join(assets, resourceDir), { recursive: true });
-    for (const entry of await readdir(join(root, resourceDir))) {
-      if (entry.endsWith('.css')) await cp(join(root, resourceDir, entry), join(assets, resourceDir, entry));
-    }
-    for (const link of source.querySelectorAll('link[rel="stylesheet"]')) {
-      const filename = basename(link.getAttribute('href') || '');
-      // Scoped viewer CSS, not a second global ChatGPT theme.
-      if (!/^(?:WidgetRenderer|writing-block|react-|conversation-small|user-markdown-formatted-text|code-block-editor)/.test(filename) || copied.has(filename)) continue;
-      copied.add(filename);
-      const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = `./previews/${resourceDir}/${filename}`;
-      document.head.append(css);
-    }
   }
+  const existingStylesheets = new Set([...document.querySelectorAll('link[rel="stylesheet"]')]
+    .map(link => basename(link.getAttribute('href') || '')));
+  for (const filename of templates.manifest.preview_stylesheets || []) {
+    if (existingStylesheets.has(filename)) continue;
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = `./assets/${filename}`;
+    document.head.append(css);
+  }
+  for (const spec of specs) if (spec.resourceKey) byId.set(spec.resourceKey, spec.key);
   for (const citation of document.querySelectorAll('[data-file-citation-primary-file-id]')) {
     const key = byId.get(citation.getAttribute('data-file-citation-primary-file-id'));
     if (key) {

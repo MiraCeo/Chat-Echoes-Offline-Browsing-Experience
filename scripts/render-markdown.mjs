@@ -94,17 +94,27 @@ const enhanceTables = (document, container, officialTableTemplate) => {
       const capturedTable = wrapper?.querySelector('table');
       if (wrapper && capturedTable) {
         table.className = capturedTable.className;
-        for (const cell of table.querySelectorAll('th, td')) {
+        const rows = [...table.querySelectorAll('tr')];
+        const columnCount = Math.max(0, ...rows.map(row => row.children.length));
+        const columnSizes = Array.from({ length: columnCount }, (_, columnIndex) => {
+          const longest = Math.max(0, ...rows.map(row => row.children[columnIndex]?.textContent.trim().length || 0));
+          return longest > 160 ? 'xl' : longest > 80 ? 'lg' : longest > 40 ? 'md' : 'sm';
+        });
+        for (const row of rows) for (const [columnIndex, cell] of [...row.children].entries()) {
           const sourceCell = capturedTable.querySelector(cell.localName);
           if (sourceCell) {
             cell.className = sourceCell.className;
             for (const attribute of sourceCell.attributes) {
-              if (attribute.name !== 'class') cell.setAttribute(attribute.name, attribute.value);
+              if (attribute.name !== 'class' && attribute.name !== 'data-col-size') cell.setAttribute(attribute.name, attribute.value);
             }
+            cell.setAttribute('data-col-size', columnSizes[columnIndex] || 'sm');
           }
         }
+        // Clone before replacing: linkedom cannot reliably move the original
+        // table into a detached captured wrapper after `replaceWith`.
+        const renderedTable = table.cloneNode(true);
+        capturedTable.replaceWith(renderedTable);
         table.replaceWith(wrapper);
-        capturedTable.replaceWith(table);
         continue;
       }
     }
@@ -139,7 +149,18 @@ export const renderAssistantMarkdown = (
       .filter((reference) => reference && typeof reference.matched_text === "string")
       .map((reference) => [reference.matched_text, reference]),
   );
-  const normalized = source
+  const groupedSource = source.replace(
+    /\uE200filecite\uE202[^\uE201]+\uE201(?:[\t ]+\uE200filecite\uE202[^\uE201]+\uE201)+/g,
+    group => {
+      const tokens = group.match(/\uE200filecite\uE202[^\uE201]+\uE201/g) || [];
+      const grouped = tokens.map(token => referenceByToken.get(token)).filter(Boolean);
+      if (grouped.length !== tokens.length || !grouped.every(reference => reference.id === grouped[0]?.id)) return group;
+      const token = "CEOBEREFERENCE" + references.length + "TOKEN";
+      references.push({ token, rendered: officialCitations.file(grouped[0], grouped) });
+      return token;
+    },
+  );
+  const normalized = groupedSource
     .replace(/\uE200([^\uE201\uE202]+)(?:\uE202(.*?))?\uE201/gs, (raw, kind, payload = "") => {
       if (kind === "genui") {
         const rendered = genuiChart(payload, officialChartTemplates);
@@ -192,6 +213,9 @@ export const renderAssistantMarkdown = (
   // Imported conversation HTML is text, not executable application markup.
   const renderer = new Renderer();
   renderer.html = token => escapeHtml(token.text);
+  renderer.link = token => /^(?:https?:|mailto:)/i.test(token.href) && officialCitations?.url
+    ? officialCitations.url(token.text, token.href)
+    : `<a href="${escapeHtml(token.href)}">${token.text}</a>`;
   let html = marked.parse(normalized, { renderer });
   for (const item of math) {
     const rendered = katex.renderToString(item.expression, {
@@ -213,6 +237,9 @@ export const renderAssistantMarkdown = (
   }
   for (const item of references) {
     html = html.replaceAll(item.token, item.rendered);
+  }
+  if (contentReferences.some(reference => reference?.type === 'file')) {
+    html += officialCitations.sourcesButton();
   }
 
   const container = document.createElement("div");

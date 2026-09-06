@@ -5,6 +5,8 @@ export function createOfficialCitations(documents) {
   const webTemplates = documents.flatMap(d => [...d.querySelectorAll('[data-testid="webpage-citation-pill"]')]);
   const linkTemplate = documents.flatMap(d => [...d.querySelectorAll('a.decorated-link')])
     .find(link => link.querySelector('svg use'));
+  const sourcesButtonTemplate = documents.flatMap(d => [...d.querySelectorAll('button')])
+    .find(button => button.textContent.trim() === '来源' && button.classList.contains('not-prose'));
   if (!fileTemplate || !webTemplates.length) throw new Error('Official citation DOM templates are missing');
   const safeUrl = value => {
     try { const url = new URL(value); return ['https:', 'http:'].includes(url.protocol) ? url.href : '#'; }
@@ -36,16 +38,29 @@ export function createOfficialCitations(documents) {
       node.setAttribute('rel', 'noopener noreferrer');
       return normalizeAssets(node);
     },
-    file(reference = {}) {
+    file(reference = {}, groupedReferences = [reference]) {
       const node = fileTemplate.cloneNode(true);
       // Replace captured identity, never associate new text with the template's file.
       for (const name of node.getAttributeNames()) if (name.startsWith('data-file-citation-')) node.removeAttribute(name);
-      node.setAttribute('data-file-citation-group-size', '1');
+      node.removeAttribute('data-ceobe-open-preview');
+      const groupSize = Math.max(groupedReferences.length, 1);
+      node.setAttribute('data-file-citation-group-size', String(groupSize));
       node.setAttribute('data-file-citation-primary-file-id', reference.id || '');
       node.setAttribute('data-file-citation-primary-library-provider', '');
       node.setAttribute('data-file-citation-primary-source', reference.source || '');
       node.setAttribute('data-ceobe-reference', metadata(reference));
-      node.querySelector('p').textContent = (reference.name || '附件').replace(/\.[^.]+$/, '');
+      node.querySelector('p').textContent = (reference.name || '附件').replace(/\.[^.]+$/, '')
+        + (groupSize > 1 ? ` +${groupSize - 1}` : '');
+      return normalizeAssets(node);
+    },
+    sourcesButton() {
+      if (!sourcesButtonTemplate) return '';
+      const node = sourcesButtonTemplate.cloneNode(true);
+      node.setAttribute('data-ceobe-sources-toggle', '');
+      node.setAttribute('aria-pressed', 'false');
+      node.setAttribute('aria-expanded', 'false');
+      node.setAttribute('aria-controls', 'ceobe-sources-panel');
+      node.setAttribute('tabindex', '0');
       return normalizeAssets(node);
     },
     web(reference = {}) {
