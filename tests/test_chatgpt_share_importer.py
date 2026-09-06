@@ -111,8 +111,29 @@ class ChatGptShareImporterAcceptanceTests(unittest.TestCase):
         restored = json.loads(json.dumps(imported))
         self.assertEqual(restored['raw_payload']['loader_chunks'], extract_loader_chunks(source) + [extra])
         self.assertIn('loaderData', restored['raw_payload']['decoded_root'])
-        self.assertTrue(any(i['code'] == 'additional_loader_chunks_retained' for i in restored['import_report']['issues']))
+        self.assertEqual(restored['import_report']['retained_protocol_records'], 2)
+        self.assertFalse(any(i['code'] == 'additional_loader_chunks_retained' for i in restored['import_report']['issues']))
         self.assertFalse(restored['import_report']['complete_offline_archive'])
+
+    def test_virtualized_dom_is_audited_but_never_used_as_message_source(self) -> None:
+        source = FIXTURE.read_text(encoding="utf-8")
+        visible_message_id = next(
+            message_id for message_id in self.conversation["linear_message_ids"]
+            if self.conversation["messages"][message_id]["role"] == "user"
+        )
+        captured = import_share_html(
+            source + f'<section data-testid="conversation-turn-1"><div data-message-id="{visible_message_id}"></div></section>'
+        )
+        completeness = captured["completeness"]
+        self.assertEqual(completeness["canonical_source"], "structured_react_payload")
+        self.assertEqual(completeness["structured_payload"]["status"], "usable")
+        self.assertEqual(completeness["rendered_dom"]["status"], "partial_virtualized")
+        self.assertEqual(completeness["rendered_dom"]["turn_count"], 1)
+        self.assertEqual(len(captured["messages"]), len(self.conversation["messages"]))
+
+    def test_http_share_without_rendered_dom_records_that_fact(self) -> None:
+        self.assertEqual(self.conversation["completeness"]["rendered_dom"]["status"], "absent")
+        self.assertEqual(self.conversation["completeness"]["structured_payload"]["status"], "usable")
 
     def test_cycles_and_file_hash(self) -> None:
         decoded = decode_loader_payload([{'_1': 0}, 'self'])

@@ -7,6 +7,9 @@ const root = process.cwd();
 const pkg = await loadOfficialTemplatePackage(root);
 assert.equal(pkg.manifest.format, 'ceobe-official-dom-templates');
 assert.equal(pkg.manifest.version, 1);
+assert.equal(pkg.manifest.source_mode, 'frozen_package');
+assert.equal(pkg.manifest.sources, undefined,
+  'the frozen package must not retain build dependencies on raw snapshots');
 assert.equal(pkg.document.querySelectorAll('[data-ceobe-message-list]').length, 1);
 assert.equal(pkg.document.querySelectorAll('section[data-testid^="conversation-turn-"]').length, 0,
   'the reusable shell must not contain captured conversation messages');
@@ -34,7 +37,10 @@ for (const stylesheet of pkg.manifest.chart_stylesheets) {
   await access(join(pkg.root, 'assets', stylesheet));
 }
 
-for (const path of ['scripts/build-official-replay.mjs', 'scripts/build-sources-panel.mjs', 'scripts/build-file-previews.mjs']) {
+for (const path of [
+  'scripts/build-official-replay.mjs', 'scripts/build-sources-panel.mjs',
+  'scripts/build-file-previews.mjs', 'scripts/extract-official-templates.mjs',
+]) {
   const source = await readFile(join(root, path), 'utf8');
   assert(!/["'`](?:测试消息|图表|新界面|文件)[\\/]/.test(source),
     `${path} must consume the template package instead of original snapshots`);

@@ -1,6 +1,6 @@
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
-import { readArchivedResource, assetKey } from './archive-resources.mjs';
+import { readArchivedResource, assetKey, resourceMatches } from './archive-resources.mjs';
 import { marked, Renderer } from "marked";
 import { renderAssistantMarkdown } from "./render-markdown.mjs";
 import { createOfficialCitations } from "./official-citations.mjs";
@@ -53,6 +53,9 @@ marked.setOptions({ gfm: true, breaks: true });
 
 const officialTemplates = await loadOfficialTemplatePackage(projectRoot);
 const baseDocument = officialTemplates.document;
+baseDocument.documentElement.setAttribute('data-ceobe-render-source', 'canonical-json');
+baseDocument.documentElement.setAttribute('data-ceobe-structured-payload-status', canonicalConversation.completeness?.structured_payload?.status || 'unknown');
+baseDocument.documentElement.setAttribute('data-ceobe-source-dom-status', canonicalConversation.completeness?.rendered_dom?.status || 'unknown');
 const officialCitations = createOfficialCitations([officialTemplates.templateDocument]);
 const officialChart = officialTemplates.clone('widget:chart');
 const officialTableTemplate = officialTemplates.templates['markdown:table'];
@@ -198,7 +201,7 @@ const buildFileTile = (attachment, messageId) => {
   const labels = labelBox?.children || [];
   if (labels[0]) labels[0].textContent = attachment.name;
   if (labels[1]) labels[1].textContent = fileTypeLabel(attachment);
-  const resource = resourcesForMessage(messageId).find(item => item.key === attachment.id);
+  const resource = resourcesForMessage(messageId).find(item => resourceMatches(item, attachment));
   if (resource?.status === 'downloaded') {
     tile.setAttribute('data-ceobe-local-resource', resource.key);
     tile.setAttribute('data-ceobe-download', `./archive-resources/${basename(resource.local_path)}`);
@@ -214,7 +217,8 @@ const appendFileTiles = (section, entries) => {
   const bubble = stack?.querySelector('.user-message-bubble-color')?.parentElement;
   if (!stack || !bubble) return;
   for (const entry of entries) {
-    const attachments = (entry.message.attachments || []).filter(attachment => attachment.type === 'attachment' && !attachment.mime_type?.startsWith('image/'));
+    const attachments = (entry.message.attachments || []).filter(attachment =>
+      attachment.type !== 'generated_file' && attachment.type !== 'image' && !attachment.mime_type?.startsWith('image/'));
     if (!attachments.length) continue;
     const row = cloneIntoBase(fileTileRowTemplate);
     row.replaceChildren(...attachments.map(attachment => buildFileTile(attachment, entry.id)));
@@ -229,7 +233,7 @@ const appendUserImages = (section, entries) => {
   if (!stack || !bubble) return;
   for (const entry of entries) {
     const attachments = (entry.message.attachments || [])
-      .filter(attachment => attachment.type === 'attachment' && attachment.mime_type?.startsWith('image/'));
+      .filter(attachment => attachment.type !== 'generated_file' && attachment.type !== 'image_asset_pointer' && attachment.mime_type?.startsWith('image/'));
     if (!attachments.length) continue;
     const template = userImageTemplates.get(attachments.length);
     if (!template) continue;
@@ -239,7 +243,7 @@ const appendUserImages = (section, entries) => {
     for (const [index, attachment] of attachments.entries()) {
       const image = images[index];
       const button = buttons[index];
-      const resource = resourcesForMessage(entry.id).find(item => item.key === attachment.id && item.status === 'downloaded');
+      const resource = resourcesForMessage(entry.id).find(item => resourceMatches(item, attachment) && item.status === 'downloaded');
       if (!image || !resource) continue;
       image.src = `./archive-resources/${basename(resource.local_path)}`;
       image.alt = attachment.name;

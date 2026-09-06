@@ -12,6 +12,7 @@ import hashlib
 import json
 import re
 from datetime import datetime, timezone
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
@@ -74,6 +75,101 @@ def extract_loader_payload(html: str) -> list[Any]:
         except (ValueError, TypeError, RecursionError):
             continue
     raise ValueError("ChatGPT React Flight loader payload not found")
+
+
+class _ConversationDomInventory(HTMLParser):
+    """Inventory rendered turns without treating the visual DOM as conversation data."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.depth = 0
+        self.active: dict[str, Any] | None = None
+        self.turns: list[dict[str, Any]] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        values = dict(attrs)
+        if tag == "section" and str(values.get("data-testid", "")).startswith("conversation-turn-"):
+            self.active = {"depth": self.depth, "testid": values.get("data-testid"), "message_ids": []}
+        if self.active is not None and values.get("data-message-id"):
+            message_id = str(values["data-message-id"])
+            if message_id not in self.active["message_ids"]:
+                self.active["message_ids"].append(message_id)
+        if tag not in {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}:
+            self.depth += 1
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        values = dict(attrs)
+        if self.active is not None and values.get("data-message-id"):
+            message_id = str(values["data-message-id"])
+            if message_id not in self.active["message_ids"]:
+                self.active["message_ids"].append(message_id)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag not in {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}:
+            self.depth = max(0, self.depth - 1)
+        if tag == "section" and self.active is not None and self.depth == self.active["depth"]:
+            self.turns.append({key: value for key, value in self.active.items() if key != "depth"})
+            self.active = None
+
+
+def assess_capture_completeness(conversation: Mapping[str, Any], html: str) -> dict[str, Any]:
+    """Separate structured-payload coverage from the potentially virtualized DOM."""
+
+    nodes = conversation["nodes"]
+    messages = conversation["messages"]
+    linear_node_ids = conversation["linear_node_ids"]
+    linear_message_ids = conversation["linear_message_ids"]
+    missing_nodes = [node_id for node_id in linear_node_ids if node_id not in nodes]
+    missing_messages = [message_id for message_id in linear_message_ids if message_id not in messages]
+    structured_status = "usable" if nodes and linear_node_ids and not missing_nodes and not missing_messages else "incomplete"
+
+    parser = _ConversationDomInventory()
+    try:
+        parser.feed(html)
+    except Exception:
+        # The original HTML remains archived even if its optional visual DOM is malformed.
+        parser.turns = []
+    rendered_ids = list(dict.fromkeys(
+        message_id for turn in parser.turns for message_id in turn["message_ids"]
+    ))
+    expected_ids = [
+        message_id for message_id in linear_message_ids
+        if message_id in messages
+        and messages[message_id].get("visible", True)
+        and messages[message_id].get("role") in {"user", "assistant"}
+    ]
+    missing_rendered_ids = [message_id for message_id in expected_ids if message_id not in rendered_ids] if rendered_ids else []
+    if not parser.turns:
+        dom_status = "absent"
+    elif not rendered_ids:
+        dom_status = "unverifiable"
+    elif missing_rendered_ids:
+        dom_status = "partial_virtualized"
+    else:
+        dom_status = "covers_visible_messages"
+
+    return {
+        "scope": "captured_public_share",
+        "canonical_source": "structured_react_payload",
+        "structured_payload": {
+            "status": structured_status,
+            "node_count": len(nodes),
+            "message_count": len(messages),
+            "reading_order_node_count": len(linear_node_ids),
+            "reading_order_message_count": len(linear_message_ids),
+            "missing_node_ids": missing_nodes,
+            "missing_message_ids": missing_messages,
+        },
+        "rendered_dom": {
+            "status": dom_status,
+            "turn_count": len(parser.turns),
+            "message_ids": rendered_ids,
+            "expected_visible_message_count": len(expected_ids),
+            "missing_message_ids": missing_rendered_ids,
+            "authoritative": False,
+        },
+        "renderer_policy": "Rebuild every visible turn from canonical JSON; never infer completeness from the rendered DOM.",
+    }
 
 
 class _SlotDecoder:
@@ -418,6 +514,7 @@ def import_share_html(
             "decoded_root": decoded,
         },
     }
+    conversation["completeness"] = assess_capture_completeness(conversation, html)
     conversation["import_report"] = audit_conversation(conversation, data)
     return conversation
 
@@ -455,11 +552,6 @@ def audit_conversation(conversation: Mapping[str, Any], data: Mapping[str, Any])
     if current is not None and str(current) not in nodes:
         issue("missing_current_node", current)
     chunks = conversation["raw_payload"]["loader_chunks"]
-    if len(chunks) > 1:
-        issue("additional_loader_chunks_retained", {
-            "count": len(chunks) - 1,
-            "note": "Additional stream records are archived verbatim but not merged into normalized data",
-        })
     assets = []
     seen = set()
     for message in messages.values():
@@ -473,7 +565,13 @@ def audit_conversation(conversation: Mapping[str, Any], data: Mapping[str, Any])
         "scope": "Data supplied by this captured share page; not the private account conversation",
         "status": "needs_review" if issues else "structure_checked",
         "complete_offline_archive": False,
-        "counts": {"nodes": len(nodes), "messages": len(messages), "reading_order_nodes": len(ids), "loader_chunks": len(chunks)},
+        "counts": {
+            "nodes": len(nodes), "messages": len(messages), "reading_order_nodes": len(ids),
+            "loader_chunks": len(chunks),
+            "rendered_dom_turns": conversation.get("completeness", {}).get("rendered_dom", {}).get("turn_count", 0),
+        },
+        "completeness": conversation.get("completeness"),
+        "retained_protocol_records": max(0, len(chunks) - 1),
         "issues": issues,
         "assets": assets,
         "note": "Attachment pointers do not establish that original files are available offline",

@@ -1,0 +1,19 @@
+{
+  "kind": "ceobe.fixture_source_provenance",
+  "source": "user_provided_clipboard_recovery",
+  "file": "粘贴的文本.txt",
+  "observed": {
+    "bytes": 28670,
+    "lines": 374,
+    "encoding": "utf-8-compatible ASCII without BOM",
+    "line_endings": "CRLF"
+  },
+  "original_attachment_metadata": {
+    "name": "粘贴的文本 (1)(20260902-155103).txt",
+    "bytes": 31633,
+    "mime_type": "text/plain"
+  },
+  "fidelity": "clipboard_recovery_not_byte_exact",
+  "known_difference": "The supplied text is 2963 bytes shorter than the attachment metadata. Text omitted or truncated by the source UI cannot be inferred safely.",
+  "preview_only_normalization": "From the first line beginning with 'Task :' onward, Markdown blockquote markers are restored in the derived preview. The stored TXT is never rewritten."
+}

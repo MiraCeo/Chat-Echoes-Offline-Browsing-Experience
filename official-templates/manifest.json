@@ -1,19 +1,7 @@
 {
   "version": 1,
   "format": "ceobe-official-dom-templates",
-  "sources": [
-    "测试消息/分支 · 测试消息.html",
-    "测试消息/分支 · 测试消息1.html",
-    "测试消息/分支 · 测试消息2.html",
-    "图表/图表.html",
-    "新界面/新界面.html",
-    "文件/文件.html",
-    "文件/docx.html",
-    "文件/pdf.html",
-    "文件/xlsx.html",
-    "文件/粘贴的文本.html",
-    "文件/粘贴的文本2.html"
-  ],
+  "source_mode": "frozen_package",
   "templates": [
     "citation:file",
     "citation:sources-button",

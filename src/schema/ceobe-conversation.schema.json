@@ -40,6 +40,18 @@
     "linear_message_ids": { "type": "array", "items": { "type": "string" } },
     "nodes": { "type": "object", "additionalProperties": { "$ref": "#/$defs/node" } },
     "messages": { "type": "object", "additionalProperties": { "$ref": "#/$defs/message" } },
+    "completeness": {
+      "type": "object",
+      "required": ["scope", "canonical_source", "structured_payload", "rendered_dom", "renderer_policy"],
+      "properties": {
+        "scope": { "const": "captured_public_share" },
+        "canonical_source": { "const": "structured_react_payload" },
+        "structured_payload": { "type": "object" },
+        "rendered_dom": { "type": "object" },
+        "renderer_policy": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
     "metadata": { "type": "object" }
   },
   "$defs": {
@@ -85,4 +97,3 @@
   },
   "additionalProperties": true
 }
-

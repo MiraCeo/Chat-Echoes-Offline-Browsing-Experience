@@ -62,7 +62,8 @@ try {
     await citation.locator('button').click();
     assert.ok(await page.locator('.ceobe-preview-dock [data-ceobe-pasted-reference]').isVisible());
     assert.equal(await page.locator('dialog.ceobe-pasted-dialog').count(), 0);
-    assert.ok(await page.locator('.ceobe-preview-dock .cm-content').innerText().then(text => text.includes(':app:assembleRelease')));
+    assert.ok(await page.locator('.ceobe-preview-dock .cm-content').innerText().then(text =>
+      text.includes("'.\\gradlew.bat' ':app' '--console=plain'") && text.includes('BUILD SUCCESSFUL in 4m 42s')));
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('dialog.ceobe-pasted-dialog').count(), 0);
     assert.equal(await citation.getAttribute('aria-expanded'), 'false');

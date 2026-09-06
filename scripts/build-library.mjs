@@ -35,6 +35,8 @@ export async function buildLibraryIndex() {
           message_count: conversation.linear_message_ids?.length || 0,
           resource_counts: { downloaded: counts.downloaded || 0, unresolved: counts.unresolved || 0, failed: counts.failed || 0 },
           import_status: conversation.import_report?.status || 'unknown',
+          structured_payload_status: conversation.completeness?.structured_payload?.status || 'unknown',
+          rendered_dom_status: conversation.completeness?.rendered_dom?.status || 'unknown',
           complete_offline_archive: conversation.import_report?.complete_offline_archive === true,
           conversation_path: posixRelative(conversationPath),
           page: `./conversations/${share.name}.html`,
