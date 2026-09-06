@@ -13,6 +13,7 @@
     "replay:sample": "npm run replay -- --input fixtures/chatgpt-share/6a9849f6-3bec-83ee-b032-618d95fc0917/conversation.ceobe.json --sample-assets",
     "verify:replay": "node scripts/verify-replay.mjs",
     "verify:library": "node scripts/test-library-browser.mjs",
+    "verify:official-dom": "node scripts/verify-official-message-dom.mjs",
     "test": "python -m unittest discover -s tests && node scripts/test-official-citations.mjs && node scripts/test-reader-rendering.mjs && node scripts/test-copy-content.mjs && node scripts/test-archive-resources.mjs && node scripts/test-conversation-input.mjs && npm run replay:sample && npm run verify:replay && node scripts/test-file-previews.mjs",
     "dev": "vite replay",
     "build": "vite build replay --config vite.config.mjs --outDir ../dist --emptyOutDir",
