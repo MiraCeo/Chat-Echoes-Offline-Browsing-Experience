@@ -1,4 +1,4 @@
-if (document.body.hasAttribute('data-ceobe-import-page')) {
+if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAttribute('data-ceobe-project-detail')) {
   const form = document.querySelector('[data-ceobe-import-form]');
   const input = document.querySelector('[data-ceobe-import-input]');
   const submit = document.querySelector('[data-ceobe-import-submit]');
@@ -21,6 +21,7 @@ if (document.body.hasAttribute('data-ceobe-import-page')) {
   actions.className = 'ceobe-import-actions';
   status.insertAdjacentElement('afterend', actions);
   let busy = false;
+  let imported = null;
   let noticeTimer;
   const value = () => input.textContent.trim();
   const updateButton = () => { submit.disabled = busy || !value(); };
@@ -90,7 +91,13 @@ if (document.body.hasAttribute('data-ceobe-import-page')) {
     // One backend request covers multiple stages; do not invent a progress percentage.
     noticeTimer = setTimeout(() => showStatus('仍在归档中，较长对话或较多附件可能需要几分钟。请勿重复提交。', 'busy'), 15000);
     try {
-      const response = await fetch('/api/archive-share', {
+      const projectId=document.body.dataset.projectImportId;
+       if(document.body.hasAttribute('data-ceobe-project-detail')){
+         if(!projectId)throw new Error('项目不存在，无法导入。');
+         const check=await fetch('/api/projects',{cache:'no-store'}),data=await check.json();
+         if(!check.ok||!data.writable||!data.projects?.some(p=>p.id===projectId))throw new Error('项目不可写，未开始导入。');
+       }
+       const response = imported?.url===url ? {ok:true,json:async()=>imported.result} : await fetch('/api/archive-share', {
         method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify({ url }),
       });
@@ -101,7 +108,13 @@ if (document.body.hasAttribute('data-ceobe-import-page')) {
         console.error('Share import failed:', result.error);
         throw new Error('导入未完成。请确认分享链接可公开访问及网络连接正常，然后重试。');
       }
-      const destination = new URL(result.page, location.origin);
+      if(projectId){
+         imported={url,result};
+         const move=await fetch('/api/projects/move',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({conversationId:result.shareId,projectId})});
+         if(!move.ok)throw new Error('会话已归档，但移入项目失败。点击重试只重试关联，不会重复导入。');
+         document.dispatchEvent(new Event('ceobe:project-imported'));
+       }
+       const destination = new URL(result.page, location.origin);
       if (destination.origin !== location.origin || !destination.pathname.startsWith('/conversations/')) throw new Error('归档已返回，但会话入口无效，请检查本地档案库。');
       const counts = result.resourceCounts || {};
       const missing = Object.entries(counts).filter(([key]) => ['failed', 'unresolved', 'skipped', 'missing'].includes(key))
@@ -110,6 +123,7 @@ if (document.body.hasAttribute('data-ceobe-import-page')) {
       const open = document.createElement('a');
       open.href = destination.href; open.className = 'ceobe-import-open'; open.textContent = '打开会话';
       actions.append(open);
+       if(projectId){status.textContent+=' 已移入“'+document.body.dataset.projectImportName+'”。';}
       open.focus();
     } catch (error) {
       showStatus(error instanceof TypeError ? '连接中断，后台可能仍在归档。请先查看最近会话，确认后再重试。' : error.message, 'error');

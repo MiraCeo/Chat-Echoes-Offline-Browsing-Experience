@@ -79,6 +79,7 @@ const localShareImporter = {
         const library = JSON.parse(await readFile(resolve('archive/library.ceobe.json'), 'utf8'));
         const entry = library.conversations?.find(item => item.id === shareId);
         if (!entry) throw new Error('归档完成，但没有在档案库索引中找到该会话');
+        await releaseMutation();releaseMutation=null;
         sendJson(response, 200, {
           ok: true,
           shareId,
@@ -105,6 +106,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: resolve(replayRoot, 'index.html'),
+        ...(existsSync(resolve(replayRoot,'project.html'))?{project:resolve(replayRoot,'project.html')}:{}),
         ...(existsSync(resolve(replayRoot,'import.html'))?{import:resolve(replayRoot,'import.html')}:{}),
         ...(existsSync(resolve(replayRoot, 'assets.html')) ? { assets: resolve(replayRoot, 'assets.html') } : {}),
         ...(existsSync(resolve(replayRoot, 'projects.html')) ? { projects: resolve(replayRoot, 'projects.html') } : {}),

@@ -1,0 +1,3 @@
+[data-ceobe-project-detail] [aria-disabled=true]{cursor:default!important}
+[data-ceobe-project-detail] main a,[data-ceobe-project-detail] main [data-ceobe-chat-id]{pointer-events:auto!important}
+#ceobe-project-conversation-row[hidden]{display:none!important}

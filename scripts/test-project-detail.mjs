@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {chromium} from 'playwright';
+import {preview} from 'vite';
+import {parseHTML} from 'linkedom';
+const prod=process.env.CEOBE_TEST_DIST==='1'?await preview({configFile:'vite.config.mjs',root:'replay',build:{outDir:'../dist'},preview:{host:'127.0.0.1',port:0}}):null;
+const base=prod?`http://127.0.0.1:${prod.httpServer.address().port}/`:'http://127.0.0.1:5173/';
+const browser=await chromium.launch({channel:'msedge',headless:true});
+try{
+const page=await browser.newPage({viewport:{width:1092,height:935},deviceScaleFactor:1.5});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+// Actual project data, read-only acceptance; never POST to real archives.
+await page.goto(base+'projects.html',{waitUntil:'networkidle'});const real=await (await page.request.get(base+'api/projects')).json();const project=real.projects.find(p=>p.name==='测试');assert.ok(project);
+await page.locator(`[data-project-id="${project.id}"]`).click();await page.waitForURL('**/project.html?id=*');await page.waitForLoadState('networkidle');assert.equal(await page.locator('[name=project-title]').textContent(),'测试');assert.equal(await page.locator('[data-project-chat-id]').count(),project.conversation_ids.length);
+assert.ok((await page.locator('[data-project-chat-id] a .text-token-text-secondary').first().textContent()).length>0);
+assert.equal(await page.locator('main [data-ceobe-import-input]').count(),1);assert.equal(await page.locator('main [aria-label="启动语音功能"]').count(),0);
+const reference=JSON.parse(await readFile('official-templates/project-detail.json','utf8'));const ref=parseHTML(reference.main).document.querySelector('li');assert.equal(await page.locator('[data-project-chat-id]').first().getAttribute('class'),ref.className);
+const measure=()=>{const sels=['main h1','main [data-composer-surface]','main [role=tablist]','main ol','main ol li','main ol li a .font-medium','main ol li a .text-token-text-secondary'];return sels.map(s=>{const e=document.querySelector(s),r=e.getBoundingClientRect(),c=getComputedStyle(e);return {selector:s,x:r.x,y:r.y,width:r.width,height:r.height,font:c.font,fontSize:c.fontSize,color:c.color,padding:c.padding,gap:c.gap,borderRadius:c.borderRadius}})};
+const actual=await page.evaluate(measure);await page.evaluate(({html,content})=>{document.querySelector('main').outerHTML=html;const list=document.querySelector('main ol'),tpl=list.firstElementChild.cloneNode(true);list.replaceChildren();for(const c of content){const row=tpl.cloneNode(true);row.querySelector('a .font-medium').textContent=c[0];row.querySelector('a .text-token-text-secondary').textContent=c[1];row.querySelector('[data-testid=project-conversation-overflow-date]').textContent=c[2];list.append(row)}},{content:await page.locator('main ol li').evaluateAll(rows=>rows.map(r=>[r.querySelector('a .font-medium').textContent,r.querySelector('a .text-token-text-secondary').textContent,r.querySelector('[data-testid=project-conversation-overflow-date]').textContent])),html:reference.main.replaceAll('/cdn/assets/sprites-shell-f705d3e2.svg','/cdn/assets/sprites-shell-097001e7.svg').replaceAll('/cdn/assets/sprites-core-e289d166.svg','/cdn/assets/sprites-core-26c3f2d4.svg')});const official=await page.evaluate(measure);for(let i=0;i<actual.length;i++){for(const key of ['x','y','width','height','fontSize','color','padding','gap','borderRadius'])assert.equal(actual[i][key],official[i][key],actual[i].selector+' '+key)}await page.reload({waitUntil:'networkidle'});
+await page.screenshot({path:'data/private/project-detail-acceptance.png',fullPage:true});
+// Mutations are intercepted in memory. No real archive/project data is touched.
+const library=JSON.parse(await readFile('archive/library.ceobe.json','utf8'));let chats=structuredClone(library.conversations).map(c=>({...c,pinned_at:null})),projects=structuredClone(real.projects);const id=project.conversation_ids[0],other=chats.find(c=>!project.conversation_ids.includes(c.id));let imports=0,failMove=false;
+await page.route('**/api/**',async route=>{const req=route.request(),path=new URL(req.url()).pathname,b=req.postDataJSON();let status=200,result;
+if(path==='/api/projects')result={projects,writable:true};
+else if(path==='/api/chats'&&req.method()==='GET')result={conversations:chats,writable:true};
+else if(path==='/api/chats'){const c=chats.find(c=>c.id===b.id);if(b.action==='rename')c.title=b.title;if(b.action==='pin')c.pinned_at=b.pinned?new Date().toISOString():null;result={conversation:c};}
+else if(path==='/api/archive-share'){imports++;result={ok:true,shareId:other.id,title:other.title,messageCount:1,page:'/conversations/'+other.id+'.html'};}
+else if(path==='/api/projects/move'){if(failMove){status=409;result={error:'test lock'};}else{for(const p of projects)p.conversation_ids=p.conversation_ids.filter(i=>i!==b.conversationId);const p=projects.find(p=>p.id===b.projectId);p.conversation_ids.push(b.conversationId);result={project:p};}}
+else throw new Error(path);await route.fulfill({status,contentType:'application/json',body:JSON.stringify(result)});});
+await page.reload({waitUntil:'networkidle'});const row=()=>page.locator(`[data-project-chat-id="${id}"]`);const open=async()=>{await row().hover();await row().locator('button').click()};
+await open();await page.locator('[data-chat-action=rename]').click();await row().locator('input').fill('项目内重命名');await row().locator('input').press('Enter');await page.waitForFunction(()=>document.querySelector('[data-project-conversations]').textContent.includes('项目内重命名'));
+assert.match(await page.locator('[data-chat-recent-list], [data-chat-pinned-section]').allTextContents().then(x=>x.join('')),/项目内重命名/);
+await open();await page.locator('[data-chat-action=rename]').click();await row().locator('input').fill('不保存');await row().locator('input').press('Escape');await row().locator('a').waitFor();assert.match(await row().textContent(),/项目内重命名/);
+await open();await page.locator('[data-chat-action=pin]').click();await page.locator('[data-chat-pinned-section] [data-ceobe-chat-id]').waitFor();assert.equal(await page.locator('[data-chat-delete]').isVisible(),false);await row().locator('button[data-chat-pinned=true]').waitFor();
+await open();await page.locator('[data-chat-action=delete]').click();await page.locator('[data-chat-delete] .btn-secondary').click();assert.equal(await row().count(),1);
+const input=page.locator('[data-ceobe-import-input]');await input.fill('bad link');await input.press('Enter');assert.match(await page.locator('[data-ceobe-import-status]').textContent(),/链接格式/);assert.equal(imports,0);
+failMove=true;await input.fill('https://chatgpt.com/share/'+other.id);await input.press('Enter');await page.getByText('重试导入',{exact:true}).waitFor();assert.equal(imports,1);failMove=false;await page.getByText('重试导入',{exact:true}).click();await page.locator('[data-ceobe-import-status][data-state=success]').waitFor();assert.equal(imports,1);await page.locator(`[data-project-chat-id="${other.id}"]`).waitFor();assert.match(await page.locator('[data-ceobe-import-status]').textContent(),/已移入“测试”/);
+await page.reload({waitUntil:'networkidle'});assert.equal(await page.locator(`[data-project-chat-id="${other.id}"]`).count(),1);
+await page.goto(base+'project.html?id=missing',{waitUntil:'networkidle'});assert.equal(await page.locator('[name=project-title]').textContent(),'项目不存在');await page.locator('[data-ceobe-import-input]').fill('https://chatgpt.com/share/'+other.id);await page.locator('[data-ceobe-import-input]').press('Enter');await page.locator('[data-ceobe-import-status][data-state=error]').waitFor();assert.equal(imports,1);
+assert.deepEqual(errors,[]);console.log('PASS project detail: real 测试 membership (GET only), official row classes, excerpts, entry navigation, isolated inline rename/Escape/pin/delete cancel, project import association + retry without duplicate archive, reload, invalid project.');
+}finally{await browser.close();if(prod)await new Promise(r=>prod.httpServer.close(r))}
