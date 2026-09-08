@@ -1,0 +1,63 @@
+import assert from 'node:assert/strict';
+import {readFile,mkdtemp,rm,writeFile} from 'node:fs/promises';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
+import {createServer} from 'node:http';
+import {parseHTML} from 'linkedom';
+import {chromium} from 'playwright';
+import {preview} from 'vite';
+import {createProjectStore,projectsMiddleware} from './project-store.mjs';
+const root=await mkdtemp(join(tmpdir(),'ceobe-projects-'));
+let handler=projectsMiddleware(root);
+const server=createServer((req,res)=>handler(req,res,()=>{res.statusCode=404;res.end()}));
+await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+const api=`http://127.0.0.1:${server.address().port}/api/projects`;
+const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
+const production=process.env.CEOBE_TEST_DIST==='1'?await preview({configFile:'vite.config.mjs',root:'replay',build:{outDir:'../dist'},preview:{host:'127.0.0.1',port:0,strictPort:true}}):null;
+const base=production?`http://127.0.0.1:${production.httpServer.address().port}/`:(process.env.CEOBE_TEST_URL||'http://127.0.0.1:5173/');
+try{
+ const realApi=await fetch(base+'api/projects');assert.match(realApi.headers.get('content-type'),/application\/json/);assert.equal((await realApi.json()).writable,true);
+ const post=(body,headers={})=>fetch(api,{method:'POST',headers:{'Content-Type':'application/json',...headers},body:JSON.stringify(body)});
+ assert.equal((await post({name:'   '})).status,400);
+ assert.equal((await post({name:'x',icon:'invalid'})).status,400);
+ assert.equal((await post({name:'x'},{Origin:'https://evil.test'})).status,403);
+ const page=await browser.newPage({viewport:{width:1092,height:935},deviceScaleFactor:1.5});const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/api/projects',async route=>{
+  const req=route.request();const r=await fetch(api,{method:req.method(),...(req.method()==='POST'?{headers:{'Content-Type':'application/json'},body:req.postData()}: {})});
+  await route.fulfill({status:r.status,contentType:'application/json',body:await r.text()});
+ });
+ await page.goto(base+'projects.html',{waitUntil:'networkidle'});
+ assert.equal(await page.locator('[data-project-id]').count(),0);
+ assert.ok(await page.locator('[data-project-empty]').isVisible());
+ const open=page.locator('[data-project-new]:visible').first();await open.click();
+ const modal=page.locator('[data-project-modal]');assert.equal(await modal.evaluate(e=>e.open),true);
+ assert.equal(await modal.locator('[type=submit]').isDisabled(),true);
+ await modal.locator('#project-name').fill('  测试 Project Alpha  ');
+ await modal.locator('[data-testid=project-modal-trigger]').click();
+ const picker=page.locator('[data-project-picker]');assert.equal(await picker.evaluate(e=>e.open),true);
+ await picker.locator('label').filter({has:page.locator('input[value="book"]')}).click();
+ await picker.locator('[name=project-custom-color-hex]').fill('#123abc');
+ await picker.getByRole('button',{name:'完成',exact:true}).click();
+ assert.equal(await picker.evaluate(e=>e.open),false);
+ await modal.locator('[type=submit]').click();
+ await page.locator('[data-project-id]').waitFor();assert.equal(await modal.evaluate(e=>e.open),false);
+ const saved=await createProjectStore(join(root,'data/private/projects.ceobe.json')).list();
+ assert.equal(saved.length,1);assert.equal(saved[0].name,'测试 Project Alpha');assert.equal(saved[0].icon,'book');assert.equal(saved[0].color,'#123abc');
+ handler=projectsMiddleware(root);await page.reload({waitUntil:'networkidle'});assert.equal(await page.locator('[data-project-id]').count(),1);
+ const search=page.locator('[data-project-search]');await search.fill('alpha');assert.equal(await page.locator('[data-project-id]').count(),1);await search.fill('notfound');assert.equal(await page.locator('[data-project-id]').count(),0);await search.fill('');
+ await page.locator('[data-project-filter=shared]').click();assert.equal(await page.locator('[data-project-id]').count(),0);await page.locator('[data-project-filter=all]').click();
+ await open.click();await modal.locator('#project-name').fill('测试 project alpha');await modal.locator('[type=submit]').click();await page.waitForFunction(()=>document.getElementById('project-form-error').textContent.includes('同名'));
+ await page.keyboard.press('Escape');assert.equal(await modal.evaluate(e=>e.open),false);
+ const concurrent=await Promise.all([post({name:'Concurrent'}),post({name:'Concurrent'})]);assert.deepEqual(concurrent.map(r=>r.status).sort(),[201,409]);
+ const body={name:'Idempotent',requestId:'same-test-request'};const one=await (await post(body)).json(),two=await(await post(body)).json();assert.equal(one.project.id,two.project.id);
+ const escaped=await(await post({name:'<img src=x onerror=alert(1)>'})).json();assert.ok(escaped.project);await page.reload({waitUntil:'networkidle'});assert.equal(await page.locator('[data-project-rows] img').count(),0);
+ await open.click();await page.keyboard.press('Escape');assert.equal(await modal.evaluate(e=>e.open),false);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ assert.deepEqual(errors,[]);
+ const file=join(root,'data/private/projects.ceobe.json');await writeFile(file,'invalid json');assert.equal((await post({name:'Preserve data'})).status,500);assert.equal(await readFile(file,'utf8'),'invalid json');
+ console.log('PASS: official create dialog, icon/custom color, validation, duplicate names, atomic concurrent writes, retry idempotency, persistence after handler restart, search, filters, Escape, HTML escaping, corrupted-file preservation. Temporary test data only.');
+ const document=parseHTML(await readFile('replay/projects.html','utf8')).document;
+ const controls=[...document.querySelectorAll('dialog use')];for(const use of controls){const [url,id]=use.getAttribute('href').split('#');assert.ok((await readFile('replay/'+url,'utf8')).includes(`id="${id}"`),'Missing icon '+id)}
+ for(const href of await page.locator('[data-project-rows] use').evaluateAll(uses=>uses.map(e=>e.getAttribute('href')))){const r=await fetch(new URL(href,base));assert.equal(r.status,200);assert.match(r.headers.get('content-type'),/svg/)}
+ await page.unroute('**/api/projects');await page.route('**/api/projects',route=>route.fulfill({status:404,contentType:'text/html',body:'Not found'}));await page.reload({waitUntil:'networkidle'});assert.equal(await open.isDisabled(),true);assert.match(await page.locator('[data-project-status]').textContent(),/只读/);
+ console.log(production?'PASS: actual Vite preview API, production JS/CSS and dynamic icon assets; static read-only fallback.':'PASS: actual dev API and static read-only fallback.');
+}finally{await browser.close();if(production)await new Promise(resolve=>production.httpServer.close(resolve));await new Promise(resolve=>server.close(resolve));await rm(root,{recursive:true,force:true})}

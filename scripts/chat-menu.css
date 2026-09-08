@@ -1,0 +1,12 @@
+/* No menu/trigger geometry, color, typography, shadow or hover overrides.
+   Their appearance comes exclusively from the captured official stylesheets. */
+[data-ceobe-chat-wrapper][hidden],
+[data-ceobe-chat-menu][hidden],
+[data-ceobe-chat-submenu][hidden],
+#ceobe-chat-status[hidden]{display:none!important}
+/* The offline reader disables captured controls globally; enable only local handlers. */
+[data-ceobe-chat-id],
+[data-ceobe-chat-menu] [role=menuitem],
+[data-ceobe-chat-submenu] [role=menuitem]{pointer-events:auto!important}
+/* Local operation feedback is outside the official menu, not a replacement menu row. */
+#ceobe-chat-status{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:210;background:var(--bg-primary,#fff);color:var(--text-primary,#222);box-shadow:0 4px 24px #0003;border-radius:12px;padding:12px 20px;max-width:80vw;font-size:14px}

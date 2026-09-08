@@ -1,0 +1,22 @@
+[data-ceobe-projects-page] main button,[data-ceobe-projects-page] main input,[data-project-modal] button,[data-project-modal] input,[data-project-picker] button,[data-project-picker] input,[data-project-picker] label {pointer-events:auto!important}
+[data-project-modal]:not([open]),[data-project-picker]:not([open]),[data-project-empty][hidden]{display:none!important}
+[data-project-modal][open]{display:flex!important;border:0;padding:16px;background:transparent}
+[data-project-modal]::backdrop{background:#0005;backdrop-filter:blur(1px)}
+[data-project-picker][open]{display:block!important;position:fixed;inset:0;margin:auto;min-width:0!important;min-height:0!important;width:280px;max-width:92vw;height:fit-content;max-height:80vh;overflow:auto;border:0;border-radius:16px;padding:0;background:var(--bg-primary,#fff)}
+[data-project-picker]::backdrop{background:#0002}
+[data-project-picker] [data-testid=dialog-dropdown-content]{position:static!important;inset:auto!important;max-height:none!important}
+[data-project-picker] [data-testid=dialog-dropdown-content]>div{max-height:none!important;width:280px;max-width:none!important}
+.ceobe-project-custom-color{display:flex;flex-wrap:wrap;gap:8px;padding:8px 12px;border-block:1px solid var(--border-default,#ddd);font-size:12px}
+.ceobe-project-custom-color label{display:flex;align-items:center;gap:8px}
+.ceobe-project-custom-color input[type=color]{width:35px;height:28px;border:0;padding:0}
+.ceobe-project-custom-color input[name=project-custom-color-hex]{width:90px;border:1px solid #bbb;border-radius:6px;padding:4px 6px}
+[data-color-error]{color:#b43e35;font-size:11px;width:100%}
+.ceobe-project-error{color:#b43e35;font-size:13px;line-height:1.6;margin:8px 0}.ceobe-project-error:empty{display:none}
+.ceobe-project-empty{padding:50px 16px;text-align:center;color:var(--text-secondary,#777)}
+.ceobe-project-status{font-size:12px;line-height:1.6;padding:10px 0;color:var(--text-secondary,#777)}
+.ceobe-project-icon{display:flex;align-items:center;justify-content:center;width:32px;height:32px;flex-shrink:0;border:1px solid var(--border-default,#ddd);border-radius:8px}
+.ceobe-project-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}
+.ceobe-project-local{font-size:12px;color:var(--text-secondary,#777)}
+[data-project-filter]{background:transparent!important;color:var(--text-secondary,#777)!important}
+[data-project-filter].ceobe-project-tab-active{background:var(--bg-tertiary,#eee)!important;color:var(--text-primary,#222)!important}
+[data-project-modal] button:disabled,main [data-project-new]:disabled{opacity:.45;cursor:not-allowed}
