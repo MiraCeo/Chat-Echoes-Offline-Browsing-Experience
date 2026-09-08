@@ -18,8 +18,16 @@
 .ceobe-prompt-menu { position: absolute; inset-inline-end: 0; top: 50%; transform: translateY(-50%); z-index: 50; min-width: 240px; width: max-content; max-width: min(340px, calc(100vw - 40px)); background: var(--bg-primary, #fff); opacity: 0; transition: opacity 160ms ease; }
 .ceobe-prompt-menu[hidden] { display: none !important; }
 [data-ceobe-menu-open] .ceobe-prompt-menu { opacity: 1; }
-.ceobe-prompt-menu ul { display: flex; flex-direction: column; overflow-y: auto; max-height: 50lvh; list-style: none; margin: 0; padding: 0; }
-.ceobe-prompt-item { display: block; width: 100%; text-align: start; padding: 8px 12px; font-size: 14px; line-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 8px; cursor: pointer; color: var(--text-primary, #111); }
+.ceobe-prompt-menu ul { display: flex; flex-direction: column; overflow-y: auto; overflow-anchor: none; max-height: 50lvh; list-style: none; margin: 0; padding: 0; }
+.ceobe-prompt-item { display: block; width: 100%; text-align: start; padding: 8px 12px; font-size: 14px; line-height: 20px; border-radius: 8px; cursor: pointer; color: var(--text-primary, #111); }
+.ceobe-prompt-item-heading { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.ceobe-prompt-item-label, .ceobe-prompt-item-filename, .ceobe-prompt-item-reply { display: block; overflow: hidden; text-overflow: ellipsis; }
+.ceobe-prompt-item-label, .ceobe-prompt-item-filename { white-space: nowrap; }
+.ceobe-prompt-item-label { min-width: 0; flex: 0 1 auto; }
+.ceobe-prompt-item-filename { min-width: 0; flex: 1 1 auto; color: var(--text-secondary, #666); font-size: 12px; }
+.ceobe-prompt-item-detail { display: block; height: 0; margin-top: 0; overflow: hidden; opacity: 1; color: var(--text-secondary, #666); font-size: 12px; line-height: 17px; }
+.ceobe-prompt-item-reply { margin-top: 3px; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.ceobe-prompt-item[data-ceobe-detail-active] .ceobe-prompt-item-detail { height: 37px; margin-top: 4px; }
 .ceobe-prompt-item:hover, .ceobe-prompt-item:focus-visible, .ceobe-prompt-item[data-toc-active] { background: var(--interactive-bg-secondary-selected, #eee); }
 .dark .ceobe-prompt-menu { background: #353535; }
-@media (prefers-reduced-motion: reduce) { .ceobe-prompt-menu { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .ceobe-prompt-menu, .ceobe-prompt-item-detail { transition: none; } }
