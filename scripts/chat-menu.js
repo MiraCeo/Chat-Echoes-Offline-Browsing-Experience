@@ -14,13 +14,20 @@ function place(panel,rect,side=false){
  const s=wrapper.style;s.setProperty('--radix-popper-anchor-width',rect.width+'px');s.setProperty('--radix-popper-anchor-height',rect.height+'px');
  // Preserve the official wrapper's sizing mode and menu's CSS-variable relationships.
  // The offsets are read from the supplied measurements, never from screenshots.
- const x=(side?rect.right:rect.left)+layout.offset.x,y=(side?rect.top:rect.bottom)+layout.offset.y;
+ const x=(side?rect.right:rect.left)+layout.offset.x;
+  let y=(side?rect.top:rect.bottom)+layout.offset.y,placement=layout.side;
+  // Measure before constraining height, otherwise a bottom-edge popup looks
+  // artificially short and never flips. Live Edge: top menu bottom is anchor.top + 4.333333px.
+  s.setProperty('--radix-popper-available-height',innerHeight+'px');
+  if(!side){
+   const height=wrapper.getBoundingClientRect().height,above=Math.max(0,rect.top+4.333333),below=Math.max(0,innerHeight-y);
+   if(height>below&&above>below){placement='top';y=above-Math.min(height,above)}
+  }
  s.setProperty('--radix-popper-available-width',Math.max(0,side?innerWidth-x:innerWidth)+'px');
- s.setProperty('--radix-popper-available-height',Math.max(0,side?innerHeight:innerHeight-y)+'px');
+ s.setProperty('--radix-popper-available-height',Math.max(0,side?innerHeight:placement==='top'?rect.top+4.333333:innerHeight-y)+'px');
  s.transform=`translate(${x}px, ${y}px)`;
- panel.dataset.side=layout.side;panel.dataset.align=layout.align;
- // Only keep an oversized popup reachable at viewport edges. The supplied capture
- // establishes bottom/start and right/start; other official flip states are not claimed.
+ panel.dataset.side=placement;panel.dataset.align=layout.align;
+ // Keep oversized popups reachable after selecting a side. Submenu behavior is unchanged.
  const bounds=wrapper.getBoundingClientRect();
  if(bounds.right>innerWidth||bounds.bottom>innerHeight||x<0||y<0){
   s.transform=`translate(${Math.max(0,Math.min(x,innerWidth-bounds.width))}px, ${Math.max(0,Math.min(y,innerHeight-bounds.height))}px)`;
@@ -90,6 +97,7 @@ for(const panel of [menu,sub]){
   else if(e.key==='Tab')close(false);
  });
 }
+document.addEventListener('focusin',e=>{if(trigger&&!menu.contains(e.target)&&!sub.contains(e.target)&&e.target!==trigger)close(false)});
 document.addEventListener('pointerdown',e=>{if(!menu.contains(e.target)&&!sub.contains(e.target)&&!e.target.closest('[data-ceobe-chat-id]'))close(false)});
 window.addEventListener('resize',()=>close(false));document.addEventListener('scroll',e=>{if(!menu.contains(e.target)&&!sub.contains(e.target))close(false)},true);
 })();
