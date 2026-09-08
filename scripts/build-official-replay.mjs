@@ -1,4 +1,5 @@
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { createHash } from 'node:crypto';
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { readArchivedResource, assetKey, resourceMatches } from './archive-resources.mjs';
 import { marked, Renderer } from "marked";
@@ -577,6 +578,24 @@ const importScript = baseDocument.createElement('script');
 importScript.type = 'module';
 importScript.src = './link-import.js';
 baseDocument.body.append(importScript);
+// A local initials avatar never depends on an external or missing profile image.
+for (const image of baseDocument.querySelectorAll('img[alt="个人资料图片"]')) {
+  const avatar = baseDocument.createElement('span');
+  avatar.className = 'ceobe-local-avatar';
+  avatar.setAttribute('role', 'img');
+  avatar.setAttribute('aria-label', '本地用户头像 MC');
+  avatar.textContent = 'MC';
+  image.replaceWith(avatar);
+}
+// Regeneration replaces the replay directory. Content-version local controls
+// so a running dev server cannot serve stale transformed JS or CSS.
+for (const element of baseDocument.querySelectorAll('script[src], link[rel="stylesheet"][href]')) {
+  const attribute = element.localName === 'script' ? 'src' : 'href';
+  const path = element.getAttribute(attribute);
+  if (!/^\.\/[^/]+\.(js|css)$/.test(path || '')) continue;
+  const hash = createHash('sha256').update(await readFile(join(outputRoot, path))).digest('hex').slice(0, 12);
+  element.setAttribute(attribute, `${path}?v=${hash}`);
+}
 let output = `<!DOCTYPE html>\n${htmlSafeSvg(baseDocument.documentElement.outerHTML)}`;
 if (nestedPage) output = output.replaceAll('href="./', 'href="../').replaceAll('src="./', 'src="../');
 

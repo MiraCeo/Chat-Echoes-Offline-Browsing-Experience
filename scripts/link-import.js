@@ -21,66 +21,130 @@ for (const trigger of triggers) {
 }
 
 if (document.body.hasAttribute('data-ceobe-import-page')) {
-  for (const item of document.querySelectorAll('[data-sidebar-item][data-active]')) {
-    item.removeAttribute('data-active');
-  }
+  for (const item of document.querySelectorAll('[data-sidebar-item][data-active]')) item.removeAttribute('data-active');
   for (const trigger of triggers) trigger.dataset.active = '';
 
   const form = document.querySelector('[data-ceobe-import-form]');
   const input = document.querySelector('[data-ceobe-import-input]');
   const submit = document.querySelector('[data-ceobe-import-submit]');
   if (!form || !input || !submit) throw new Error('Official import composer is incomplete.');
-
   input.setAttribute('contenteditable', 'true');
   input.setAttribute('role', 'textbox');
   input.setAttribute('aria-multiline', 'false');
+  input.setAttribute('spellcheck', 'false');
+  input.setAttribute('aria-describedby', 'ceobe-import-status');
   submit.type = 'submit';
 
   const status = document.createElement('div');
+  status.id = 'ceobe-import-status';
   status.dataset.ceobeImportStatus = '';
-  status.className = 'mt-4 text-center text-sm text-token-text-secondary';
   status.setAttribute('role', 'status');
+  status.setAttribute('aria-live', 'polite');
+  status.setAttribute('aria-atomic', 'true');
   form.insertAdjacentElement('afterend', status);
-
+  const actions = document.createElement('div');
+  actions.className = 'ceobe-import-actions';
+  status.insertAdjacentElement('afterend', actions);
+  let busy = false;
+  let noticeTimer;
   const value = () => input.textContent.trim();
-  const setBusy = busy => {
-    input.setAttribute('contenteditable', String(!busy));
-    submit.disabled = busy;
-    submit.setAttribute('aria-busy', String(busy));
+  const updateButton = () => { submit.disabled = busy || !value(); };
+  const showStatus = (text, state) => {
+    status.textContent = text;
+    status.dataset.state = state;
   };
-
+  const setBusy = state => {
+    busy = state;
+    input.setAttribute('contenteditable', String(!state));
+    form.setAttribute('aria-busy', String(state));
+    submit.setAttribute('aria-busy', String(state));
+    submit.setAttribute('aria-label', state ? '正在导入，请稍候' : '导入会话');
+    updateButton();
+  };
+  const normalizeLink = text => {
+    try {
+      const url = new URL(text);
+      if (url.protocol !== 'https:' || url.hostname !== 'chatgpt.com' || url.port || url.username || url.password ||
+          !/^\/share\/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\/?$/i.test(url.pathname)) return null;
+      url.search = ''; url.hash = '';
+      return url.href;
+    } catch { return null; }
+  };
+  input.addEventListener('input', () => {
+    input.removeAttribute('aria-invalid');
+    if (!busy) { showStatus('', 'idle'); actions.replaceChildren(); }
+    updateButton();
+  });
+  // Keep the captured contenteditable DOM, but never paste rich HTML into it.
+  input.addEventListener('paste', event => {
+    event.preventDefault();
+    if (busy) return;
+    const text = (event.clipboardData?.getData('text/plain') || '').trim().replace(/[\r\n]+/g, ' ');
+    const selection = window.getSelection();
+    if (selection?.rangeCount && input.contains(selection.getRangeAt(0).commonAncestorContainer)) {
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      const node = document.createTextNode(text);
+      range.insertNode(node); range.setStartAfter(node); range.collapse(true);
+      selection.removeAllRanges(); selection.addRange(range);
+    } else input.textContent = text;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
   input.addEventListener('keydown', event => {
-    if (event.key === 'Enter' && !event.shiftKey) {
+    if (event.key === 'Enter' && !event.isComposing) {
       event.preventDefault();
-      form.requestSubmit();
+      if (!busy) form.requestSubmit();
     }
+  });
+  window.addEventListener('beforeunload', event => {
+    if (busy) { event.preventDefault(); event.returnValue = ''; }
   });
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
-    const url = value();
+    if (busy) return;
+    const url = normalizeLink(value());
+    actions.replaceChildren();
     if (!url) {
-      status.textContent = '请粘贴 ChatGPT 分享链接。';
-      input.focus();
-      return;
+      showStatus(value() ? '链接格式不正确，请粘贴 https://chatgpt.com/share/… 形式的公开分享链接。' : '请先粘贴 ChatGPT 分享链接。', 'error');
+      input.setAttribute('aria-invalid', 'true'); input.focus(); return;
     }
-
+    input.removeAttribute('aria-invalid');
     setBusy(true);
-    status.textContent = '正在读取并归档会话…';
+    showStatus('正在读取分享页面并归档附件，请稍候…', 'busy');
+    // One backend request covers multiple stages; do not invent a progress percentage.
+    noticeTimer = setTimeout(() => showStatus('仍在归档中，较长对话或较多附件可能需要几分钟。请勿重复提交。', 'busy'), 15000);
     try {
       const response = await fetch('/api/archive-share', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify({ url }),
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || '导入失败');
-      status.textContent = '导入完成，正在打开会话…';
-      location.href = result.page;
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.ok) {
+        if (response.status === 409) throw new Error('已有会话正在导入，请等待完成后再重试。');
+        if (response.status === 404 || response.status === 405 || !result) throw new Error('当前服务不支持导入，请使用 npm run dev 启动本地服务。');
+        console.error('Share import failed:', result.error);
+        throw new Error('导入未完成。请确认分享链接可公开访问及网络连接正常，然后重试。');
+      }
+      const destination = new URL(result.page, location.origin);
+      if (destination.origin !== location.origin || !destination.pathname.startsWith('/conversations/')) throw new Error('归档已返回，但会话入口无效，请检查本地档案库。');
+      const counts = result.resourceCounts || {};
+      const missing = Object.entries(counts).filter(([key]) => ['failed', 'unresolved', 'skipped', 'missing'].includes(key))
+        .reduce((sum, [, count]) => sum + (Number(count) || 0), 0);
+      showStatus(`已归档「${result.title || '会话'}」，共 ${Number(result.messageCount) || 0} 条消息。${missing ? `有 ${missing} 个资源未保存，可在归档报告中查看。` : '可打开会话查看保存的内容。'}`, 'success');
+      const open = document.createElement('a');
+      open.href = destination.href; open.className = 'ceobe-import-open'; open.textContent = '打开会话';
+      actions.append(open);
+      open.focus();
     } catch (error) {
-      status.textContent = error instanceof Error ? error.message : String(error);
-      setBusy(false);
-      input.focus();
+      showStatus(error instanceof TypeError ? '连接中断，后台可能仍在归档。请先查看最近会话，确认后再重试。' : error.message, 'error');
+      const retry = document.createElement('button');
+      retry.type = 'button'; retry.className = 'ceobe-import-retry'; retry.textContent = '重试导入';
+      retry.addEventListener('click', () => form.requestSubmit());
+      actions.append(retry);
+    } finally {
+      clearTimeout(noticeTimer); setBusy(false);
     }
   });
+  updateButton();
 }

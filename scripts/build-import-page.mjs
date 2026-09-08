@@ -19,6 +19,14 @@ export async function buildImportPage(projectRoot = resolve(import.meta.dirname,
   currentHeader.replaceWith(importHeader);
   document.body.dataset.ceobeImportPage = '';
   document.title = '导入会话';
+  const suggestion = [...importMain.querySelectorAll('button')].find(button =>
+    button.textContent.includes('归档完整 JSON'));
+  if (suggestion) {
+    const description = document.createElement('div');
+    description.className = 'ceobe-import-description';
+    description.innerHTML = '<p>导入公开分享链接，保存到本地，随时重新阅读。</p><p class="ceobe-import-note">支持 chatgpt.com/share/… · 附件将尽可能保存，缺失情况会在完成后提示。</p>';
+    suggestion.replaceWith(description);
+  }
 
   for (const name of official.manifest.new_chat_stylesheets || []) {
     if (document.querySelector(`link[href="./assets/${name}"]`)) continue;
