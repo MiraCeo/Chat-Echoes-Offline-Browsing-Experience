@@ -37,6 +37,7 @@ const assetNames = new Set(await readdir(join(packageRoot, 'assets')));
 for (const filename of [
   ...(previousManifest.chart_stylesheets || []),
   ...(previousManifest.preview_stylesheets || []),
+  ...(previousManifest.new_chat_stylesheets || []),
 ]) {
   if (!assetNames.has(filename)) throw new Error(`Official template asset is missing: ${filename}`);
   await access(join(packageRoot, 'assets', filename));
@@ -49,6 +50,7 @@ const manifest = {
   templates: templateNames,
   chart_stylesheets: [...new Set(previousManifest.chart_stylesheets || [])],
   preview_stylesheets: [...new Set(previousManifest.preview_stylesheets || [])],
+  new_chat_stylesheets: [...new Set(previousManifest.new_chat_stylesheets || [])],
 };
 await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 

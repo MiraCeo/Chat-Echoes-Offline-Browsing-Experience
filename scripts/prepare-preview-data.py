@@ -75,11 +75,67 @@ if kind == 'docx':
     with zipfile.ZipFile(source) as package:
         document = ElementTree.fromstring(package.read('word/document.xml'))
     namespace = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+    word = '{' + namespace['w'] + '}'
+
+    def on(element, name):
+        node = element.find('w:' + name, namespace) if element is not None else None
+        return node is not None and node.get(word + 'val', '1') not in {'0', 'false', 'off'}
+
+    def css(values):
+        return '; '.join(values) + (';' if values else '')
+
+    def render_run(run):
+        properties = run.find('w:rPr', namespace)
+        styles = []
+        if on(properties, 'b'):
+            styles.append('font-weight: bold')
+        if on(properties, 'i'):
+            styles.append('font-style: italic')
+        if on(properties, 'strike'):
+            styles.append('text-decoration: line-through')
+        underline = properties.find('w:u', namespace) if properties is not None else None
+        if underline is not None and underline.get(word + 'val', 'single') not in {'none', '0', 'false'}:
+            styles.append('text-decoration: underline')
+        size = properties.find('w:sz', namespace) if properties is not None else None
+        if size is not None and size.get(word + 'val', '').isdigit():
+            styles.append(f"font-size: {int(size.get(word + 'val')) / 2:g}pt")
+        color = properties.find('w:color', namespace) if properties is not None else None
+        if color is not None and color.get(word + 'val') not in {None, 'auto'}:
+            styles.append('#' + color.get(word + 'val')[-6:])
+            styles[-1] = 'color: ' + styles[-1]
+        language = properties.find('w:lang', namespace) if properties is not None else None
+        lang = language.get(word + 'val') if language is not None else None
+        content = []
+        for child in run:
+            if child.tag == word + 't':
+                content.append(escape(child.text or ''))
+            elif child.tag == word + 'tab':
+                content.append('&#9;')
+            elif child.tag in {word + 'br', word + 'cr'}:
+                content.append('<br>')
+        attrs = []
+        if lang:
+            attrs.append('lang="' + escape(lang, quote=True) + '"')
+        run_css = css(styles)
+        if run_css:
+            attrs.append('style="' + run_css + '"')
+        return '<span' + (' ' + ' '.join(attrs) if attrs else '') + '>' + ''.join(content) + '</span>'
+
     paragraphs = []
     for paragraph in document.findall('.//w:p', namespace):
-        text = ''.join(node.text or '' for node in paragraph.findall('.//w:t', namespace))
-        if text:
-            paragraphs.append('<p>' + escape(text) + '</p>')
+        properties = paragraph.find('w:pPr', namespace)
+        styles = []
+        alignment = properties.find('w:jc', namespace) if properties is not None else None
+        if alignment is not None:
+            value = alignment.get(word + 'val')
+            if value in {'left', 'right', 'center', 'justify'}:
+                styles.append('text-align: ' + value)
+        runs = []
+        for node in paragraph.iter():
+            if node.tag == word + 'r':
+                runs.append(render_run(node))
+        attrs = ' style="' + css(styles) + '"' if styles else ''
+        paragraphs.append('<p' + attrs + '>' + ''.join(runs) + '</p>')
     data['html'] = ''.join(paragraphs)
 
 (output / 'manifest.json').write_text(json.dumps(data, ensure_ascii=False), encoding='utf-8')

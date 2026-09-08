@@ -544,7 +544,7 @@ for (const entry of await readdir(join(officialTemplates.root, 'assets'), { with
   copiedFiles.add(entry.name);
 }
 
-await buildFilePreviews(
+const availablePreviewFiles = await buildFilePreviews(
   baseDocument,
   projectRoot,
   outputRoot,
@@ -554,16 +554,29 @@ await buildFilePreviews(
   useSampleAssets,
 );
 await buildSourcesPanel(baseDocument, projectRoot, outputRoot, canonicalConversation, officialTemplates);
-const availablePreviewKeys = new Set([...baseDocument.querySelectorAll('template[data-ceobe-preview]')]
-  .map(template => template.getAttribute('data-ceobe-preview')));
 for (const opener of baseDocument.querySelectorAll('[data-ceobe-open-preview]')) {
-  if (!availablePreviewKeys.has(opener.getAttribute('data-ceobe-open-preview'))) opener.removeAttribute('data-ceobe-open-preview');
+  const key = opener.getAttribute('data-ceobe-open-preview');
+  const previewFile = availablePreviewFiles.get(key);
+  if (!previewFile) {
+    opener.removeAttribute('data-ceobe-open-preview');
+    opener.removeAttribute('data-ceobe-preview-file');
+  } else opener.setAttribute('data-ceobe-preview-file', previewFile);
 }
 await cp(join(projectRoot, 'scripts/clipboard.js'), join(outputRoot, 'clipboard.js'));
 const clipboardScript = baseDocument.createElement('script');
 clipboardScript.type = 'module';
 clipboardScript.src = './clipboard.js';
 baseDocument.body.append(clipboardScript);
+await cp(join(projectRoot, 'scripts/link-import.js'), join(outputRoot, 'link-import.js'));
+await cp(join(projectRoot, 'scripts/link-import.css'), join(outputRoot, 'link-import.css'));
+const importStylesheet = baseDocument.createElement('link');
+importStylesheet.rel = 'stylesheet';
+importStylesheet.href = './link-import.css';
+baseDocument.head.append(importStylesheet);
+const importScript = baseDocument.createElement('script');
+importScript.type = 'module';
+importScript.src = './link-import.js';
+baseDocument.body.append(importScript);
 let output = `<!DOCTYPE html>\n${htmlSafeSvg(baseDocument.documentElement.outerHTML)}`;
 if (nestedPage) output = output.replaceAll('href="./', 'href="../').replaceAll('src="./', 'src="../');
 

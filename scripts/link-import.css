@@ -1,0 +1,6 @@
+[data-ceobe-import-share],
+[data-ceobe-import-form],
+[data-ceobe-import-input],
+[data-ceobe-import-submit] {
+  pointer-events: auto !important;
+}
