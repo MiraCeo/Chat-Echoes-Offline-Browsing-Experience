@@ -14,13 +14,55 @@ if (rail) {
     const row = document.createElement('li');
     const item = document.createElement('button');
     item.type = 'button'; item.className = 'ceobe-prompt-item';
-    item.textContent = button.dataset.ceobePromptLabel;
-    item.setAttribute('aria-label', button.dataset.ceobePromptLabel);
+    const heading = document.createElement('span');
+    heading.className = 'ceobe-prompt-item-heading';
+    const label = document.createElement('span');
+    label.className = 'ceobe-prompt-item-label';
+    label.textContent = button.dataset.ceobePromptLabel;
+    heading.append(label);
+    const filename = button.dataset.ceobePromptFilename;
+    const reply = button.dataset.ceobePromptReply;
+    if (filename) {
+      const file = document.createElement('span');
+      file.className = 'ceobe-prompt-item-filename';
+      file.textContent = filename;
+      heading.append(file);
+    }
+    item.append(heading);
+    if (reply) {
+      const detail = document.createElement('span');
+      detail.className = 'ceobe-prompt-item-detail';
+      const summary = document.createElement('span');
+      summary.className = 'ceobe-prompt-item-reply';
+      summary.textContent = reply;
+      detail.append(summary);
+      item.append(detail);
+    }
+    item.setAttribute('aria-label', filename ? `${button.dataset.ceobePromptLabel}：${filename}` : button.dataset.ceobePromptLabel);
     item.dataset.ceobeJump = button.dataset.ceobeJump;
+    if (button.dataset.ceobePromptKind) item.dataset.ceobePromptKind = button.dataset.ceobePromptKind;
     row.append(item); list.append(row);
     entries[index].item = item;
   });
-  let hovered = false, open = false, closeTimer, fadeTimer, active, frame;
+  let hovered = false, open = false, closeTimer, fadeTimer, active, frame, detailItem, menuPositioned = false;
+  let accurateLayout;
+  function showDetail(item) {
+    if (!item || item === detailItem || !item.querySelector('.ceobe-prompt-item-detail')) return;
+    detailItem?.removeAttribute('data-ceobe-detail-active');
+    detailItem = item;
+    detailItem.setAttribute('data-ceobe-detail-active', '');
+  }
+  function clearDetail() {
+    detailItem?.removeAttribute('data-ceobe-detail-active');
+    detailItem = null;
+  }
+  function ensureAccurateLayout() {
+    if (!accurateLayout) {
+      document.documentElement.setAttribute('data-ceobe-accurate-turn-layout', '');
+      accurateLayout = new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }
+    return accurateLayout;
+  }
   function keepVisible(container, node) {
     if (!node || container.clientHeight <= 0) return;
     const box = container.getBoundingClientRect(), rect = node.getBoundingClientRect();
@@ -33,13 +75,16 @@ if (rail) {
     open = true; menu.hidden = false; menu.inert = false;
     menu.setAttribute('aria-hidden', 'false');
     rail.setAttribute('data-ceobe-menu-open', '');
-    keepVisible(list, active?.item);
+    if (!menuPositioned) {
+      keepVisible(list, active?.item);
+      menuPositioned = true;
+    }
   }
   function hide() {
     clearTimeout(closeTimer); open = false; menu.inert = true;
     menu.setAttribute('aria-hidden', 'true');
     rail.removeAttribute('data-ceobe-menu-open');
-    clearTimeout(fadeTimer); fadeTimer = setTimeout(() => { menu.hidden = true; }, 160);
+    clearTimeout(fadeTimer); fadeTimer = setTimeout(() => { menu.hidden = true; clearDetail(); }, 160);
   }
   function scheduleClose() {
     clearTimeout(closeTimer);
@@ -52,6 +97,8 @@ if (rail) {
   rail.addEventListener('mouseleave', () => { hovered = false; scheduleClose(); });
   rail.addEventListener('focusin', show);
   rail.addEventListener('focusout', scheduleClose);
+  list.addEventListener('pointermove', event => showDetail(event.target.closest('.ceobe-prompt-item')));
+  list.addEventListener('focusin', event => showDetail(event.target.closest('.ceobe-prompt-item')));
   rail.addEventListener('keydown', event => {
     if (event.key === 'Escape') { hovered = false; document.activeElement?.blur(); hide(); return; }
     const buttons = event.target.closest('.ceobe-prompt-menu') ? entries.map(e => e.item) : markers;
@@ -62,7 +109,7 @@ if (rail) {
     if (event.key === 'ArrowUp') next = Math.max(index - 1, 0);
     if (event.key === 'Home') next = 0;
     if (event.key === 'End') next = buttons.length - 1;
-    if (next !== undefined) { event.preventDefault(); buttons[next].focus({preventScroll:true}); keepVisible(buttons === markers ? viewport : list, buttons[next]); }
+    if (next !== undefined) { event.preventDefault(); buttons[next].focus({preventScroll:true}); }
   });
   function scrollParent(node) {
     for (let p = node.parentElement; p; p = p.parentElement) {
@@ -70,16 +117,18 @@ if (rail) {
     }
     return document.scrollingElement;
   }
-  rail.addEventListener('click', event => {
-    const button = event.target.closest('[data-ceobe-jump]');
+  rail.addEventListener('click', async event => {
+    const button = event.target.closest('[data-ceobe-jump]') || (menu.contains(event.target) ? detailItem : null);
     if (!button) return;
     const target = turns.get(button.dataset.ceobeJump);
     if (!target) return;
+    event.preventDefault();
+    await ensureAccurateLayout();
     const scroller = scrollParent(target);
     const offset = scroller === document.scrollingElement ? 0 : scroller.getBoundingClientRect().top;
     scroller.scrollTo({ top: target.getBoundingClientRect().top - offset + scroller.scrollTop - 60,
       behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
-  });
+  }, true);
   function update() {
     frame = null;
     if (!entries.length) { rail.hidden = true; return; }
@@ -96,8 +145,6 @@ if (rail) {
       node.toggleAttribute('data-toc-active', entry === active);
       if (entry === active) node.setAttribute('aria-current', 'location'); else node.removeAttribute('aria-current');
     }
-    if (!rail.contains(document.activeElement)) keepVisible(viewport, active.button);
-    if (open) keepVisible(list, active.item);
   }
   const requestUpdate = () => { if (!frame) frame = requestAnimationFrame(update); };
   document.addEventListener('scroll', requestUpdate, {capture:true, passive:true});

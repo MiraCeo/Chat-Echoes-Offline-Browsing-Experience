@@ -4,6 +4,18 @@ import { join } from 'node:path';
 export async function buildSourcesPanel(document, root, output, conversation, templates) {
   const clone = name => templates.clone(name, document);
   const cloneNode = node => node.cloneNode(true);
+  const messageText = message => (message?.content?.blocks || [])
+    .filter(block => block.type === 'text' || block.type === 'markdown')
+    .map(block => block.text || '')
+    .join('\n')
+    .trim();
+  const previewText = value => value
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/\*\*|__|~~|`/g, '')
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/\s+/g, ' ')
+    .trim();
   const toggle = clone('sources:toggle');
   toggle.setAttribute('data-ceobe-sources-toggle', '');
   toggle.setAttribute('aria-pressed', 'false');
@@ -72,7 +84,10 @@ export async function buildSourcesPanel(document, root, output, conversation, te
     const preview = previewButtons.find(b => b.getAttribute('aria-label') === file.name);
     const resource = (conversation.resources || []).find(r => r.status === 'downloaded' &&
       (r.key === file.id || r.pointers.includes(file.pointer)));
-    if (preview) button.setAttribute('data-ceobe-open-preview', preview.getAttribute('data-ceobe-open-preview'));
+    if (preview) {
+      button.setAttribute('data-ceobe-open-preview', preview.getAttribute('data-ceobe-open-preview'));
+      button.setAttribute('data-ceobe-preview-file', preview.getAttribute('data-ceobe-preview-file'));
+    }
     else if (resource) {
       const link = document.createElement('a');
       for (const attribute of button.attributes) link.setAttribute(attribute.name, attribute.value);
@@ -124,14 +139,43 @@ export async function buildSourcesPanel(document, root, output, conversation, te
     rail.setAttribute('data-ceobe-prompt-rail', '');
     const list = rail.querySelector('[data-toc-item-index]').parentElement;
     const template = cloneNode(list.firstElementChild); list.replaceChildren();
+    const linearMessages = conversation.linear_message_ids.map(id => conversation.messages[id]).filter(Boolean);
+    const userMessages = linearMessages
+      .map((message, linearIndex) => ({ message, linearIndex }))
+      .filter(entry => entry.message.role === 'user');
+    const replyAfter = linearIndex => {
+      const parts = [];
+      for (let i = linearIndex + 1; i < linearMessages.length && linearMessages[i].role !== 'user'; i++) {
+        if (linearMessages[i].role === 'assistant') {
+          const text = messageText(linearMessages[i]);
+          if (text) parts.push(text);
+        }
+      }
+      return previewText(parts.join('\n')).slice(0, 180);
+    };
     for (const [index, turn] of [...document.querySelectorAll('section[data-turn="user"]')].entries()) {
       const button = cloneNode(template);
+      const record = userMessages[index];
+      const message = record?.message;
+      const text = messageText(message);
+      const filenames = (message?.attachments || [])
+        .filter(attachment => attachment.name && !attachment.mime_type?.startsWith('image/') && attachment.type !== 'image')
+        .map(attachment => attachment.name);
+      const fileUpload = filenames.length > 0 && !text;
       button.setAttribute('data-toc-item-index', index);
       button.setAttribute('data-ceobe-jump', turn.getAttribute('data-testid'));
-      button.setAttribute('aria-label', `跳转到第 ${index + 1} 条用户消息`);
+      button.setAttribute('aria-label', fileUpload
+        ? `跳转到第 ${index + 1} 条用户消息，File upload：${filenames.join('、')}`
+        : `跳转到第 ${index + 1} 条用户消息`);
       button.title = turn.querySelector('.whitespace-pre-wrap')?.textContent.slice(0,100) || button.getAttribute('aria-label');
       const copy = turn.querySelector('[data-testid="copy-turn-action-button"]')?.getAttribute('data-ceobe-copy');
-      button.setAttribute('data-ceobe-prompt-label', copy || button.title);
+      button.setAttribute('data-ceobe-prompt-label', fileUpload ? 'File upload' : copy || text || button.title);
+      if (fileUpload) {
+        button.setAttribute('data-ceobe-prompt-kind', 'file-upload');
+        button.setAttribute('data-ceobe-prompt-filename', filenames.join('、'));
+      }
+      const reply = record ? replyAfter(record.linearIndex) : '';
+      if (reply) button.setAttribute('data-ceobe-prompt-reply', reply);
       button.removeAttribute('title');
       button.removeAttribute('data-toc-active');
       button.tabIndex = 0; list.append(button);
