@@ -16,6 +16,23 @@ try {
   assert.equal(await links.count(), library.conversations.length);
   assert.deepEqual(await links.evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))), library.conversations.map(item => item.title));
   assert.equal(await page.locator('a[data-sidebar-item][data-active]').getAttribute('aria-label'), library.conversations[0].title);
+  const importTriggers = page.locator('[data-ceobe-import-share]');
+  assert.ok(await importTriggers.count() >= 1);
+  assert.deepEqual(await importTriggers.evaluateAll(nodes => nodes.map(node => node.getAttribute('aria-label'))),
+    Array(await importTriggers.count()).fill('导入会话'));
+  assert.ok(await importTriggers.evaluateAll(nodes =>
+    nodes.some(node => node.textContent.includes('导入会话'))));
+  assert.equal(await page.locator('[data-testid="share-chat-button"]').getAttribute('aria-label'), '分享');
+  assert.ok((await page.locator('[data-testid="share-chat-button"]').innerText()).includes('分享'));
+  await Promise.all([
+    page.waitForURL(/\/import\.html$/, { waitUntil: 'domcontentloaded' }),
+    importTriggers.filter({ hasText: 'CtrlShiftO' }).first().click(),
+  ]);
+  assert.equal(await page.title(), '导入会话');
+  assert.ok(await page.locator('[data-ceobe-import-main]').isVisible());
+  assert.ok(await page.locator('[data-ceobe-import-form]').isVisible());
+  assert.equal(await page.locator('[data-ceobe-import-input] [data-placeholder]').getAttribute('data-placeholder'), '粘贴 ChatGPT 分享链接');
+  await page.goBack();
   const fileUploadMarker = page.locator('[data-ceobe-prompt-rail] button[data-ceobe-prompt-kind="file-upload"]').first();
   assert.equal(await fileUploadMarker.getAttribute('data-ceobe-prompt-label'), 'File upload');
   assert.ok((await fileUploadMarker.getAttribute('aria-label')).includes('.docx'));

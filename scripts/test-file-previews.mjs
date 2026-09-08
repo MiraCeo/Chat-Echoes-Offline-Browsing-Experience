@@ -3,18 +3,22 @@ import { readFile, access } from 'node:fs/promises';
 import { parseHTML } from 'linkedom';
 
 const document = parseHTML(await readFile('replay/index.html', 'utf8')).document;
-const templates = [...document.querySelectorAll('template[data-ceobe-preview]')];
-assert.equal(templates.length, 6);
-for (const template of templates) {
-  const content = parseHTML('<html><body>' + template.innerHTML + '</body></html>').document;
-  if (template.getAttribute('data-ceobe-preview') === 'pasted') {
+assert.equal(document.querySelector('template[data-ceobe-preview]'), null);
+const previewFiles = new Map();
+for (const opener of document.querySelectorAll('[data-ceobe-open-preview][data-ceobe-preview-file]')) {
+  previewFiles.set(opener.getAttribute('data-ceobe-open-preview'), opener.getAttribute('data-ceobe-preview-file'));
+}
+assert.equal(previewFiles.size, 6);
+for (const [key, filename] of previewFiles) {
+  const content = parseHTML('<html><body>' + await readFile(`replay/previews/templates/${filename}`, 'utf8') + '</body></html>').document;
+  if (key === 'pasted') {
     assert.ok(content.querySelector('.content-sheet.popup'));
     assert.ok(content.body.textContent.includes('BUILD SUCCESSFUL in 4m 42s'));
     assert.ok(content.body.textContent.includes('Configuration cache entry reused.'));
   } else assert.ok(content.querySelector('[data-testid="artifact-preview-side-pane-surface"]'));
   assert.ok(content.querySelector('[data-ceobe-close-preview]'));
   assert.equal(content.querySelector('script'), null);
-  if (template.getAttribute('data-ceobe-preview') === 'pasted-reference') {
+  if (key === 'pasted-reference') {
     assert.ok(content.querySelector('[data-ceobe-pasted-reference] .cm-content'));
     assert.equal(content.querySelector('[data-ceobe-incomplete-preview]'), null);
     assert.equal(content.querySelector('[data-ceobe-complete-preview]')?.getAttribute('data-ceobe-complete-preview'), 'clipboard-recovery');
@@ -23,13 +27,19 @@ for (const template of templates) {
     assert.ok(content.body.textContent.includes("'.\\gradlew.bat' ':app' '--console=plain'"));
     assert.ok(content.body.textContent.includes('BUILD SUCCESSFUL in 4m 42s'));
   }
-  if (template.getAttribute('data-ceobe-preview') === 'pdf') {
+  if (key === 'pdf') {
     const images = [...content.querySelectorAll('[data-testid^="artifact-pdf-page-"] img')];
     assert.equal(images.length, 7);
     for (const image of images) await access('replay/' + image.getAttribute('src'));
     assert.equal(content.querySelector('canvas'), null);
   }
-  if (template.getAttribute('data-ceobe-preview') === 'xlsx') {
+  if (key === 'docx') {
+    const panel = content.querySelector('[data-testid="docx-preview-panel"]');
+    const page = panel?.querySelector('.artifact-docx-preview-wrapper > .artifact-docx-preview');
+    assert.ok(page, 'official DOCX page wrapper must be retained');
+    assert.ok(page.querySelector('article > p > span'), 'DOCX content must use the official article/p/span DOM');
+  }
+  if (key === 'xlsx') {
     const sheets = [...content.querySelectorAll('[data-ceobe-sheet]')];
     assert.equal(sheets.length, 2);
     assert.equal(sheets[0].querySelectorAll('tbody tr').length, 82);

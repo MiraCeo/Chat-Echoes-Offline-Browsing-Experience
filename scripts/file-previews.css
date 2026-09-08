@@ -4,7 +4,18 @@ button[data-ceobe-close-preview], button[data-ceobe-sheet-tab] {
   pointer-events: auto !important;
   cursor: pointer;
 }
-.ceobe-preview-dock { width: min(1132px, 50%); }
+/* Keep every official message node in the document while letting the browser
+   skip layout and paint work for turns far outside the viewport. */
+section[data-testid^="conversation-turn-"] {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
+}
+/* Prompt-rail jumps need the real height of every preceding turn. The rail
+   enables this once, immediately before its first exact jump. */
+html[data-ceobe-accurate-turn-layout] section[data-testid^="conversation-turn-"] {
+  content-visibility: visible;
+}
+.ceobe-preview-dock { width: min(1132px, calc(100% - 400px)); }
 .ceobe-preview-dock > aside { height: 100%; }
 [data-ceobe-pasted-reference] .cm-editor { height: 100%; display: flex; flex-direction: column; }
 [data-ceobe-pasted-reference] .cm-scroller { overflow: auto; min-height: 0; font-family: var(--font-mono, monospace); }

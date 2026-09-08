@@ -15,12 +15,17 @@ export async function resolveShareResources(conversation, shareUrl) {
     const observed = new Map();
     const pending = [];
     let publicHeaders;
+    page.on('request', request => {
+      const url = new URL(request.url());
+      if (url.origin !== 'https://chatgpt.com' || !url.pathname.startsWith('/backend-anon/')) return;
+      const headers = request.headers();
+      const discovered = Object.fromEntries(Object.entries(headers).filter(([key]) => key.startsWith('oai-') || key.startsWith('x-openai-')));
+      if (Object.keys(discovered).length) publicHeaders = discovered;
+    });
     page.on('response', response => {
       const url = new URL(response.url());
       const match = /^\/backend-anon\/files\/download\/(file_[\w-]+)$/.exec(url.pathname);
       if (url.origin !== 'https://chatgpt.com' || !match) return;
-      const headers = response.request().headers();
-      publicHeaders = Object.fromEntries(Object.entries(headers).filter(([key]) => key.startsWith('oai-') || key.startsWith('x-openai-')));
       pending.push(response.json().then(data => observed.set(match[1], { key: match[1], status: response.status(), data })).catch(() => {}));
     });
     await page.goto(shareUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });

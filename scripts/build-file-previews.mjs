@@ -1,4 +1,4 @@
-import { readFile, cp, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, cp, mkdir } from 'node:fs/promises';
 import { join, basename, extname } from 'node:path';
 import { homedir } from 'node:os';
 import { spawnSync } from 'node:child_process';
@@ -56,7 +56,9 @@ const replacePastedProse = (document, container, source) => {
 
 export async function buildFilePreviews(document, projectRoot, outputRoot, conversation, templates, sourceRoot, sampleAssets = false) {
   const assets = join(outputRoot, 'previews');
+  const templateAssets = join(assets, 'templates');
   await mkdir(assets, { recursive: true });
+  await mkdir(templateAssets, { recursive: true });
   const candidates = [process.env.CEOBE_PYTHON, 'python', join(homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe')].filter(Boolean);
   const sampleRoot = join(sourceRoot, 'preview-inputs');
   const sampleSpecs = [
@@ -88,7 +90,7 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
     });
   const specs = sampleAssets ? sampleSpecs : archivedSpecs;
   for (const element of document.querySelectorAll('[data-ceobe-open-preview]')) element.removeAttribute('data-ceobe-open-preview');
-  if (!specs.length) return;
+  if (!specs.length) return new Map();
   const imports = [...new Set(specs.flatMap(spec => (spec.parserKind || spec.kind) === 'pdf' ? ['pypdfium2'] : (spec.parserKind || spec.kind) === 'xlsx' ? ['openpyxl'] : []))];
   const probe = imports.length ? `import ${imports.join(', ')}` : 'pass';
   const python = candidates.find(exe => spawnSync(exe, ['-c', probe], { windowsHide: true }).status === 0);
@@ -97,6 +99,7 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
   // The same file has different official viewers at the card and citation entry points.
   names.set('粘贴的文本 (1).txt', 'pasted');
   const byId = new Map();
+  const previewFiles = new Map();
   for (const message of Object.values(conversation.messages)) {
     for (const reference of message.content_references || []) {
       if (names.has(reference.name)) byId.set(reference.id, reference.name === '粘贴的文本 (1).txt' ? 'pasted-reference' : names.get(reference.name));
@@ -168,7 +171,17 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
         pane.setAttribute('data-ceobe-complete-preview', 'clipboard-recovery');
       }
     }
-    if (kind === 'docx' && data.html) pane.querySelector('[data-testid="docx-preview-panel"]').innerHTML = data.html;
+    if (kind === 'docx' && data.html) {
+      const panel = pane.querySelector('[data-testid="docx-preview-panel"]');
+      const article = panel?.querySelector('.artifact-docx-preview-wrapper > .artifact-docx-preview > article');
+      if (!article) throw new Error('Frozen official DOCX preview DOM is incomplete');
+      // Keep the captured ChatGPT document viewer and page DOM intact. Only the
+      // document body is data-driven; replacing the panel itself discards the
+      // official page wrapper, dimensions, padding and scrolling surface.
+      article.innerHTML = data.html;
+      panel.setAttribute('aria-label', name);
+      pane.setAttribute('aria-label', name);
+    }
     if (kind === 'pdf') {
       const parent = pane.querySelector('[data-testid="artifact-pdf-preview-surface"] > div');
       const pageTemplate = parent.firstElementChild.cloneNode(true);
@@ -195,10 +208,11 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
         button.setAttribute('aria-pressed', String(index === 0));
       }
     }
-    const template = document.createElement('template');
-    template.setAttribute('data-ceobe-preview', key);
-    template.innerHTML = pane.outerHTML;
-    document.body.append(template);
+    // Keep the official viewer DOM out of the conversation document. The
+    // browser fetches and parses this fragment only when its opener is used.
+    const previewFile = `${key.replace(/[^a-zA-Z0-9_-]/g, '_')}.html`;
+    await writeFile(join(templateAssets, previewFile), pane.outerHTML, 'utf8');
+    previewFiles.set(key, previewFile);
   }
   const existingStylesheets = new Set([...document.querySelectorAll('link[rel="stylesheet"]')]
     .map(link => basename(link.getAttribute('href') || '')));
@@ -215,15 +229,21 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
     const key = byId.get(citation.getAttribute('data-file-citation-primary-file-id'));
     if (key) {
       citation.setAttribute('data-ceobe-open-preview', key);
+      citation.setAttribute('data-ceobe-preview-file', previewFiles.get(key));
       citation.querySelector('button')?.setAttribute('tabindex', '0');
     }
   }
   for (const button of document.querySelectorAll('button')) {
     const key = names.get(button.getAttribute('aria-label')) || names.get(button.textContent.trim());
-    if (key) { button.setAttribute('data-ceobe-open-preview', key); button.setAttribute('tabindex', '0'); }
+    if (key) {
+      button.setAttribute('data-ceobe-open-preview', key);
+      button.setAttribute('data-ceobe-preview-file', previewFiles.get(key));
+      button.setAttribute('tabindex', '0');
+    }
   }
   const script = document.createElement('script'); script.type = 'module'; script.src = './file-previews.js'; document.body.append(script);
   await cp(join(projectRoot, 'scripts/file-previews.js'), join(outputRoot, 'file-previews.js'));
   const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = './file-previews.css'; document.head.append(css);
   await cp(join(projectRoot, 'scripts/file-previews.css'), join(outputRoot, 'file-previews.css'));
+  return previewFiles;
 }

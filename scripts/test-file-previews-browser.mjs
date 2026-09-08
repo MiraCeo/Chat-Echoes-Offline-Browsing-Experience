@@ -13,7 +13,7 @@ try {
   await page.goto(process.env.CEOBE_TEST_URL || 'http://127.0.0.1:5180/', { waitUntil: 'networkidle' });
   for (const key of ['txt', 'docx', 'pdf', 'xlsx']) {
     console.log('Checking preview:', key);
-    const wrapper = page.locator(`[data-ceobe-open-preview="${key}"]`).first();
+    const wrapper = page.locator(`[data-ceobe-open-preview="${key}"]:visible`).first();
     const opener = await wrapper.evaluate(e => e.tagName === 'BUTTON') ? wrapper : wrapper.locator('button');
     await opener.click();
     const dock = page.locator('.ceobe-preview-dock');
@@ -33,20 +33,20 @@ try {
     }
     await dock.locator('[data-ceobe-close-preview]').click();
     assert.equal(await page.locator('.ceobe-preview-dock').count(), 0);
-    const citation = page.locator(`[data-file-citation-primary-file-id][data-ceobe-open-preview="${key}"]`).first();
+    const citation = page.locator(`[data-file-citation-primary-file-id][data-ceobe-open-preview="${key}"]:visible`).first();
     await citation.locator('button').click();
     assert.equal(await citation.getAttribute('aria-expanded'), 'true');
     await page.keyboard.press('Escape');
     assert.equal(await citation.getAttribute('aria-expanded'), 'false');
   }
   await page.setViewportSize({ width: 600, height: 800 });
-  await page.locator('button[data-ceobe-open-preview="pdf"]').first().click();
+  await page.locator('button[data-ceobe-open-preview="pdf"]:visible').first().click();
   assert.ok(await page.locator('.ceobe-preview-dock [data-ceobe-close-preview]').isVisible());
   await page.keyboard.press('Escape');
   assert.equal(await page.locator('.ceobe-preview-dock').count(), 0);
   for (const width of [1600, 600]) {
     await page.setViewportSize({ width, height: 1000 });
-    await page.locator('button[data-ceobe-open-preview="pasted"]').click();
+    await page.locator('button[data-ceobe-open-preview="pasted"]:visible').click();
     const dialog = page.locator('dialog.ceobe-pasted-dialog');
     await dialog.waitFor({ state: 'visible' });
     assert.ok((await dialog.innerText()).includes('BUILD SUCCESSFUL in 4m 42s'));
@@ -58,9 +58,11 @@ try {
     assert.ok(Math.abs(bounds.y + bounds.height / 2 - 500) < 2);
     if (width === 1600) await page.screenshot({ path: process.env.TEMP + '/ceobe-pasted-dialog.png' });
     await dialog.locator('[data-ceobe-close-preview]').click();
-    const citation = page.locator('[data-file-citation-primary-file-id][data-ceobe-open-preview="pasted-reference"]').first();
+    const citation = page.locator('[data-file-citation-primary-file-id][data-ceobe-open-preview="pasted-reference"]:visible').first();
     await citation.locator('button').click();
-    assert.ok(await page.locator('.ceobe-preview-dock [data-ceobe-pasted-reference]').isVisible());
+    const pastedReference = page.locator('.ceobe-preview-dock [data-ceobe-pasted-reference]');
+    await pastedReference.waitFor({ state: 'visible' });
+    assert.ok(await pastedReference.isVisible());
     assert.equal(await page.locator('dialog.ceobe-pasted-dialog').count(), 0);
     assert.ok(await page.locator('.ceobe-preview-dock .cm-content').innerText().then(text =>
       text.includes("'.\\gradlew.bat' ':app' '--console=plain'") && text.includes('BUILD SUCCESSFUL in 4m 42s')));

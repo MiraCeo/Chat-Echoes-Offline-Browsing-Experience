@@ -3,6 +3,32 @@ const dock = host?.lastElementChild;
 let opener;
 let citationTrigger;
 let modal;
+const previewTemplates = new Map();
+
+async function loadPreview(trigger) {
+  const key = trigger.dataset.ceobeOpenPreview;
+  if (!previewTemplates.has(key)) {
+    const pending = (async () => {
+      const filename = trigger.dataset.ceobePreviewFile;
+      if (!filename) throw new Error(`Missing preview fragment for ${key}`);
+      const response = await fetch(new URL(`./previews/templates/${filename}`, import.meta.url));
+      if (!response.ok) throw new Error(`Unable to load preview fragment for ${key}: ${response.status}`);
+      const template = document.createElement('template');
+      template.innerHTML = await response.text();
+      // Fragment-relative resource URLs must remain anchored to the replay
+      // root even when the conversation page lives under /conversations/.
+      for (const element of template.content.querySelectorAll('[src], [href]')) {
+        for (const attribute of ['src', 'href']) {
+          const value = element.getAttribute(attribute);
+          if (value?.startsWith('./')) element.setAttribute(attribute, new URL(value, import.meta.url).href);
+        }
+      }
+      return template;
+    })();
+    previewTemplates.set(key, pending);
+  }
+  return previewTemplates.get(key);
+}
 
 function closePreview() {
   if (!dock) return;
@@ -16,15 +42,22 @@ function closePreview() {
   opener?.focus({ preventScroll: true });
 }
 
-document.addEventListener('click', event => {
+document.addEventListener('click', async event => {
   const close = event.target.closest('[data-ceobe-close-preview]');
   if (close) { closePreview(); return; }
   const trigger = event.target.closest('[data-ceobe-open-preview]');
   if (trigger && dock) {
-    const template = [...document.querySelectorAll('template[data-ceobe-preview]')]
-      .find(t => t.dataset.ceobePreview === trigger.dataset.ceobeOpenPreview);
-    if (!template) return;
     event.preventDefault();
+    let template;
+    try {
+      trigger.setAttribute('aria-busy', 'true');
+      template = await loadPreview(trigger);
+    } catch (error) {
+      console.error(error);
+      return;
+    } finally {
+      trigger.removeAttribute('aria-busy');
+    }
     citationTrigger?.setAttribute('aria-expanded', 'false');
     citationTrigger?.setAttribute('data-state', 'closed');
     citationTrigger = trigger.matches('[data-file-citation-primary-file-id]') ? trigger : null;
@@ -67,7 +100,7 @@ document.addEventListener('click', event => {
     const formula = dock.querySelector('[data-testid="popcorn-formula-input"]');
     if (formula) formula.value = selectedSheet?.querySelector('tbody td')?.textContent || '';
   }
-});
+}, true);
 document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && (modal || host?.hasAttribute('data-side-pane-shell-open'))) {
     event.preventDefault(); closePreview();
