@@ -52,14 +52,18 @@ const localShareImporter = {
     server.middlewares.use('/api/archive-share', async (request, response) => {
       if (request.method !== 'POST') return sendJson(response, 405, { error: '仅支持 POST' });
       if (activeImport) return sendJson(response, 409, { error: '已有链接正在导入，请等待完成' });
+      let ownsImport = false;
       try {
         const body = await readJsonBody(request);
         const url = new URL(body?.url);
-        if (url.protocol !== 'https:' || url.hostname !== 'chatgpt.com' || url.username || url.password ||
+        if (url.protocol !== 'https:' || url.hostname !== 'chatgpt.com' || url.port || url.username || url.password ||
           !/^\/share\/[\w-]+\/?$/.test(url.pathname)) throw new Error('请输入公开的 ChatGPT 分享链接');
         url.search = ''; url.hash = '';
         const shareId = url.pathname.split('/')[2];
+        // Recheck after the asynchronous body read; only the lock owner may release it.
+        if (activeImport) return sendJson(response, 409, { error: '已有链接正在导入，请等待完成' });
         activeImport = true;
+        ownsImport = true;
         const run = await archiveShare(url.href);
         const library = JSON.parse(await readFile(resolve('archive/library.ceobe.json'), 'utf8'));
         const entry = library.conversations?.find(item => item.id === shareId);
@@ -76,7 +80,7 @@ const localShareImporter = {
       } catch (error) {
         sendJson(response, 400, { error: error instanceof Error ? error.message : String(error) });
       } finally {
-        activeImport = false;
+        if (ownsImport) activeImport = false;
       }
     });
   },

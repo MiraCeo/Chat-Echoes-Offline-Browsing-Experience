@@ -1,6 +1,8 @@
+function initSourcesPanel() {
 const toggles = [...document.querySelectorAll('[data-ceobe-sources-toggle]')];
 const toggle = toggles[0];
 const panel = document.querySelector('[data-ceobe-sources-panel]');
+if (!panel) return;
 const rail = document.querySelector('[data-ceobe-prompt-rail]');
 let expanded = false;
 function setOpen(open) {
@@ -32,7 +34,9 @@ document.addEventListener('click', event => {
   if (event.target.closest('[data-ceobe-open-preview]')) setOpen(false);
 });
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && !panel.hidden) { setOpen(false); toggle.focus(); }
+  if (event.key === 'Escape' && !panel.hidden) { setOpen(false); toggle?.focus(); }
 });
 filter();
+}
+initSourcesPanel();
 import './prompt-rail.js';
