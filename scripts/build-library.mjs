@@ -5,6 +5,8 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { buildImportPage } from './build-import-page.mjs';
 import { buildAssetLibrary } from './build-asset-library.mjs';
+import { buildChatOrganizer } from './build-chat-organizer.mjs';
+import { buildProjectDetail } from './build-project-detail.mjs';
 import { buildProjectsPage } from './build-projects-page.mjs';
 import { buildChatMenu } from './build-chat-menu.mjs';
 import { buildChatActions } from './build-chat-actions.mjs';
@@ -84,8 +86,10 @@ async function buildReader(library, selectedId) {
   await buildImportPage(projectRoot);
   await buildAssetLibrary(projectRoot, library);
   await buildProjectsPage(projectRoot);
+  await buildProjectDetail(projectRoot, library);
   await buildChatMenu(projectRoot, library);
   await buildChatActions(projectRoot, library);
+  await buildChatOrganizer(projectRoot);
   console.log(`Library reader built: ${library.conversations.length} conversations; home is “${selected?.title || "本地聊天"}”.`);
 }
 

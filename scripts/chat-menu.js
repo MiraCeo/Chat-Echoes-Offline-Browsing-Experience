@@ -29,6 +29,7 @@ function place(panel,rect,side=false){
 function hide(panel){panel.hidden=true;panel.parentElement.hidden=true;panel.dataset.state='closed';highlight(panel,null)}
 function closeSub(){generation++;hide(sub);move.setAttribute('aria-expanded','false');move.dataset.state='closed'}
 function close(focus=true){closeSub();hide(menu);if(trigger){trigger.setAttribute('aria-expanded','false');trigger.dataset.state='closed';if(focus)trigger.focus()}trigger=null}
+document.addEventListener('ceobe:close-chat-menu',()=>close(false));
 function clearProjects(){for(const e of list.querySelectorAll('[data-chat-project-container]'))e.remove()}
 async function openSub(focus=false){
  if(!trigger)return;const token=++generation;move.setAttribute('aria-expanded','true');move.dataset.state='open';
@@ -65,14 +66,14 @@ document.addEventListener('click',e=>{
 },true);
 move.addEventListener('pointerenter',()=>{if(sub.hidden)openSub()});move.addEventListener('click',()=>openSub(true));
 menu.addEventListener('pointerover',e=>{const item=e.target.closest('[data-chat-action]');if(item&&item!==move)closeSub()});
-menu.addEventListener('click',e=>{const item=e.target.closest('[data-chat-action]');if(item&&item!==move){if(['rename','delete','pin'].includes(item.dataset.chatAction)){const id=trigger?.dataset.ceobeChatId;close(false);document.dispatchEvent(new CustomEvent('ceobe:chat-action',{detail:{id,action:item.dataset.chatAction}}))}else tell('“'+item.textContent.trim()+'”暂未接入本地归档，本次未修改聊天。')}});
+menu.addEventListener('click',e=>{const item=e.target.closest('[data-chat-action]');if(item&&item!==move){if(['rename','delete','pin'].includes(item.dataset.chatAction)){const id=trigger?.dataset.ceobeChatId,opener=trigger;close(false);document.dispatchEvent(new CustomEvent('ceobe:chat-action',{detail:{id,opener,action:item.dataset.chatAction}}))}else tell('“'+item.textContent.trim()+'”暂未接入本地归档，本次未修改聊天。')}});
 sub.querySelector('[data-chat-new-project]').addEventListener('click',()=>{const detail={opener:trigger,conversationId:trigger?.dataset.ceobeChatId};close(false);document.dispatchEvent(new CustomEvent('ceobe:open-project',{detail}))});
 list.addEventListener('click',async e=>{
  const row=e.target.closest('[data-chat-project]');if(!row||!trigger||busy)return;e.preventDefault();
  const id=trigger.dataset.ceobeChatId;busy=true;sub.setAttribute('aria-busy','true');
  try{const r=await fetch(new URL('api/projects/move',root),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({conversationId:id,projectId:row.dataset.chatProject})});
   const data=await r.json();if(!r.ok)throw new Error(data.error||'移动失败');
-  tell('已移至“'+data.project.name+'”。本地项目关联已保存，原始聊天归档保持不变。');close();
+  tell('已移至“'+data.project.name+'”。本地项目关联已保存，原始聊天归档保持不变。');close();document.dispatchEvent(new Event('ceobe:project-moved'));
  }catch(err){tell(err instanceof TypeError?'连接失败，未确认移动成功，请重试。':err.message)}finally{busy=false;sub.removeAttribute('aria-busy')}
 });
 for(const panel of [menu,sub]){

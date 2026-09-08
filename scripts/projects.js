@@ -9,7 +9,7 @@ function render(){
  if(!rows)return;
  const query=search.value.trim().toLocaleLowerCase();const shown=projects.filter(p=>filter!=='shared'&&p.name.toLocaleLowerCase().includes(query));
  rows.replaceChildren();for(const project of shown){
-  const row=template.content.firstElementChild.cloneNode(true);row.dataset.projectId=project.id;
+  const row=template.content.firstElementChild.cloneNode(true);row.dataset.projectId=project.id;row.tabIndex=0;row.setAttribute('aria-label','打开项目 '+project.name);row.addEventListener('click',()=>location.href='./project.html?id='+encodeURIComponent(project.id));row.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();row.click()}});
   const cells=row.querySelectorAll('[role=gridcell]');const image=document.createElement('span');image.className='ceobe-project-icon';image.style.color=project.color==='default'?'var(--text-primary)':project.color;image.append(svg(project.icon));
   const name=document.createElement('span');name.className='ceobe-project-name';name.textContent=project.name;name.title=project.name;cells[0].append(image,name);
   cells[1].textContent=new Date(project.updated_at).toLocaleDateString('zh-CN');cells[1].title=project.updated_at;

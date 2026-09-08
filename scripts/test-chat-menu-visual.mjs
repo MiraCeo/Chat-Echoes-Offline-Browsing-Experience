@@ -28,7 +28,8 @@ try{
  await ref.route('**/*',async route=>{const path=new URL(route.request().url()).pathname;if(path==='/official-reference'){await route.fulfill({contentType:'text/html',body:html});return}if(path.startsWith('/reference-css/')){await route.fulfill({contentType:'text/css',body:await readFile('official-templates/assets/'+decodeURIComponent(path.split('/').pop()))});return}await route.abort()});
  await ref.goto(base+'official-reference',{waitUntil:'networkidle'});await ref.mouse.move(1000,900);
  await page.route('**/api/projects',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({writable:true,projects:[{id:'visual-test',name:'测试',icon:'folder',color:'default',conversation_ids:[]}]})}));
- const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ await page.route('**/api/chats',async route=>{const r=await route.fetch();const data=await r.json();for(const c of data.conversations)delete c.pinned_at;await route.fulfill({response:r,json:data})});
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(base,{waitUntil:'networkidle'});
  const button=page.locator('[data-ceobe-chat-id]').first();await button.locator('xpath=ancestor::a').hover();await button.click();
  assert.equal(await page.locator('[data-ceobe-chat-menu] [data-highlighted]').count(),0,'Pointer opening does not highlight Share');

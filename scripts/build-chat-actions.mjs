@@ -1,14 +1,19 @@
 import {readFile,writeFile,copyFile,readdir} from 'node:fs/promises';import{join}from'node:path';import{createHash}from'node:crypto';import{parseHTML}from'linkedom';import{htmlSafeSvg}from'./serialize-html.mjs';
+import {applyProjectLabel} from './sidebar-project-label.js';
 export async function buildChatActions(root,library){
  const base=join(root,'replay'),f=JSON.parse(await readFile(join(root,'official-templates/chat-actions.json'),'utf8'));
  const pinButton=JSON.parse(await readFile(join(root,'official-templates/chat-pin-button.json'),'utf8')).button;
   const projectPage=parseHTML(await readFile(join(base,'projects.html'),'utf8')).document;
+ const labelHTML=JSON.parse(await readFile(join(root,'official-templates/sidebar-project-label.json'),'utf8')).block;
+ const projects=JSON.parse(projectPage.getElementById('ceobe-projects-data').textContent);
+ await copyFile(join(root,'scripts/sidebar-project-label.js'),join(base,'sidebar-project-label.js'));
  const pages=(await readdir(base)).filter(s=>s.endsWith('.html')).concat((await readdir(join(base,'conversations'))).filter(s=>s.endsWith('.html')).map(s=>'conversations/'+s));
  const assets={};for(const name of ['chat-actions.js','chat-actions.css']){const b=await readFile(join(root,'scripts',name));await writeFile(join(base,name),b);assets[name]=name+'?v='+createHash('sha256').update(b).digest('hex').slice(0,12)}
  for(const file of f.stylesheets)await copyFile(join(root,'official-templates/assets',file),join(base,'assets',file));
  for(const page of pages){
   const prefix=page.startsWith('conversations/')?'../':'./',d=parseHTML(await readFile(join(base,page),'utf8')).document;
-  for(const b of d.querySelectorAll('[data-ceobe-chat-id]')){const pin=parseHTML(pinButton).document.querySelector('button');pin.dataset.chatUnpin=b.dataset.ceobeChatId;pin.setAttribute('aria-label','置顶 '+b.closest('a').getAttribute('aria-label'));pin.querySelector('use').setAttribute('href',prefix+'cdn/assets/sprites-shell-097001e7.svg#pin-sm');b.before(pin)}
+  const labelTemplate=d.createElement('template');labelTemplate.id='ceobe-sidebar-project-label';labelTemplate.innerHTML=labelHTML;d.body.append(labelTemplate);
+   for(const b of d.querySelectorAll('[data-ceobe-chat-id]')){const pin=parseHTML(pinButton).document.querySelector('button');pin.dataset.chatUnpin=b.dataset.ceobeChatId;pin.setAttribute('aria-label','置顶 '+b.closest('a').getAttribute('aria-label'));pin.querySelector('use').setAttribute('href',prefix+'cdn/assets/sprites-shell-097001e7.svg#pin-sm');b.before(pin);const c=library.conversations.find(c=>c.id===b.dataset.ceobeChatId),p=projects.find(p=>p.conversation_ids?.includes(c?.id));if(c)applyProjectLabel(b.closest('li'),c.title,p,labelTemplate.content.firstElementChild)}
    const modal=parseHTML(f.delete).document.querySelector('[data-testid=modal-delete-conversation-confirmation]');modal.dataset.chatDelete='';modal.hidden=true;modal.querySelector('strong').textContent='';
   const note=modal.querySelector('.text-token-text-tertiary');note.replaceChildren();note.textContent='将永久删除本地全部归档版本和阅读页面，并清除项目关联。此操作无法撤销。';note.setAttribute('role','status');
   modal.querySelector('[role=dialog]').setAttribute('aria-modal','true');

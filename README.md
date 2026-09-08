@@ -16,6 +16,24 @@ Chat Echoes: Offline Browsing Experience（CEOBE）以保存的 ChatGPT 官方 H
 
 预览构建使用 Python；TXT 和 DOCX 只依赖标准库，PDF 需要 `pypdfium2`，XLSX 需要 `openpyxl`。脚本优先使用 `CEOBE_PYTHON`，其次系统 Python，最后尝试 Codex 本地运行时。原始附件不会被修改。
 
+## 侧栏整理聊天
+
+“最近”标题栏使用冻结的官方展开/收起 DOM，右侧撰写入口进入导入页。“整理聊天”菜单支持按列表或按项目：按项目时显示项目分组及未归属聊天；项目可展开实际关联会话，空项目使用官方“暂无项目聊天”占位。项目行右侧编辑图标进入 `project.html?id=…`；项目更多暂未实现。置顶区独立保留，置顶会话也可从其所属项目访问。
+
+模式、分组收起与项目展开状态保存在当前浏览器 `localStorage` 的 `ceobe.chat-organization.v1` 中，不更改归档或项目关联；浏览器禁止存储时当前页面仍可操作。支持键盘、Esc、点击外部关闭菜单。冻结资源 `chat-organizer.json` 由“最近／整理聊天／按项目／项目展开”参考显式捕获，普通构建不读取参考目录。测试：`node scripts/test-chat-organizer.mjs`，以及构建后的 `CEOBE_TEST_DIST=1` 生产预览验收。
+
+## 侧栏聊天的项目归属
+
+有项目归属的聊天标题后显示官方小号灰字项目名（冻结 `sidebar-project-label.json`），无归属不占位。首页、项目页及阅读页共享相同 DOM，构建首屏和浏览器动态更新一致；移至项目、新建并移入、项目内导入和窗口重新聚焦时同步，原始归档不变。验收：`node scripts/test-sidebar-project-label.mjs`，构建后可用 `CEOBE_TEST_DIST=1` 测试生产预览。
+
+## 项目详情与项目内导入
+
+从项目列表点击项目，或聚焦行后按 Enter/空格，打开 `project.html?id=<本地项目ID>`。页面复用冻结的 `official-templates/project-detail.json`，仅加载当前项目关联的本地会话；摘要来自最后一条可见用户消息，日期使用会话更新时间（缺失时回退到创建/归档时间）。会话行可打开阅读页，“更多”复用已有聊天操作，并同步侧栏及项目列表。
+
+顶部官方 Composer 改为分享链接导入，复用现有校验、纯文本粘贴、忙碌与结果提示。导入前验证项目，归档成功后独占关联到当前项目；关联失败时当前页重试复用已归档结果，不重复导入。关闭/刷新页面会失去这个内存重试结果，可通过聊天菜单移入已归档会话。新导入会话摘要在刷新页面后读取重建快照。导入仍仅由 `npm run dev` 提供，生产预览可阅读/管理项目，但不提供分享抓取接口。项目分享、来源标签和项目设置保持静态，未擅自扩展。
+
+验收：`node scripts/test-project-detail.mjs`，以及构建后的 `$env:CEOBE_TEST_DIST='1'; node scripts/test-project-detail.mjs`（PowerShell）。实际“测试”项目只执行 GET；改名、置顶、删除取消、项目导入及关联失败重试均拦截到内存测试数据。包含官方标题/Composer/标签/列表的尺寸与关键计算样式对照（1092×935，DPR 1.5）。参考捕获仅由显式 `capture-project-detail.mjs` 读取参考目录，普通构建不依赖该目录。
+
 ## 当前数据流
 
 ```text
