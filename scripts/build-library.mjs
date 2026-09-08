@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { buildImportPage } from './build-import-page.mjs';
 import { buildAssetLibrary } from './build-asset-library.mjs';
 import { buildChatOrganizer } from './build-chat-organizer.mjs';
+import { buildSidebarControls } from './build-sidebar-controls.mjs';
 import { buildProjectDetail } from './build-project-detail.mjs';
 import { buildProjectsPage } from './build-projects-page.mjs';
 import { buildChatMenu } from './build-chat-menu.mjs';
@@ -90,6 +91,7 @@ async function buildReader(library, selectedId) {
   await buildChatMenu(projectRoot, library);
   await buildChatActions(projectRoot, library);
   await buildChatOrganizer(projectRoot);
+  await buildSidebarControls(projectRoot);
   console.log(`Library reader built: ${library.conversations.length} conversations; home is “${selected?.title || "本地聊天"}”.`);
 }
 

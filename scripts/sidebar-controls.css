@@ -1,0 +1,8 @@
+/* State changes reuse the frozen official full sidebar and 52px rail. */
+html[data-ceobe-sidebar-collapsed=true] #stage-slideover-sidebar{width:var(--sidebar-rail-width)!important}
+html[data-ceobe-sidebar-collapsed=true] [data-ceobe-sidebar-panel]{visibility:hidden;opacity:0!important;pointer-events:none!important}
+html[data-ceobe-sidebar-collapsed=true] #stage-sidebar-tiny-bar{opacity:1!important;visibility:visible;pointer-events:auto!important}
+html:not([data-ceobe-sidebar-collapsed=true]) #stage-sidebar-tiny-bar{visibility:hidden}
+[data-ceobe-sidebar-toggle],[data-ceobe-search-trigger],[data-ceobe-search] button,[data-ceobe-search] input,[data-ceobe-search] a{pointer-events:auto!important}
+[data-ceobe-search][hidden],[data-ceobe-search] [hidden]{display:none!important}
+[data-ceobe-search] .F_cuGW_resultRow:focus-visible{outline:2px solid var(--text-primary);outline-offset:-2px}
