@@ -1,29 +1,4 @@
-const importHref = location.pathname.includes('/conversations/') ? '../import.html' : './import.html';
-const triggers = [...new Set(document.querySelectorAll(
-  '[data-testid="create-new-chat-button"], a[aria-label="新聊天"]',
-))];
-
-for (const trigger of triggers) {
-  trigger.dataset.ceobeImportShare = '';
-  trigger.setAttribute('aria-label', '导入会话');
-  trigger.setAttribute('href', importHref);
-  for (const node of [trigger, ...trigger.querySelectorAll('*')]) {
-    for (const child of node.childNodes) {
-      if (child.nodeType === Node.TEXT_NODE && child.textContent.includes('新聊天')) {
-        child.textContent = child.textContent.replace('新聊天', '导入会话');
-      }
-    }
-  }
-  trigger.addEventListener('click', event => {
-    event.preventDefault();
-    location.assign(new URL(importHref, location.href).href);
-  });
-}
-
 if (document.body.hasAttribute('data-ceobe-import-page')) {
-  for (const item of document.querySelectorAll('[data-sidebar-item][data-active]')) item.removeAttribute('data-active');
-  for (const trigger of triggers) trigger.dataset.active = '';
-
   const form = document.querySelector('[data-ceobe-import-form]');
   const input = document.querySelector('[data-ceobe-import-input]');
   const submit = document.querySelector('[data-ceobe-import-submit]');
