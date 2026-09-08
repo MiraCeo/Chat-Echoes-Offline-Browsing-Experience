@@ -140,3 +140,13 @@ python scripts/import-chatgpt-share.py <share.html> --output <conversation.ceobe
 ```
 
 仓库中的验收样本位于 `fixtures/chatgpt-share/6a9849f6-3bec-83ee-b032-618d95fc0917/`。原始 `share.html` 保留不变，生成的 `conversation.ceobe.json` 供 renderer 和测试使用。
+
+## 本地附件资料库
+
+`npm run library` 同时生成 `replay/assets.html`，可从侧栏“资料库”进入。页面沿用冻结的官方资料库列表模板，数据来自各会话最新可用归档的 `resources`，不读取 `参考文件/`。
+
+支持按文件名或来源会话搜索、全部／图片／文件分类、名称／归档时间／大小排序，以及预览、下载和返回来源会话。相同内容按 SHA-256 去重并保留来源；下载前在构建阶段校验原文件。未保存资源仅保留记录，不伪造预览；不支持预览的本地文件仍可下载。时间列明确使用本地归档时间，而非推测原文件修改时间。
+
+第一阶段仅提供列表浏览，不实现文件夹管理、上传、新建或删除。资料库页面、下载资源及预览片段纳入生产构建，可用静态 HTTP 服务离线阅读。
+
+浏览器回归：开发服务启动后运行 `node scripts/test-asset-library-browser.mjs`。执行 `npm run build` 后设置 `CEOBE_TEST_DIST=1`，同一脚本会通过浏览器请求拦截直接加载 `dist/` 进行静态产物验证，无需另启预览服务。

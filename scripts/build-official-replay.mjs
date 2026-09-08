@@ -1,5 +1,6 @@
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createHash } from 'node:crypto';
+import { prepareLocalSidebar } from './local-sidebar.mjs';
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { readArchivedResource, assetKey, resourceMatches } from './archive-resources.mjs';
 import { marked, Renderer } from "marked";
@@ -596,6 +597,7 @@ for (const element of baseDocument.querySelectorAll('script[src], link[rel="styl
   const hash = createHash('sha256').update(await readFile(join(outputRoot, path))).digest('hex').slice(0, 12);
   element.setAttribute(attribute, `${path}?v=${hash}`);
 }
+prepareLocalSidebar(baseDocument);
 let output = `<!DOCTYPE html>\n${htmlSafeSvg(baseDocument.documentElement.outerHTML)}`;
 if (nestedPage) output = output.replaceAll('href="./', 'href="../').replaceAll('src="./', 'src="../');
 

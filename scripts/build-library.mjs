@@ -4,6 +4,7 @@ import { parseArgs } from 'node:util';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { buildImportPage } from './build-import-page.mjs';
+import { buildAssetLibrary } from './build-asset-library.mjs';
 
 const projectRoot = resolve(import.meta.dirname, '..');
 const archiveRoot = join(projectRoot, 'archive', 'chatgpt-share');
@@ -69,6 +70,7 @@ async function buildReader(library, selectedId) {
   await mkdir(join(projectRoot, 'replay', 'public'), { recursive: true });
   await cp(indexPath, join(projectRoot, 'replay', 'public', 'library.ceobe.json'));
   await buildImportPage(projectRoot);
+  await buildAssetLibrary(projectRoot, library);
   console.log(`Library reader built: ${library.conversations.length} conversations; home is “${selected.title}”.`);
 }
 

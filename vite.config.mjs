@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import { readdirSync } from 'node:fs';
+import { readdirSync, existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
@@ -93,6 +93,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: resolve(replayRoot, 'index.html'),
+        ...(existsSync(resolve(replayRoot, 'assets.html')) ? { assets: resolve(replayRoot, 'assets.html') } : {}),
         ...Object.fromEntries(conversationPages.map(name => [`conversations/${name.slice(0, -5)}`, resolve(conversationRoot, name)])),
       },
     },

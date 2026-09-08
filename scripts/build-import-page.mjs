@@ -3,6 +3,7 @@ import { join, resolve } from 'node:path';
 import { parseHTML } from 'linkedom';
 import { loadOfficialTemplatePackage } from './official-template-package.mjs';
 import { htmlSafeSvg } from './serialize-html.mjs';
+import { prepareLocalSidebar } from './local-sidebar.mjs';
 
 export async function buildImportPage(projectRoot = resolve(import.meta.dirname, '..')) {
   const replayRoot = join(projectRoot, 'replay');
@@ -18,6 +19,7 @@ export async function buildImportPage(projectRoot = resolve(import.meta.dirname,
   currentMain.replaceWith(importMain);
   currentHeader.replaceWith(importHeader);
   document.body.dataset.ceobeImportPage = '';
+  prepareLocalSidebar(document, 'import');
   document.title = '导入会话';
   const suggestion = [...importMain.querySelectorAll('button')].find(button =>
     button.textContent.includes('归档完整 JSON'));
