@@ -1,2 +1,2 @@
-[data-organizer-popup][hidden],[data-organizer-projects][hidden],[data-organizer-recent] [hidden],[data-organizer-projects] [hidden],#ceobe-organizer-bank[hidden]{display:none!important}
-[data-organizer-header] button,[data-organizer-header] a,[data-organizer-projects] button,[data-organizer-projects] [role=button],[data-organizer-popup] [role=menuitemradio]{pointer-events:auto!important}
+[data-project-more-popup][hidden],[data-organizer-popup][hidden],[data-organizer-projects][hidden],[data-organizer-recent] [hidden],[data-organizer-projects] [hidden],#ceobe-organizer-bank[hidden]{display:none!important}
+[data-project-more-popup] [role=menuitem],[data-project-more-current],[data-organizer-header] button,[data-organizer-header] a,[data-organizer-projects] button,[data-organizer-projects] [role=button],[data-organizer-popup] [role=menuitemradio]{pointer-events:auto!important}

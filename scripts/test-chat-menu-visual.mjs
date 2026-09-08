@@ -43,5 +43,7 @@ try{
   assert.ok(Math.abs((i===0?actual.dx:actual.dxRight)-f.layouts[i].offset.x)<0.1,'Measured x offset');assert.ok(Math.abs((i===0?actual.dyBottom:actual.dy)-f.layouts[i].offset.y)<0.1,'Measured y offset');
  }
  const sizes={main:main.metrics[0].relative,submenu:sub.metrics[0].relative};
- assert.deepEqual(errors,[]);console.log('PASS: exact official DOM hierarchy/classes, per-row computed styles, shadow/radius/colors/spacing, separators, no disabled washout, no initial Share highlight, and supplied anchor-relative placement.',JSON.stringify(sizes));
+ await page.locator('[data-ceobe-chat-submenu] [role=menuitem]').first().focus();assert.equal(await page.locator('[data-ceobe-chat-menu]').isVisible(),true);assert.equal(await page.locator('[data-ceobe-chat-submenu]').isVisible(),true);
+  await page.evaluate(()=>{const b=document.createElement('button');document.body.append(b);b.focus();b.remove()});assert.equal(await page.locator('[data-ceobe-chat-menu]').isVisible(),false);assert.equal(await page.locator('[data-ceobe-chat-submenu]').isVisible(),false);
+  assert.deepEqual(errors,[]);console.log('PASS: exact official DOM hierarchy/classes, per-row computed styles, shadow/radius/colors/spacing, separators, no disabled washout, no initial Share highlight, and supplied anchor-relative placement.',JSON.stringify(sizes));
 }finally{await browser.close();if(production)await new Promise(r=>production.httpServer.close(r))}
