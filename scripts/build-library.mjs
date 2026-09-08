@@ -5,6 +5,10 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { buildImportPage } from './build-import-page.mjs';
 import { buildAssetLibrary } from './build-asset-library.mjs';
+import { buildProjectsPage } from './build-projects-page.mjs';
+import { buildChatMenu } from './build-chat-menu.mjs';
+import { buildChatActions } from './build-chat-actions.mjs';
+import { readChatMetadata } from './chat-store.mjs';
 
 const projectRoot = resolve(import.meta.dirname, '..');
 const archiveRoot = join(projectRoot, 'archive', 'chatgpt-share');
@@ -47,6 +51,8 @@ export async function buildLibraryIndex() {
       } catch { /* Failed or partial captures remain archived but do not replace the latest usable capture. */ }
     }
   }
+  const meta=await readChatMetadata(projectRoot);
+  for(const c of conversations)Object.assign(c,meta.items[c.id]||{});
   conversations.sort((a, b) => String(b.captured_at).localeCompare(String(a.captured_at)));
   const library = { schema_version: '1.0.0', kind: 'ceobe.library', generated_at: new Date().toISOString(), conversations };
   await writeFile(indexPath, JSON.stringify(library, null, 2));
@@ -54,7 +60,7 @@ export async function buildLibraryIndex() {
 }
 
 async function buildReader(library, selectedId) {
-  if (!library.conversations.length) throw new Error('No usable archived conversations found.');
+
   const selected = library.conversations.find(item => item.id === selectedId) || library.conversations[0];
   const run = (entry, output, preserve) => {
     const args = ['scripts/build-official-replay.mjs', '--input', entry.conversation_path, '--output-page', output,
@@ -64,14 +70,23 @@ async function buildReader(library, selectedId) {
     if (result.status !== 0) throw new Error(result.stderr || result.stdout || `Failed to build ${entry.title}`);
     process.stdout.write(result.stdout);
   };
-  run(selected, join('replay', 'index.html'), false);
+  if(selected)run(selected, join('replay', 'index.html'), false);
+  else {
+    const empty=JSON.parse(await readFile(join(projectRoot,'samples/empty-conversation.json'),'utf8'));empty.title='本地聊天';
+    await mkdir(join(projectRoot,'data/private'),{recursive:true});await writeFile(join(projectRoot,'data/private/empty-reader.ceobe.json'),JSON.stringify(empty));
+    run({id:'empty',title:empty.title,conversation_path:'data/private/empty-reader.ceobe.json'},join('replay','index.html'),false);
+  }
+  await mkdir(join(projectRoot,'replay/conversations'),{recursive:true});
   for (const entry of library.conversations) run(entry, join('replay', 'conversations', `${entry.id}.html`), true);
   await cp(indexPath, join(projectRoot, 'replay', 'library.ceobe.json'));
   await mkdir(join(projectRoot, 'replay', 'public'), { recursive: true });
   await cp(indexPath, join(projectRoot, 'replay', 'public', 'library.ceobe.json'));
   await buildImportPage(projectRoot);
   await buildAssetLibrary(projectRoot, library);
-  console.log(`Library reader built: ${library.conversations.length} conversations; home is “${selected.title}”.`);
+  await buildProjectsPage(projectRoot);
+  await buildChatMenu(projectRoot, library);
+  await buildChatActions(projectRoot, library);
+  console.log(`Library reader built: ${library.conversations.length} conversations; home is “${selected?.title || "本地聊天"}”.`);
 }
 
 if (pathToFileURL(process.argv[1]).href === import.meta.url) {

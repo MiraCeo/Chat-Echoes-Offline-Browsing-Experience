@@ -3,6 +3,9 @@ import { readdirSync, existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
+import { projectsMiddleware } from './scripts/project-store.mjs';
+import { chatMiddleware } from './scripts/chat-store.mjs';
+import { acquireMutation } from './scripts/workspace-mutation.mjs';
 
 const replayRoot = resolve('replay');
 const conversationRoot = resolve(replayRoot, 'conversations');
@@ -10,6 +13,13 @@ let conversationPages = [];
 try { conversationPages = readdirSync(conversationRoot).filter(name => name.endsWith('.html')); } catch {}
 
 const projectRoot = resolve('.');
+const projectApi = projectsMiddleware(projectRoot);
+const chatApi = chatMiddleware(projectRoot);
+const localProjects = {
+  name: 'ceobe-local-projects',
+  configureServer(server) { server.middlewares.use(projectApi); server.middlewares.use(chatApi); },
+  configurePreviewServer(server) { server.middlewares.use(projectApi); server.middlewares.use(chatApi); },
+};
 let activeImport = false;
 
 function sendJson(response, status, body) {
@@ -52,7 +62,7 @@ const localShareImporter = {
     server.middlewares.use('/api/archive-share', async (request, response) => {
       if (request.method !== 'POST') return sendJson(response, 405, { error: '仅支持 POST' });
       if (activeImport) return sendJson(response, 409, { error: '已有链接正在导入，请等待完成' });
-      let ownsImport = false;
+      let ownsImport = false,releaseMutation;
       try {
         const body = await readJsonBody(request);
         const url = new URL(body?.url);
@@ -62,6 +72,7 @@ const localShareImporter = {
         const shareId = url.pathname.split('/')[2];
         // Recheck after the asynchronous body read; only the lock owner may release it.
         if (activeImport) return sendJson(response, 409, { error: '已有链接正在导入，请等待完成' });
+        releaseMutation=await acquireMutation(projectRoot);
         activeImport = true;
         ownsImport = true;
         const run = await archiveShare(url.href);
@@ -81,19 +92,22 @@ const localShareImporter = {
         sendJson(response, 400, { error: error instanceof Error ? error.message : String(error) });
       } finally {
         if (ownsImport) activeImport = false;
+        if(releaseMutation)await releaseMutation();
       }
     });
   },
 };
 
 export default defineConfig({
-  plugins: [localShareImporter],
+  plugins: [localShareImporter, localProjects],
   server: { hmr: false },
   build: {
     rollupOptions: {
       input: {
         index: resolve(replayRoot, 'index.html'),
+        ...(existsSync(resolve(replayRoot,'import.html'))?{import:resolve(replayRoot,'import.html')}:{}),
         ...(existsSync(resolve(replayRoot, 'assets.html')) ? { assets: resolve(replayRoot, 'assets.html') } : {}),
+        ...(existsSync(resolve(replayRoot, 'projects.html')) ? { projects: resolve(replayRoot, 'projects.html') } : {}),
         ...Object.fromEntries(conversationPages.map(name => [`conversations/${name.slice(0, -5)}`, resolve(conversationRoot, name)])),
       },
     },

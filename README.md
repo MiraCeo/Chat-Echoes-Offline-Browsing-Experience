@@ -141,6 +141,30 @@ python scripts/import-chatgpt-share.py <share.html> --output <conversation.ceobe
 
 仓库中的验收样本位于 `fixtures/chatgpt-share/6a9849f6-3bec-83ee-b032-618d95fc0917/`。原始 `share.html` 保留不变，生成的 `conversation.ceobe.json` 供 renderer 和测试使用。
 
+## 本地项目
+
+侧栏“项目”进入 `projects.html`。支持创建、名称搜索、30 个图标、预设颜色与自定义十六进制颜色。名称去除首尾空格，不区分大小写检查同名。列表不混入参考页面示例数据。
+
+在 `npm run dev` 或 `npm run preview` 服务中，项目通过同源 `/api/projects` 保存到 `data/private/projects.ceobe.json`（已忽略 Git），刷新和服务重启不会丢失。请勿删除该文件；单个本地服务负责写入，不建议多个服务同时写同一数据文件。纯静态 HTTP 部署只读构建快照并禁用新建；`npm run library` 刷新快照，然后 `npm run build` 生成发布文件。
+
+支持项目元数据与聊天所属项目的本地关联；暂不支持项目详情浏览、附件关联、编辑、删除、云端共享或 AI 记忆。“与你共享”显示明确的未支持提示。
+
+聊天旁的省略号沿用冻结的官方两层菜单。“移至项目”每次展开读取 `/api/projects`，与项目页同步真实项目名称、图标和颜色。选择项目通过 `/api/projects/move` 将聊天 ID 保存到项目的 `conversation_ids`，同一聊天仅关联一个项目，重复移动不会重复记录；原始聊天归档不改动。子菜单中的“新项目”直接打开与项目页共用的创建弹窗，创建后自动关联当前聊天；关联失败时明确提示，重试不会重复创建。聊天支持行内重命名（Enter/失焦保存，Esc 取消）、置顶/取消置顶（无需确认）和经确认后永久删除。“归档”菜单项已按要求移除，分享暂缓。
+
+重命名和置顶保存在 `data/private/chats.ceobe.json`，不修改捕获的原始 HTML；构建与运行时读取这些本地显示元数据。永久删除会删除该聊天全部归档版本、阅读页面及项目关联，并重建 `replay/` 和 `dist/` 以清除旧的派生副本；其他聊天的独立附件副本保留。遇到符号链接/目录联接或跨归档附件路径时拒绝删除，不猜测共享资源归属。
+
+删除先在私有目录准备剩余档案及新页面，构建成功后再切换文件；正常异常可回滚。导入、项目写入和聊天写入使用同一工作区锁。请勿在操作期间手动运行构建或关闭本地服务。若进程/系统中断，`data/private/mutation.lock` 与 `data/private/delete-jobs/*/journal.json` 用于排查恢复；存在未完成任务时后续写入会被拒绝，不能未经核查直接删除锁或恢复目录。
+
+新增测试：`node scripts/test-chat-actions-store.mjs`（真实隔离重建、全部版本删除、共享副本保留、失败保护及最后一条聊天）；`node scripts/test-chat-actions-browser.mjs`（官方编辑/确认 DOM 交互、置顶、新建与自动关联），后者支持 `CEOBE_TEST_DIST=1`。所有写入/删除验收均使用临时档案。
+
+菜单测试：`node scripts/test-chat-menu.mjs`；设置 `CEOBE_TEST_DIST=1` 测试生产预览。测试读取真实项目名称验证同步，所有移动写入均隔离到临时目录。
+
+菜单模板 v2 保存完整 `data-radix-popper-content-wrapper`、原始类名/内联样式、子菜单内层包装和分隔线；相对位置取自用户提供的定位 JSON。`chat-menu.css` 不覆盖菜单/触发按钮的尺寸、间距、圆角、阴影、颜色或悬停样式。普通构建不依赖参考目录。
+
+结构/样式验收：`node scripts/test-chat-menu-visual.mjs`，同样支持 `CEOBE_TEST_DIST=1`。独立加载冻结的官方 DOM/CSS（保留样式加载顺序和 UTF-8），逐项比较层级、类名、计算样式、分隔线、相对尺寸与锚点偏移。基线为 1092×935、DPR 1.5；只验证已提供的桌面 bottom/start 主菜单和 right/start 子菜单状态，不声称还原未提供的移动端或翻转状态。用户最终视觉验收仍待完成。
+
+浏览器验收：`node scripts/test-projects-page.mjs`；构建后设置 `CEOBE_TEST_DIST=1` 可测试实际 Vite preview。测试使用临时存储，不写入真实项目数据。普通构建只依赖冻结模板，不读取参考文件夹。
+
 ## 本地附件资料库
 
 `npm run library` 同时生成 `replay/assets.html`，可从侧栏“资料库”进入。页面沿用冻结的官方资料库列表模板，数据来自各会话最新可用归档的 `resources`，不读取 `参考文件/`。

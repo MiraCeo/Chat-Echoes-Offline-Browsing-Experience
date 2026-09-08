@@ -1,0 +1,172 @@
+{
+  "version": 2,
+  "source_mode": "frozen_package",
+  "viewport": {
+    "width": 1092,
+    "height": 935,
+    "dpr": 1.5
+  },
+  "htmlAttributes": {
+    "lang": "zh-CN",
+    "data-build": "prod-8b282ae6b2e95fa180d7bde7b664e1446691fac0-c",
+    "data-seq": "10379027",
+    "data-contrast": "default",
+    "dir": "ltr",
+    "class": "light",
+    "data-chat-theme": "blue",
+    "style": "color-scheme: light;",
+    "data-ds-colored-user-message-bubbles": "true"
+  },
+  "styleSequence": [
+    {
+      "file": "zh-hans-gdo938le.css"
+    },
+    {
+      "file": "root-bf3xaoxt.css"
+    },
+    {
+      "text": "@layer properties, theme, base, components, utilities;\n"
+    },
+    {
+      "file": "conversation-small-d87j24cm.css"
+    },
+    {
+      "file": "conversation-small-d87j24cm.css"
+    },
+    {
+      "file": "global-modals-dgfy4wm4.css"
+    },
+    {
+      "file": "app-block-trigger-actions-hxl87txx.css"
+    },
+    {
+      "file": "cot-message-chunk-b8hse3v2.css"
+    },
+    {
+      "file": "model-reasoning-effort-slider-gjxuripq.css"
+    },
+    {
+      "file": "code-block-dop2czwo.css"
+    },
+    {
+      "file": "react-4bgx68ox.css"
+    },
+    {
+      "file": "writing-block-provider-m3sk80p7.css"
+    },
+    {
+      "file": "writing-block-gwgymy54.css"
+    },
+    {
+      "file": "client-defined-widget-gdqdmhro.css"
+    },
+    {
+      "file": "ansi-1f6vhsjh.css"
+    },
+    {
+      "file": "table-components-b39fqymt.css"
+    },
+    {
+      "file": "lightbox-d4oy2fzk.css"
+    }
+  ],
+  "layouts": [
+    {
+      "wrapper": "<div data-radix-popper-content-wrapper=\"\" dir=\"ltr\" style=\"position: fixed; left: 0px; top: 0px; transform: translate(190.667px, 440px); min-width: max-content; --radix-popper-transform-origin: 0% 0px; will-change: transform; z-index: 50; --radix-popper-available-width: 1080px; --radix-popper-available-height: 489.6666259765625px; --radix-popper-anchor-width: 34px; --radix-popper-anchor-height: 36px;\"><div data-side=\"bottom\" data-align=\"start\" role=\"menu\" aria-orientation=\"vertical\" data-state=\"open\" data-radix-menu-content=\"\" dir=\"ltr\" id=\"radix-_r_sc_\" aria-labelledby=\"radix-_r_sb_\" class=\"z-50 popover bg-token-main-surface-primary dark:bg-[#353535] data-[unbound-width]:min-w-[unset] data-[custom-padding]:py-0 RSj_va_surface corner-superellipse/1.1 rounded-[20px] py-2.5 shadow-short-composer max-w-xs MA-gxq_content [--trigger-width:calc(var(--radix-dropdown-menu-trigger-width)-2*var(--radix-align-offset))] min-w-(--trigger-width) max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto select-none\" tabindex=\"-1\" data-orientation=\"vertical\" style=\"outline: none; --radix-align-offset: -14px; --radix-dropdown-menu-content-transform-origin: var(--radix-popper-transform-origin); --radix-dropdown-menu-content-available-width: var(--radix-popper-available-width); --radix-dropdown-menu-content-available-height: var(--radix-popper-available-height); --radix-dropdown-menu-trigger-width: var(--radix-popper-anchor-width); --radix-dropdown-menu-trigger-height: var(--radix-popper-anchor-height);\"><div role=\"group\" class=\"empty:hidden [:not(:has(div:not([role=group])))]:hidden\"><div role=\"menuitem\" tabindex=\"0\" class=\"group __menu-item gap-1.5\" data-testid=\"share-chat-menu-item\" data-orientation=\"vertical\" data-radix-collection-item=\"\"><div class=\"relative flex items-center justify-center [opacity:var(--menu-item-icon-opacity,1)] icon\"><div class=\"[&_svg]:h-full [&_svg]:w-full icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" focusable=\"false\" aria-hidden=\"true\"><path d=\"M16.6663 10.1681C17.0335 10.1681 17.3313 10.4659 17.3313 10.8332V14.1994C17.3313 15.929 15.929 17.3312 14.1995 17.3312H5.80005C4.07048 17.3312 2.66821 15.929 2.66821 14.1994V10.8332C2.66821 10.4659 2.96598 10.1681 3.33325 10.1681C3.70052 10.1681 3.99829 10.4659 3.99829 10.8332V14.1994C3.99829 15.1944 4.80502 16.0011 5.80005 16.0011H14.1995C15.1945 16.0011 16.0012 15.1944 16.0012 14.1994V10.8332C16.0012 10.466 16.2991 10.1683 16.6663 10.1681Z\" fill=\"currentColor\" /> <path d=\"M9.31763 3.08317C9.71412 2.76014 10.2865 2.75993 10.6829 3.08317L10.7649 3.15739L14.012 6.40446C14.2716 6.66406 14.2714 7.08517 14.012 7.34489C13.7523 7.60459 13.3312 7.60459 13.0715 7.34489L10.6653 4.93864V11.8752C10.6653 12.2423 10.3674 12.54 10.0002 12.5402C9.63297 12.5402 9.33521 12.2424 9.33521 11.8752V4.93669L6.92896 7.34489C6.66926 7.60459 6.24725 7.60459 5.98755 7.34489C5.72836 7.08521 5.72817 6.66402 5.98755 6.40446L9.23462 3.15739L9.31763 3.08317Z\" fill=\"currentColor\" /></svg></div></div>分享</div><div role=\"menuitem\" tabindex=\"0\" class=\"group __menu-item gap-1.5\" data-orientation=\"vertical\" data-radix-collection-item=\"\"><div class=\"relative flex items-center justify-center [opacity:var(--menu-item-icon-opacity,1)] icon\"><div class=\"[&_svg]:h-full [&_svg]:w-full icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" focusable=\"false\" aria-hidden=\"true\"><path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M11.6258 3.30375C13.0516 1.88123 15.3202 1.91012 16.6805 3.29496C18.0834 4.64996 18.1292 6.92825 16.6893 8.36821L9.68929 15.3682L9.68832 15.3672C8.9762 16.1131 8.0665 16.6184 7.11605 16.8389L7.11507 16.8399L3.24789 17.7276L3.24691 17.7256C3.08016 17.7653 2.74207 17.799 2.4725 17.5303C2.20162 17.2601 2.23613 16.9199 2.27621 16.753H2.27425L3.1639 12.8956C3.38813 11.8986 3.89924 11.028 4.6014 10.3272L11.6258 3.30375ZM5.54183 11.2686C5.00143 11.8078 4.62462 12.4592 4.46078 13.1905L4.4598 13.1944L3.7557 16.2461L6.81722 15.543C7.52306 15.3789 8.20539 15.0001 8.73617 14.4405L14.3944 8.78129L11.2118 5.5977L5.54183 11.2686ZM15.742 4.23637C14.9045 3.37296 13.4757 3.3368 12.5653 4.24516L12.1522 4.65727L15.3348 7.84086L15.7489 7.42778C16.6655 6.51112 16.6228 5.08792 15.7577 4.252L15.742 4.23637Z\" fill=\"currentColor\" /></svg></div></div>重命名</div></div><div role=\"group\" class=\"empty:hidden [:not(:has(div:not([role=group])))]:hidden before:bg-token-border-default content-sheet:before:my-3 content-sheet:before:mx-6 before:mx-4 before:my-1 before:block before:h-px first:before:hidden [&:nth-child(1_of_:has(div:not([role=group])))]:before:hidden\"><div role=\"menuitem\" tabindex=\"0\" class=\"group __menu-item gap-1.5\" data-orientation=\"vertical\" data-radix-collection-item=\"\"><div class=\"relative flex items-center justify-center [opacity:var(--menu-item-icon-opacity,1)] icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" aria-hidden=\"true\" class=\"icon\"><use href=\"/cdn/assets/sprites-core-e289d166.svg#23d2ff\" fill=\"currentColor\" /></svg></div>置顶聊天</div><div role=\"menuitem\" tabindex=\"0\" class=\"group __menu-item gap-1.5\" data-orientation=\"vertical\" data-radix-collection-item=\"\"><div class=\"relative flex items-center justify-center [opacity:var(--menu-item-icon-opacity,1)] icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" aria-hidden=\"true\" class=\"icon\"><use href=\"/cdn/assets/sprites-core-e289d166.svg#de4c4d\" fill=\"currentColor\" /></svg></div>归档</div><div role=\"menuitem\" tabindex=\"0\" data-color=\"danger\" class=\"group __menu-item gap-1.5\" data-testid=\"delete-chat-menu-item\" data-orientation=\"vertical\" data-radix-collection-item=\"\"><div class=\"relative flex items-center justify-center [opacity:var(--menu-item-icon-opacity,1)] icon\"><div class=\"[&_svg]:h-full [&_svg]:w-full icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" focusable=\"false\" aria-hidden=\"true\"><path d=\"M8.33374 8.50195C8.70079 8.50222 8.99878 8.79989 8.99878 9.16699V13.3467C8.99837 13.7134 8.70053 14.0115 8.33374 14.0117C7.96672 14.0117 7.66911 13.7136 7.6687 13.3467V9.16699C7.6687 8.79972 7.96647 8.50195 8.33374 8.50195Z\" fill=\"currentColor\" /> <path d=\"M11.6667 8.50195C12.034 8.50195 12.3318 8.79972 12.3318 9.16699V13.3467C12.3314 13.7136 12.0338 14.0117 11.6667 14.0117C11.2997 14.0117 11.0021 13.7136 11.0017 13.3467V9.16699C11.0017 8.79972 11.2995 8.50195 11.6667 8.50195Z\" fill=\"currentColor\" /> <path fill-rule=\"evenodd\" clip-rule=\"evenodd\" d=\"M9.99976 1.59961C12.0627 1.59961 13.7607 3.16199 13.9753 5.16797H17.0837C17.4509 5.16814 17.7488 5.46585 17.7488 5.83301C17.7488 6.20017 17.4509 6.49787 17.0837 6.49805H16.4705L15.9148 15.2207C15.8086 16.887 14.4253 18.1845 12.7556 18.1846H7.26733C5.60063 18.1846 4.21937 16.8916 4.10913 15.2285L3.53101 6.49805H2.91675C2.54948 6.49805 2.25171 6.20028 2.25171 5.83301C2.25171 5.46574 2.54948 5.16797 2.91675 5.16797H6.02515C6.23967 3.1621 7.93698 1.59977 9.99976 1.59961ZM5.43628 15.1406C5.50019 16.1048 6.30102 16.8545 7.26733 16.8545H12.7556C13.7236 16.8544 14.5261 16.1018 14.5876 15.1357L15.1375 6.49805H4.86304L5.43628 15.1406ZM9.99976 2.92969C8.67281 2.92985 7.57572 3.89914 7.36987 5.16797H12.6306C12.4246 3.89903 11.3268 2.92969 9.99976 2.92969Z\" fill=\"currentColor\" /></svg></div></div>删除</div></div><div role=\"group\" class=\"empty:hidden [:not(:has(div:not([role=group])))]:hidden\"><div role=\"separator\" aria-orientation=\"horizontal\" class=\"bg-token-border-default h-px mx-4 my-1\"></div><div role=\"menuitem\" id=\"radix-_r_17a_\" aria-haspopup=\"menu\" aria-expanded=\"true\" data-state=\"open\" tabindex=\"0\" data-has-submenu=\"\" class=\"group __menu-item\" data-orientation=\"vertical\" data-radix-collection-item=\"\" aria-controls=\"radix-_r_179_\" data-radix-popper-side=\"right\" data-radix-popper-align=\"start\"><div class=\"flex min-w-0 items-center gap-1.5\"><div class=\"relative flex items-center justify-center [opacity:var(--menu-item-icon-opacity,1)] icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" aria-hidden=\"true\" class=\"icon\"><use href=\"/cdn/assets/sprites-core-e289d166.svg#f7cf8e\" fill=\"currentColor\" /></svg></div><div class=\"flex min-w-0 grow items-center gap-2.5\">移至项目</div></div><svg data-rtl-flip=\"\" data-testid=\"menu-item-submenu-chevron\" xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" data-icon-shape=\"non-circular\" focusable=\"false\" class=\"icon-sm -me-0.25\" aria-hidden=\"true\"><use href=\"/cdn/assets/sprites-shell-f705d3e2.svg#chevron-right-sm\" fill=\"currentColor\" /></svg></div></div></div></div>",
+      "menuRect": {
+        "x": 190.6666717529297,
+        "y": 440,
+        "width": 161,
+        "height": 270,
+        "top": 440,
+        "right": 351.6666717529297,
+        "bottom": 710,
+        "left": 190.6666717529297
+      },
+      "wrapperRect": {
+        "x": 190.6666717529297,
+        "y": 440,
+        "width": 161,
+        "height": 270,
+        "top": 440,
+        "right": 351.6666717529297,
+        "bottom": 710,
+        "left": 190.6666717529297
+      },
+      "anchorRect": {
+        "x": 204.6666717529297,
+        "y": 407.66668701171875,
+        "width": 34,
+        "height": 36,
+        "top": 407.66668701171875,
+        "right": 238.6666717529297,
+        "bottom": 443.66668701171875,
+        "left": 204.6666717529297
+      },
+      "anchorHTML": "<button data-trailing-button=\"\" class=\"disabled:text-token-text-tertiary pointer-events-auto disabled:pointer-events-none touch:min-h-10 keyboard-focused:*:focus-ring relative isolate flex min-h-9 items-center self-stretch rounded-e-[10px] focus:outline-none -my-2 -ms-1 ps-1 -me-2.5 pe-1.5 text-inherit interactive-label-secondary data-[state=open]:text-(--interactive-label-hover-secondary)\" tabindex=\"0\" data-testid=\"history-item-0-options\" data-conversation-options-trigger=\"6a9f6f7d-adb0-83ee-b53a-6e43561c7a76\" aria-label=\"打开“连接并熟悉 MCP”的对话选项\" type=\"button\" id=\"radix-_r_sb_\" aria-haspopup=\"menu\" aria-expanded=\"true\" data-state=\"open\" aria-controls=\"radix-_r_sc_\" data-radix-popper-side=\"bottom\" data-radix-popper-align=\"start\"><div class=\"flex items-center justify-center rounded-lg p-1\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" data-icon-shape=\"non-circular\" focusable=\"false\" class=\"icon-sm\" aria-hidden=\"true\"><use href=\"/cdn/assets/sprites-shell-f705d3e2.svg#dots-horizontal\" fill=\"currentColor\"></use></svg></div></button>",
+      "side": "bottom",
+      "align": "start",
+      "offset": {
+        "x": -14,
+        "y": -3.66668701171875
+      }
+    },
+    {
+      "wrapper": "<div data-radix-popper-content-wrapper=\"\" dir=\"ltr\" style=\"position: fixed; left: 0px; top: 0px; transform: translate(344px, 650px); min-width: max-content; --radix-popper-transform-origin: 0px 0%; will-change: transform; z-index: 50; --radix-popper-available-width: 742.3333282470703px; --radix-popper-available-height: 923.3333129882812px; --radix-popper-anchor-width: 141px; --radix-popper-anchor-height: 36px;\"><div data-side=\"right\" data-align=\"start\" role=\"menu\" aria-orientation=\"vertical\" data-state=\"open\" data-radix-menu-content=\"\" dir=\"ltr\" id=\"radix-_r_179_\" aria-labelledby=\"radix-_r_17a_\" class=\"z-50 popover bg-token-main-surface-primary dark:bg-[#353535] select-none data-[unbound-width]:min-w-[unset] data-[custom-padding]:py-0 RSj_va_surface corner-superellipse/1.1 rounded-[20px] py-2.5 shadow-short-composer mt-2 max-h-[min(var(--radix-dropdown-menu-content-available-height),calc(100dvh-300px))] max-w-[min(var(--container-xs),var(--radix-dropdown-menu-content-available-width))] min-w-[100px] overflow-auto\" tabindex=\"-1\" data-orientation=\"vertical\" style=\"outline: none; --radix-dropdown-menu-content-transform-origin: var(--radix-popper-transform-origin); --radix-dropdown-menu-content-available-width: var(--radix-popper-available-width); --radix-dropdown-menu-content-available-height: var(--radix-popper-available-height); --radix-dropdown-menu-trigger-width: var(--radix-popper-anchor-width); --radix-dropdown-menu-trigger-height: var(--radix-popper-anchor-height);\"><div><div><div role=\"menuitem\" tabindex=\"0\" class=\"group __menu-item gap-1.5\" data-orientation=\"vertical\" data-radix-collection-item=\"\"><div class=\"relative flex items-center justify-center [opacity:var(--menu-item-icon-opacity,1)] icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" data-icon-shape=\"non-circular\" focusable=\"false\" class=\"icon\" aria-hidden=\"true\"><use href=\"/cdn/assets/sprites-shell-f705d3e2.svg#folder-plus\" fill=\"currentColor\" /></svg></div><div class=\"flex min-w-0 grow items-center gap-2.5\"><div class=\"truncate\">新项目</div></div></div><div><div role=\"separator\" aria-orientation=\"horizontal\" class=\"bg-token-border-default h-px mx-4 my-1\"></div><a tabindex=\"-1\" class=\"group __menu-item hoverable gap-1.5\" role=\"menuitem\" data-orientation=\"vertical\" data-radix-collection-item=\"\" href=\"/g/g-p-6aa00dc16e24819180d917c31032d8f1-test/project\" data-discover=\"true\"><div class=\"relative flex items-center justify-center [opacity:var(--menu-item-icon-opacity,1)] icon\"><div data-testid=\"project-folder-icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" data-icon-shape=\"non-circular\" focusable=\"false\" class=\"icon\" role=\"img\" aria-label=\"默认颜色，浅色模式下为黑色，深色模式下为白色 文件夹\"><use href=\"/cdn/assets/sprites-shell-f705d3e2.svg#folder\" fill=\"currentColor\" /></svg></div></div><div class=\"flex min-w-0 grow items-center gap-2.5\"><div class=\"truncate\">test</div></div></a></div><div><a tabindex=\"-1\" class=\"group __menu-item hoverable gap-1.5\" role=\"menuitem\" data-orientation=\"vertical\" data-radix-collection-item=\"\" href=\"/g/g-p-6a956afb1e448191a0a49ce620e597cc-cai/project\" data-discover=\"true\"><div class=\"relative flex items-center justify-center [opacity:var(--menu-item-icon-opacity,1)] icon\"><div data-testid=\"project-folder-icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" data-icon-shape=\"non-circular\" focusable=\"false\" class=\"icon\" role=\"img\" aria-label=\"默认颜色，浅色模式下为黑色，深色模式下为白色 文件夹\"><use href=\"/cdn/assets/sprites-shell-f705d3e2.svg#folder\" fill=\"currentColor\" /></svg></div></div><div class=\"flex min-w-0 grow items-center gap-2.5\"><div class=\"truncate\">cai</div></div></a></div><div><a tabindex=\"-1\" class=\"group __menu-item hoverable gap-1.5\" role=\"menuitem\" data-orientation=\"vertical\" data-radix-collection-item=\"\" href=\"/g/g-p-6a93335131748191b70e38d88f7cc6d0-biao-qing-bao/project\" data-discover=\"true\"><div class=\"relative flex items-center justify-center [opacity:var(--menu-item-icon-opacity,1)] icon\"><div data-testid=\"project-folder-icon\" style=\"color: rgb(238, 124, 55);\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" aria-label=\"橙色 爱心\" class=\"icon\"><use href=\"/cdn/assets/sprites-core-e289d166.svg#a1bba7\" fill=\"currentColor\" /></svg></div></div><div class=\"flex min-w-0 grow items-center gap-2.5\"><div class=\"truncate\">表情包</div></div></a></div></div></div></div></div>",
+      "menuRect": {
+        "x": 344,
+        "y": 658,
+        "width": 130,
+        "height": 181,
+        "top": 658,
+        "right": 474,
+        "bottom": 839,
+        "left": 344
+      },
+      "wrapperRect": {
+        "x": 344,
+        "y": 650,
+        "width": 130,
+        "height": 189,
+        "top": 650,
+        "right": 474,
+        "bottom": 839,
+        "left": 344
+      },
+      "anchorRect": {
+        "x": 200.6666717529297,
+        "y": 664,
+        "width": 141,
+        "height": 36,
+        "top": 664,
+        "right": 341.6666717529297,
+        "bottom": 700,
+        "left": 200.6666717529297
+      },
+      "anchorHTML": "<div role=\"menuitem\" id=\"radix-_r_17a_\" aria-haspopup=\"menu\" aria-expanded=\"true\" data-state=\"open\" tabindex=\"0\" data-has-submenu=\"\" class=\"group __menu-item\" data-orientation=\"vertical\" data-radix-collection-item=\"\" aria-controls=\"radix-_r_179_\" data-radix-popper-side=\"right\" data-radix-popper-align=\"start\"><div class=\"flex min-w-0 items-center gap-1.5\"><div class=\"relative flex items-center justify-center [opacity:var(--menu-item-icon-opacity,1)] icon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" aria-hidden=\"true\" class=\"icon\"><use href=\"/cdn/assets/sprites-core-e289d166.svg#f7cf8e\" fill=\"currentColor\"></use></svg></div><div class=\"flex min-w-0 grow items-center gap-2.5\">移至项目</div></div><svg data-rtl-flip=\"\" data-testid=\"menu-item-submenu-chevron\" xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" data-icon-shape=\"non-circular\" focusable=\"false\" class=\"icon-sm -me-0.25\" aria-hidden=\"true\"><use href=\"/cdn/assets/sprites-shell-f705d3e2.svg#chevron-right-sm\" fill=\"currentColor\"></use></svg></div>",
+      "side": "right",
+      "align": "start",
+      "offset": {
+        "x": 2.3333282470703125,
+        "y": -14
+      }
+    }
+  ],
+  "stylesheets": [
+    "zh-hans-gdo938le.css",
+    "root-bf3xaoxt.css",
+    "conversation-small-d87j24cm.css",
+    "global-modals-dgfy4wm4.css",
+    "app-block-trigger-actions-hxl87txx.css",
+    "cot-message-chunk-b8hse3v2.css",
+    "model-reasoning-effort-slider-gjxuripq.css",
+    "code-block-dop2czwo.css",
+    "react-4bgx68ox.css",
+    "writing-block-provider-m3sk80p7.css",
+    "writing-block-gwgymy54.css",
+    "client-defined-widget-gdqdmhro.css",
+    "ansi-1f6vhsjh.css",
+    "table-components-b39fqymt.css",
+    "lightbox-d4oy2fzk.css"
+  ]
+}

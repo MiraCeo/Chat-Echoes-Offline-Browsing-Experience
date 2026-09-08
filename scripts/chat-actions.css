@@ -1,0 +1,2 @@
+[data-chat-delete][hidden],[data-chat-pinned-section][hidden]{display:none!important}
+[data-chat-delete] button,[data-chat-unpin],[data-chat-pinned-section]>div>button,input[name=title-editor]{pointer-events:auto!important}
