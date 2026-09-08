@@ -1,0 +1,14 @@
+{
+  "source": "Live authorized Edge, 1028x908 DPR 1.5; sanitized, title-only adaptation uses compact chat rows.",
+  "shortcuts": {
+    "toggle": "Control+Shift+S",
+    "search": "Control+K",
+    "newChat": "Control+Shift+O"
+  },
+  "dialog": "<div aria-labelledby=\"global-search-modal-title\" aria-modal=\"true\" class=\"F_cuGW_dialog\" data-ignore-for-page-load=\"true\" data-testid=\"modal-global-search\" role=\"dialog\"><div class=\"popover F_cuGW_dialogPanel\"><div aria-labelledby=\"global-search-modal-title\" class=\"F_cuGW_modalContent\" role=\"search\"><h2 id=\"global-search-modal-title\" class=\"sr-only\">全局搜索</h2><div class=\"F_cuGW_modalHeader\"><label class=\"sr-only\" for=\"global-search-modal-input\">搜索</label><input autocomplete=\"off\" class=\"F_cuGW_searchInput\" id=\"global-search-modal-input\" placeholder=\"搜索…\" value=\"\" name=\"global-search\"><div class=\"F_cuGW_headerActions\"><button class=\"interactive-button-secondary F_cuGW_clearButton\" type=\"button\">清除</button><span aria-hidden=\"true\" class=\"F_cuGW_headerActionDivider\"></span><button aria-label=\"关闭全局搜索\" class=\"interactive-button-secondary F_cuGW_iconButton F_cuGW_closeButton\" type=\"button\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" data-icon-shape=\"non-circular\" focusable=\"false\" class=\"icon\" aria-hidden=\"true\"><use href=\"/cdn/assets/sprites-shell-f705d3e2.svg#cross\" fill=\"currentColor\" /></svg></button></div></div><div class=\"F_cuGW_resultsScroller\" data-testid=\"global-search-results-scroller\"><div class=\"F_cuGW_zeroState\"><section class=\"F_cuGW_zeroStateSection\"><h3 class=\"F_cuGW_zeroStateSectionTitle\">最近聊天</h3><ol class=\"F_cuGW_zeroStateList\"></ol></section></div></div></div></div></div>",
+  "row": "<li><div><a class=\"F_cuGW_resultRow F_cuGW_resultRowCompact\" href=\"#\"><span class=\"F_cuGW_resultPreviewTrigger\"><span class=\"F_cuGW_outlinedResultIcon\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" data-icon-shape=\"non-circular\" focusable=\"false\" class=\"icon F_cuGW_primaryIcon\" aria-hidden=\"true\"><use href=\"/cdn/assets/sprites-shell-f705d3e2.svg#chat-bubble-light-20\" fill=\"currentColor\" /></svg></span></span><span class=\"F_cuGW_resultText\"><div class=\"F_cuGW_resultTitle\"><span class=\"F_cuGW_resultTitleText\"></span></div></span></a></div></li>",
+  "empty": "<div class=\"F_cuGW_noResults\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" aria-hidden=\"true\" class=\"icon\"><use href=\"/cdn/assets/sprites-core-7bb22fec.svg#50f34b\" fill=\"currentColor\" /></svg>无结果</div>",
+  "stylesheets": [
+    "search-bd0e17300659.css"
+  ]
+}
