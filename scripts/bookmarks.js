@@ -47,6 +47,107 @@ function forTarget(id) {
 function syncMarks() {
   for (const button of qa('[data-bookmark-mark]'))
     button.hidden = !forTarget(button.dataset.bookmarkMark);
+  syncCaptions();
+}
+function captionHost(section) {
+  const leftover = section.querySelector('.ceobe-bookmark-caption-host');
+  if (leftover) {
+    leftover.replaceWith(
+      ...[...leftover.childNodes].filter((n) => !n.matches?.('[data-bookmark-caption]')),
+    );
+  }
+  const bubble = section.querySelector('.user-message-bubble-color');
+  const shot = section.querySelector('[data-conversation-screenshot-content]');
+  return { side: bubble ? 'end' : 'start', host: shot || section };
+}
+function syncCaptions() {
+  for (const section of qa('[data-bookmark-target]')) {
+    const id = section.dataset.bookmarkTarget,
+      b = forTarget(id);
+    let cap =
+      document.querySelector('[data-bookmark-caption="' + CSS.escape(id) + '"]') ||
+      section.querySelector('[data-bookmark-caption]');
+    if (!b) {
+      cap?.remove();
+      continue;
+    }
+    const { side, host } = captionHost(section);
+    if (!cap) {
+      cap = document.createElement('div');
+      cap.className = 'ceobe-bookmark-caption';
+      cap.dataset.bookmarkCaption = id;
+      cap.tabIndex = 0;
+      cap.setAttribute('role', 'button');
+    }
+    cap.dataset.bookmarkSide = side;
+    cap.setAttribute('aria-label', '编辑书签 ' + b.title);
+    const icon = el('span', null, 'ceobe-bookmark-caption-icon');
+    icon.append(bookmarkIcon(b.role === 'user' ? 'user' : 'gpt'));
+    const body = el('span', null, 'ceobe-bookmark-caption-body');
+    body.append(el('span', b.title, 'ceobe-bookmark-caption-title'));
+    if (b.note)
+      body.append(el('span', b.note.trim(), 'ceobe-bookmark-caption-note'));
+    const main = el('span', null, 'ceobe-bookmark-caption-main');
+    main.append(icon, body);
+    const more = el('button', '展开', 'ceobe-bookmark-caption-expand');
+    more.type = 'button';
+    more.dataset.bookmarkCaptionExpand = '';
+    more.hidden = true;
+    cap.replaceChildren(main, more);
+    cap.style.cssText = '';
+    if (side === 'end') host.append(cap);
+    else host.prepend(cap);
+  }
+  layoutCaptions();
+}
+const expandedCaptions = new Set();
+function updateExpandChrome(cap) {
+  const more = cap.querySelector('[data-bookmark-caption-expand]');
+  if (!more) return;
+  const expanded = expandedCaptions.has(cap.dataset.bookmarkCaption);
+  cap.toggleAttribute('data-expanded', expanded);
+  let overflow = false;
+  if (!expanded) {
+    const title = cap.querySelector('.ceobe-bookmark-caption-title'),
+      note = cap.querySelector('.ceobe-bookmark-caption-note');
+    overflow =
+      (title && title.scrollHeight > title.clientHeight + 1) ||
+      (note && note.scrollHeight > note.clientHeight + 1);
+  }
+  const key = (expanded ? '1' : '0') + (expanded || overflow ? '1' : '0');
+  if (more.dataset.capKey === key) return;
+  more.dataset.capKey = key;
+  const mark = el('span', expanded ? '▴' : '▾');
+  mark.setAttribute('aria-hidden', 'true');
+  more.replaceChildren(expanded ? '收起' : '展开', mark);
+  more.hidden = !expanded && !overflow;
+  more.setAttribute('aria-expanded', String(expanded));
+  more.setAttribute('aria-label', expanded ? '收起书签全文' : '展开书签全文');
+}
+function layoutCaptions() {
+  const captionNodes = qa('[data-bookmark-caption]');
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16,
+    empty = 2 * rem;
+  for (const cap of captionNodes) {
+    const section = messageTarget(cap.dataset.bookmarkCaption);
+    if (!section) continue;
+    const bubble = section.querySelector('.user-message-bubble-color');
+    const shot = section.querySelector('[data-conversation-screenshot-content]') || section;
+    const box = bubble || shot,
+      r = box.getBoundingClientRect(),
+      side = cap.dataset.bookmarkSide;
+    let max;
+    if (side === 'start') {
+      let left = 8;
+      if (listDialog.open && scope === 'current')
+        left = Math.max(left, listDialog.getBoundingClientRect().right + 8);
+      max = r.left - 8 - left;
+    } else max = innerWidth - 8 - (r.right + 8);
+    cap.style.maxWidth = Math.max(0, Math.min(max - empty, max * 0.65)) + 'px';
+  }
+  for (const cap of captionNodes) {
+    updateExpandChrome(cap);
+  }
 }
 function editorDisabled() {
   for (const c of form.querySelectorAll('input,textarea,button'))
@@ -112,6 +213,7 @@ function placeList() {
   }
   placeRail();
   schedulePreviewLayout();
+  layoutCaptions();
 }
 function setListMode() {
   if (listDialog.open) listDialog.close();
@@ -477,8 +579,18 @@ async function jump(b) {
   history.replaceState(null, '', '#bookmark=' + encodeURIComponent(b.message_id));
 }
 document.addEventListener('click', async (e) => {
+  const expand = e.target.closest('[data-bookmark-caption-expand]');
+  if (expand) {
+    const cap = expand.closest('[data-bookmark-caption]');
+    const id = cap?.dataset.bookmarkCaption;
+    if (!id) return;
+    if (expandedCaptions.has(id)) expandedCaptions.delete(id);
+    else expandedCaptions.add(id);
+    layoutCaptions();
+    return;
+  }
   const button = e.target.closest(
-    '[data-bookmark-unavailable],[data-bookmark-open],[data-bookmark-sidebar-more],[data-bookmark-message-more],[data-bookmark-mark],[data-bookmark-menu-action],[data-bookmark-scope],[data-bookmark-jump],[data-bookmark-edit],[data-bookmark-close],[data-bookmark-cancel],[data-bookmark-delete]',
+    '[data-bookmark-unavailable],[data-bookmark-open],[data-bookmark-sidebar-more],[data-bookmark-message-more],[data-bookmark-mark],[data-bookmark-caption],[data-bookmark-menu-action],[data-bookmark-scope],[data-bookmark-jump],[data-bookmark-edit],[data-bookmark-close],[data-bookmark-cancel],[data-bookmark-delete]',
   );
   if (!button) return;
   if (button.matches('[data-bookmark-unavailable]'))
@@ -486,8 +598,8 @@ document.addEventListener('click', async (e) => {
   if (button.matches('[data-bookmark-open]')) return openList(button.dataset.bookmarkOpen);
   if (button.matches('[data-bookmark-sidebar-more]'))
     return openMenu(button, () => openList('all'), '全部书签');
-  if (button.matches('[data-bookmark-message-more],[data-bookmark-mark]')) {
-    const id = button.dataset.bookmarkMessageMore || button.dataset.bookmarkMark,
+  if (button.matches('[data-bookmark-message-more],[data-bookmark-mark],[data-bookmark-caption]')) {
+    const id = button.dataset.bookmarkMessageMore || button.dataset.bookmarkMark || button.dataset.bookmarkCaption,
       target = seed.targets.find((t) => t.message_id === id);
     if (!target) return;
     const run = async () => {
@@ -495,7 +607,8 @@ document.addEventListener('click', async (e) => {
       await refresh();
       openEditor(target, forTarget(id));
     };
-    if (button.hasAttribute('data-bookmark-mark')) return run();
+    if (button.hasAttribute('data-bookmark-mark') || button.hasAttribute('data-bookmark-caption'))
+      return run();
     return openMenu(button, run, forTarget(id) ? '编辑书签' : '添加书签');
   }
   if (button.matches('[data-bookmark-menu-action]')) return menuAction?.();
@@ -545,7 +658,9 @@ document.addEventListener('keydown', (e) => {
   }
   if (
     (e.key === 'Enter' || e.key === ' ') &&
-    e.target.matches('[data-bookmark-sidebar-more],[data-bookmark-menu-action]')
+    e.target.matches(
+      '[data-bookmark-caption],[data-bookmark-sidebar-more],[data-bookmark-menu-action]',
+    )
   ) {
     e.preventDefault();
     e.target.click();
