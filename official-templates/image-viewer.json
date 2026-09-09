@@ -1,0 +1,33 @@
+{
+  "html": "<div data-reader-image-viewer=\"\" hidden data-state=\"closed\" class=\"radix-state-open:animate-show fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-black/90 dark:bg-black/80\" style=\"pointer-events: auto;\"><button data-image-close=\"\" aria-label=\"关闭图片\" class=\"absolute end-4 top-4\" type=\"button\"><svg viewBox=\"0 0 20 20\" xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" aria-hidden=\"true\" class=\"h-5 w-5 text-gray-100\"><path d=\"M4.816 4.816c.26-.26.68-.26.94 0L10 9.059l4.244-4.243a.665.665 0 0 1 .94.94L10.94 10l4.244 4.245a.665.665 0 0 1-.94.94L10 10.94l-4.243 4.245a.666.666 0 0 1-.94-.941l4.242-4.245-4.243-4.243a.665.665 0 0 1 0-.94\" /></svg></button><div aria-modal=\"true\" aria-label=\"图片查看\" role=\"dialog\" id=\"ceobe-image-viewer-0\" data-state=\"closed\" class=\"radix-state-open:animate-contentShow shadow-xl focus:outline-hidden\" tabindex=\"-1\" style=\"pointer-events: auto;\"><div class=\"relative max-h-[85vh] max-w-[90vw]\"><img alt=\"图片\" loading=\"lazy\" decoding=\"async\" class=\"h-full w-full object-contain\"></div></div></div>",
+  "source": "Authorized live image lightbox. Image clicks keep open; backdrop/close/Escape dismiss. No invented zoom toolbar.",
+  "behavior": {
+    "dialog": {
+      "x": 279,
+      "y": 219.6666717529297,
+      "width": 470,
+      "height": 470,
+      "top": 219.6666717529297,
+      "right": 749,
+      "bottom": 689.6666717529297,
+      "left": 279
+    },
+    "image": {
+      "x": 279,
+      "y": 219.6666717529297,
+      "width": 470,
+      "height": 470,
+      "top": 219.6666717529297,
+      "right": 749,
+      "bottom": 689.6666717529297,
+      "left": 279
+    },
+    "imageStyle": {
+      "cursor": "auto",
+      "maxWidth": "100%",
+      "maxHeight": "none",
+      "objectFit": "contain"
+    },
+    "clickKeepsOpen": true
+  }
+}

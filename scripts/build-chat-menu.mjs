@@ -7,7 +7,8 @@ export async function buildChatMenu(root,library){
  const base=join(root,'replay'),f=JSON.parse(await readFile(join(root,'official-templates/chat-menu.json'),'utf8'));
  if(f.version!==2)throw new Error('The full official chat-menu capture is required');
  const assets={};const filenameCode=await readFile(join(root,'scripts/markdown-filename.js'),'utf8'),filenameAsset='markdown-filename.'+createHash('sha256').update(filenameCode).digest('hex').slice(0,12)+'.js';await writeFile(join(base,filenameAsset),filenameCode);
- for(const name of ['chat-menu.js','chat-menu.css']){let data=await readFile(join(root,'scripts',name),'utf8');if(name==='chat-menu.js')data=data.replace("'./markdown-filename.js'","'./"+filenameAsset+"'");await writeFile(join(base,name),data);assets[name]=name+'?v='+createHash('sha256').update(data).digest('hex').slice(0,12)}
+   const exportCode=(await readFile(join(root,'scripts/export-download.js'),'utf8')).replace("'./markdown-filename.js'","'./"+filenameAsset+"'"),exportAsset='export-download.'+createHash('sha256').update(exportCode).digest('hex').slice(0,12)+'.js';await writeFile(join(base,exportAsset),exportCode);await writeFile(join(base,'export-download.js'),exportCode);
+  for(const name of ['chat-menu.js','chat-menu.css']){let data=await readFile(join(root,'scripts',name),'utf8');if(name==='chat-menu.js')data=data.replace("'./export-download.js'","'./"+exportAsset+"'");await writeFile(join(base,name),data);assets[name]=name+'?v='+createHash('sha256').update(data).digest('hex').slice(0,12)}
  for(const file of f.stylesheets)await copyFile(join(root,'official-templates/assets',file),join(base,'assets',file));
  const icons=JSON.parse(await readFile(join(root,'official-templates/new-project.json'),'utf8')).icons;
  const pages=(await readdir(base)).filter(p=>p.endsWith('.html')).concat((await readdir(join(base,'conversations'))).filter(p=>p.endsWith('.html')).map(p=>'conversations/'+p));
