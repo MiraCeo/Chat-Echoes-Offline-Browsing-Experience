@@ -114,11 +114,86 @@ try {
   const first = state[0];
   await p.reload({ waitUntil: 'networkidle' });
   assert.equal(await p.locator('[data-bookmark-mark]:visible').count(), 1);
+  const userCap = p.locator('[data-bookmark-caption="' + user.message_id + '"]');
+  await userCap.waitFor();
+  assert.equal(await userCap.locator('.ceobe-bookmark-caption-title').innerText(), '书签 <img src=x onerror=alert(1)>');
+  assert.ok((await userCap.locator('.ceobe-bookmark-caption-note').innerText()).includes('note-only-token'));
+  assert.equal(await userCap.locator('img').count(), 0);
+  const userPlace = await userCap.evaluate((e, id) => {
+    const section = document.querySelector('[data-bookmark-target="' + id + '"]');
+    const bubble = section.querySelector('.user-message-bubble-color');
+    const c = e.getBoundingClientRect(),
+      b = bubble.getBoundingClientRect();
+    const shot = section.querySelector('[data-conversation-screenshot-content]').getBoundingClientRect();
+    return {
+      rightOf: c.left >= b.right - 8,
+      top: Math.abs(c.top - b.top) < 24,
+      unshrunk: Math.abs(b.right - shot.right) < 24,
+    };
+  }, user.message_id);
+  assert.ok(userPlace.rightOf && userPlace.top && userPlace.unshrunk, JSON.stringify(userPlace));
+  const userFit = await userCap.evaluate((e, id) => {
+    const title = e.querySelector('.ceobe-bookmark-caption-title');
+    const note = e.querySelector('.ceobe-bookmark-caption-note');
+    const more = e.querySelector('[data-bookmark-caption-expand]');
+    const section = document.querySelector('[data-bookmark-target="' + id + '"]');
+    const shot = section.querySelector('[data-conversation-screenshot-content]').getBoundingClientRect();
+    const c = e.getBoundingClientRect();
+    const tLh = parseFloat(getComputedStyle(title).lineHeight) || 18;
+    const nLh = parseFloat(getComputedStyle(note).lineHeight) || 16;
+    const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    return {
+      width: c.width,
+      maxWidth: parseFloat(e.style.maxWidth) || 0,
+      gutter: innerWidth - 8 - (shot.right + 8),
+      titleLines: title.clientHeight / tLh,
+      noteLines: note.clientHeight / nLh,
+      rem,
+      expand: !more.hidden,
+      expanded: e.hasAttribute('data-expanded'),
+      label: more.getAttribute('aria-label'),
+    };
+  }, user.message_id);
+  assert.ok(
+    userFit.expand &&
+      !userFit.expanded &&
+      userFit.titleLines <= 1.3 &&
+      userFit.noteLines <= 2.3,
+    JSON.stringify(userFit),
+  );
+  assert.ok(userFit.maxWidth <= userFit.gutter * 0.66 + 1, JSON.stringify(userFit));
+  assert.ok(userFit.maxWidth <= userFit.gutter - 2 * userFit.rem + 1, JSON.stringify(userFit));
+  assert.ok(userFit.width <= userFit.maxWidth + 1, JSON.stringify(userFit));
+  await userCap.locator('[data-bookmark-caption-expand]').click();
+  assert.equal(await editor.isVisible(), false);
+  assert.equal(await userCap.getAttribute('data-expanded'), '');
+  assert.ok((await userCap.locator('[data-bookmark-caption-expand]').innerText()).includes('收起'));
+  const opened = await userCap.evaluate((e) => {
+    const note = e.querySelector('.ceobe-bookmark-caption-note');
+    return { clamp: getComputedStyle(note).webkitLineClamp };
+  });
+  assert.ok(!opened.clamp || opened.clamp === 'none', JSON.stringify(opened));
+  await userCap.locator('[data-bookmark-caption-expand]').click();
+  assert.equal(await userCap.getAttribute('data-expanded'), null);
   await open(assistant);
   await p.locator('#bookmark-title').fill('助手关键结论');
   await p.locator('#bookmark-note').fill('');
   await save();
   assert.equal(state.length, 2);
+  const asstCap = p.locator('[data-bookmark-caption="' + assistant.message_id + '"]');
+  await asstCap.waitFor();
+  assert.equal(await asstCap.locator('.ceobe-bookmark-caption-title').innerText(), '助手关键结论');
+  assert.equal(await asstCap.locator('.ceobe-bookmark-caption-note').count(), 0);
+  const asstPlace = await asstCap.evaluate((e, id) => {
+    const shot = document
+      .querySelector('[data-bookmark-target="' + id + '"]')
+      .querySelector('[data-conversation-screenshot-content]');
+    const c = e.getBoundingClientRect(),
+      s = shot.getBoundingClientRect();
+    return { leftOf: c.right <= s.left + 8, top: Math.abs(c.top - s.top) < 24 };
+  }, assistant.message_id);
+  assert.ok(asstPlace.leftOf && asstPlace.top, JSON.stringify(asstPlace));
+  assert.equal(await asstCap.locator('[data-bookmark-caption-expand]').isHidden(), true);
   const readingBoxBefore = await p.locator('[data-ceobe-message-list]').boundingBox();
   await p.locator('.ceobe-bookmark-rail').click();
   const readingBoxAfter = await p.locator('[data-ceobe-message-list]').boundingBox();
@@ -215,6 +290,17 @@ try {
     .locator('[data-bookmark-target="' + user.message_id + '"].ceobe-bookmark-highlight')
     .waitFor();
   assert.ok(p.url().endsWith('#bookmark=' + encodeURIComponent(user.message_id)));
+  const ring = await p
+    .locator('[data-bookmark-target="' + user.message_id + '"].ceobe-bookmark-highlight')
+    .evaluate((e) => {
+      const bubble = e.querySelector('.user-message-bubble-color');
+      return {
+        sectionOutline: getComputedStyle(e).outlineStyle,
+        bubbleOutline: bubble ? getComputedStyle(bubble).outlineStyle : null,
+      };
+    });
+  assert.equal(ring.sectionOutline, 'none');
+  assert.equal(ring.bubbleOutline, 'solid');
   assert.ok(await list.isVisible(), 'The left panel stays open after a bookmark jump');
   assert.equal(await list.evaluate((e) => e.matches(':modal')), false);
   const alignment = await p
