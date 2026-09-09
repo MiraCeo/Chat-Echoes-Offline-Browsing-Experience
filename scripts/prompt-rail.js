@@ -111,6 +111,19 @@ if (rail) {
     if (event.key === 'End') next = buttons.length - 1;
     if (next !== undefined) { event.preventDefault(); buttons[next].focus({preventScroll:true}); }
   });
+async function scrollMessageTop(target){
+  document.documentElement.setAttribute('data-ceobe-accurate-turn-layout','');
+  await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+  let scroller=target.parentElement;
+  while(scroller&&!( /(auto|scroll)/.test(getComputedStyle(scroller).overflowY)&&scroller.scrollHeight>scroller.clientHeight))scroller=scroller.parentElement;
+  scroller ||= document.scrollingElement;
+  const offset=scroller===document.scrollingElement?0:scroller.getBoundingClientRect().top;
+  const visibleTop=Math.max(offset,document.querySelector('header')?.getBoundingClientRect().bottom||0)+8;
+  const top=Math.max(0,target.getBoundingClientRect().top+scroller.scrollTop-visibleTop);
+  const missing=top-(scroller.scrollHeight-scroller.clientHeight);
+  if(missing>0){const host=document.querySelector('[data-ceobe-message-list]');if(host){let space=host.querySelector('[data-ceobe-jump-space]');if(!space){space=document.createElement('div');space.dataset.ceobeJumpSpace='';space.setAttribute('aria-hidden','true');host.append(space)}space.style.height=((parseFloat(space.style.height)||0)+missing+1)+'px'}}
+  scroller.scrollTo({top,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+}
   function scrollParent(node) {
     for (let p = node.parentElement; p; p = p.parentElement) {
       if (/(auto|scroll)/.test(getComputedStyle(p).overflowY) && p.scrollHeight > p.clientHeight) return p;
@@ -124,10 +137,7 @@ if (rail) {
     if (!target) return;
     event.preventDefault();
     await ensureAccurateLayout();
-    const scroller = scrollParent(target);
-    const offset = scroller === document.scrollingElement ? 0 : scroller.getBoundingClientRect().top;
-    scroller.scrollTo({ top: target.getBoundingClientRect().top - offset + scroller.scrollTop - 60,
-      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    await scrollMessageTop(target);
   }, true);
   function update() {
     frame = null;

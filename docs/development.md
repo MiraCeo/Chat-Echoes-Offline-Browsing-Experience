@@ -52,6 +52,7 @@ node scripts/test-copy-content.mjs
 
 | 范围 | 主要入口（位于 `scripts/`） |
 |---|---|
+| 书签与个人备注 | `test-bookmarks-store.mjs`、`test-bookmarks-browser.mjs`；聊天删除整体验证另见 `test-chat-actions-store.mjs` |
 | 聊天操作 | `test-chat-actions-store.mjs`、`test-chat-actions-browser.mjs` |
 | 阅读更多 | `test-reader-actions-browser.mjs` |
 | 项目管理与入口 | `test-project-actions-store.mjs`、`test-project-actions-browser.mjs`、`test-project-entry-browser.mjs` |
@@ -66,6 +67,8 @@ node scripts/test-copy-content.mjs
 | 离线资源 | `test-offline-resources.mjs` |
 
 例如：
+
+书签存储与聊天删除路径也可一次运行：`npm run test:bookmarks`。浏览器测试仍需本地 5173 或 `CEOBE_TEST_DIST=1`。
 
 ```powershell
 node scripts/test-project-description.mjs
@@ -113,6 +116,8 @@ Remove-Item Env:CEOBE_TEST_DIST
 模板提取入口 `npm run extract:templates` 用于校验和整理独立包，不应恢复对已删除参考目录的永久依赖。
 
 DOM 经多次序列化时使用 `scripts/serialize-html.mjs` 的处理，避免空 SVG `title`／`desc` 自闭合形式导致后续 HTML 解析吞掉图表。字体本地化应在页面构建末尾执行。
+
+书签存储测试覆盖稳定 ID、合并回复、版本与书签 ID 的并发校验、损坏数据保护，以及删除构建失败／切换中途失败后的回滚。浏览器测试拦截全部书签写入，默认验证开发服务；设置 `CEOBE_TEST_DIST=1` 可验证生产构建。不要用真实备注做测试数据。
 
 ### 视觉与交互回归
 
