@@ -1,2 +1,2 @@
 [data-project-action-modal][hidden]{display:none!important}
-[data-project-action-modal] button,[data-project-action-modal] input,[data-project-editing] input{pointer-events:auto!important}
+[data-project-rename-current], [data-project-action-modal] button,[data-project-action-modal] input,[data-project-editing] input{pointer-events:auto!important}

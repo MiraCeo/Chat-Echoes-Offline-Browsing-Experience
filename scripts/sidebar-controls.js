@@ -1,4 +1,5 @@
 (() => {
+ document.addEventListener('click',e=>{const button=e.target.closest('[data-ceobe-project-new]');if(!button)return;e.preventDefault();e.stopPropagation();document.dispatchEvent(new CustomEvent('ceobe:open-project',{detail:{opener:button}}))},true);
  const sidebar=document.getElementById('stage-slideover-sidebar'),rail=document.getElementById('stage-sidebar-tiny-bar'),panel=document.querySelector('[data-ceobe-sidebar-panel]'),dialog=document.querySelector('[data-ceobe-search]');if(!sidebar||!rail||!panel||!dialog)return;
  const root=new URL(location.pathname.includes('/conversations/')?'../':'./',location.href),key='ceobe.sidebar-collapsed.v1';
  const input=dialog.querySelector('input'),list=dialog.querySelector('ol'),heading=dialog.querySelector('h3'),clear=dialog.querySelector('.F_cuGW_clearButton'),divider=dialog.querySelector('.F_cuGW_headerActionDivider'),status=dialog.querySelector('[data-ceobe-search-status]');

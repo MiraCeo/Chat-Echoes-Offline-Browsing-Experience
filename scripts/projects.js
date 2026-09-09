@@ -24,7 +24,7 @@ function paintIcon(){const wrapper=iconButton.querySelector('[data-testid=projec
 }
 function close(){if(busy)return;if(picker.open)picker.close();modal.close();opener?.focus()}
 async function openProject(button,id=null){
- if(!writable)await load();if(!writable)return;opener=button;conversationId=id;form.reset();color='default';icon='folder';requestId=crypto.randomUUID();error.textContent='';input.removeAttribute('aria-invalid');paintIcon();update();modal.showModal();input.focus();
+ if(!writable)await load();if(!writable){status.textContent='当前服务只读，无法新建项目。请使用本地开发或预览服务。';status.hidden=false;return;}opener=button;conversationId=id;form.reset();color='default';icon='folder';requestId=crypto.randomUUID();error.textContent='';input.removeAttribute('aria-invalid');paintIcon();update();modal.showModal();input.focus();
 }
 for(const button of main.querySelectorAll('[data-project-new]'))button.addEventListener('click',()=>openProject(button));
 document.addEventListener('ceobe:open-project',e=>openProject(e.detail.opener,e.detail.conversationId));

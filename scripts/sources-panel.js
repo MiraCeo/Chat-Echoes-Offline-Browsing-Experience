@@ -13,6 +13,7 @@ function setOpen(open) {
   }
   if (rail) rail.hidden = open;
 }
+document.addEventListener('ceobe:open-sources',()=>{setOpen(true);panel.querySelector('input').focus()});
 function filter() {
   const query = panel.querySelector('input').value.trim().toLocaleLowerCase();
   for (const [index, section] of [...panel.querySelectorAll('[data-ceobe-source-section]')].entries()) {
