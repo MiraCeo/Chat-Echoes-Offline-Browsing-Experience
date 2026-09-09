@@ -2,13 +2,15 @@ import{readFile,writeFile,readdir,copyFile}from'node:fs/promises';import{join}fr
 import {createHash} from 'node:crypto';
 export async function buildChatOrganizer(root){const base=join(root,'replay'),f=JSON.parse(await readFile(join(root,'official-templates/chat-organizer.json'),'utf8'));
 const actions=JSON.parse(await readFile(join(root,'official-templates/project-actions.json'),'utf8'));
+const headerMore=JSON.parse(await readFile(join(root,'official-templates/project-header-more.json'),'utf8'));
 const more=JSON.parse(await readFile(join(root,'official-templates/project-more.json'),'utf8'));
 for(const name of ['chat-organizer.js','chat-organizer.css','project-more.js','project-actions.js'])await copyFile(join(root,'scripts',name),join(base,name));for(const name of f.stylesheets)await copyFile(join(root,'official-templates/assets',name),join(base,'assets',name));
 // Fingerprint the entire dependency chain so both Vite and browsers load new modules.
 const hash=s=>createHash('sha256').update(s).digest('hex').slice(0,12);
 const actionSource=await readFile(join(root,'scripts/project-actions.js'),'utf8'),projectActionFile='project-actions.'+hash(actionSource)+'.js';await writeFile(join(base,projectActionFile),actionSource);
 const projectCss=await readFile(join(root,'scripts/project-actions.css'),'utf8'),projectCssFile='project-actions.'+hash(projectCss)+'.css';await writeFile(join(base,projectCssFile),projectCss);
-const moreCode=(await readFile(join(root,'scripts/project-more.js'),'utf8')).replace("'./project-actions.js'","'./"+projectActionFile+"'"),moreFile='project-more.'+hash(moreCode)+'.js';await writeFile(join(base,moreFile),moreCode);
+const exportCode=await readFile(join(base,'export-download.js'),'utf8'),exportFile='export-download.'+hash(exportCode)+'.js';await writeFile(join(base,exportFile),exportCode);
+const moreCode=(await readFile(join(root,'scripts/project-more.js'),'utf8')).replace("'./project-actions.js'","'./"+projectActionFile+"'").replace("'./export-download.js'","'./"+exportFile+"'"),moreFile='project-more.'+hash(moreCode)+'.js';await writeFile(join(base,moreFile),moreCode);
 const organizeCode=(await readFile(join(root,'scripts/chat-organizer.js'),'utf8')).replace("'./project-more.js'","'./"+moreFile+"'"),organizeFile='chat-organizer.'+hash(organizeCode)+'.js';await writeFile(join(base,organizeFile),organizeCode);
 const actionCode=(await readFile(join(base,'chat-actions.js'),'utf8')).replace("'./chat-organizer.js'","'./"+organizeFile+"'"),actionFile='chat-actions.'+hash(actionCode)+'.js';await writeFile(join(base,actionFile),actionCode);
 const css=await readFile(join(root,'scripts/chat-organizer.css'),'utf8'),cssFile='chat-organizer.'+hash(css)+'.css';await writeFile(join(base,cssFile),css);
@@ -18,6 +20,7 @@ const section=parseHTML(f.projectSection).document.firstElementChild;section.dat
 const bank=d.createElement('div');bank.hidden=true;bank.id='ceobe-organizer-bank';for(const key of ['closedSvg','openSvg','projectRow','nested','empty']){const box=d.createElement('div');box.dataset.organizerTemplate=key;box.innerHTML=f[key];bank.append(box)}d.body.append(bank);
 const menu=parseHTML(f.menu).document.firstElementChild;menu.dataset.organizerPopup='';menu.hidden=true;menu.querySelector('[role=menu]').id='ceobe-organizer-menu';menu.querySelector('[role=menu]').dataset.state='closed';d.body.append(menu);
 const moreWrapper=parseHTML(more.menu).document.firstElementChild;moreWrapper.dataset.projectMorePopup='';moreWrapper.dataset.layout=JSON.stringify(more.layout);moreWrapper.hidden=true;const moreMenu=moreWrapper.querySelector('[role=menu]');moreMenu.id='ceobe-project-more-menu';moreMenu.dataset.state='closed';d.body.append(moreWrapper);
+const headerWrapper=parseHTML(headerMore.menu).document.firstElementChild;headerWrapper.dataset.projectHeaderPopup='';headerWrapper.dataset.layout=JSON.stringify(headerMore.layout);headerWrapper.hidden=true;headerWrapper.querySelector('[role=menu]').id='ceobe-project-header-menu';d.body.append(headerWrapper);
 for(const key of ['rename','delete'])d.body.append(parseHTML(actions[key]).document.firstElementChild);const inline=d.createElement('template');inline.id='ceobe-project-inline-rename';inline.innerHTML=actions.inlineRename;d.body.append(inline);const projectStyle=d.createElement('link');projectStyle.rel='stylesheet';projectStyle.href=prefix+projectCssFile;d.head.append(projectStyle);
 const titleButton=d.querySelector('[name=project-title]')?.closest('button');if(titleButton){titleButton.removeAttribute('aria-disabled');titleButton.removeAttribute('title');titleButton.dataset.projectRenameCurrent='';titleButton.setAttribute('aria-label','重命名项目')}
 const detail=d.querySelector('main button[aria-label="显示项目详情"]');if(detail){detail.dataset.projectMoreCurrent='';detail.removeAttribute('aria-disabled');detail.removeAttribute('title');detail.setAttribute('aria-controls',moreMenu.id)}

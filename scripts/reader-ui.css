@@ -1,0 +1,13 @@
+[data-reader-menu][hidden],[data-reader-move][hidden],[data-project-header-popup][hidden],[data-project-settings-preview][hidden],[data-project-memory-preview][hidden],[data-reader-image-viewer][hidden]{display:none!important}
+[data-reader-menu],[data-reader-move],[data-project-header-popup]{position:fixed;left:0;top:0;width:max-content;z-index:80}
+[data-reader-menu] [role=menu],[data-reader-move] [role=menu],[data-project-header-popup] [role=menu]{outline:none;max-height:var(--radix-popper-available-height,90vh);overflow-y:auto}
+[data-reader-save],[data-reader-more],[data-reader-image-open],[data-project-export],[data-project-more-current],[data-reader-menu] [role=menuitem],[data-reader-move] [role=menuitem],[data-project-header-popup] [role=menuitem],[data-project-settings-preview] button,[data-project-settings-preview] input,[data-project-settings-preview] textarea,[data-preview-picker] label{pointer-events:auto!important}
+[data-project-settings-preview]{position:fixed;inset:0;z-index:100}
+[data-project-settings-preview] [role=dialog]{max-height:95vh;overflow-y:auto}
+[data-project-memory-preview]{z-index:120!important;max-height:85vh;overflow-y:auto}
+[data-reader-image-viewer]{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;overflow:hidden;background:rgb(0 0 0 / .9)}
+.dark [data-reader-image-viewer]{background:rgb(0 0 0 / .8)}
+[data-reader-image-viewer] [data-image-close]{position:absolute;inset-inline-end:16px;top:16px;pointer-events:auto!important;color:#f3f4f6}
+[data-reader-image-viewer] img{display:block;width:100%;height:100%;object-fit:contain;cursor:auto}
+[data-reader-image-viewer] [role=dialog]>div{max-height:85vh;max-width:90vw}
+[data-reader-image-open]:focus-visible,[data-reader-image-viewer] button:focus-visible{outline:2px solid currentColor;outline-offset:3px}

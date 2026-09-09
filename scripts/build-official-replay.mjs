@@ -56,6 +56,7 @@ marked.setOptions({ gfm: true, breaks: true });
 
 const officialTemplates = await loadOfficialTemplatePackage(projectRoot);
 const baseDocument = officialTemplates.document;
+if(values['entry-id'])baseDocument.body.dataset.readerChatId=values['entry-id'];
 baseDocument.documentElement.setAttribute('data-ceobe-render-source', 'canonical-json');
 baseDocument.documentElement.setAttribute('data-ceobe-structured-payload-status', canonicalConversation.completeness?.structured_payload?.status || 'unknown');
 baseDocument.documentElement.setAttribute('data-ceobe-source-dom-status', canonicalConversation.completeness?.rendered_dom?.status || 'unknown');
