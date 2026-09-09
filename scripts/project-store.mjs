@@ -23,7 +23,7 @@ export function createProjectStore(file){
    if(body.requestId&&projects.some(p=>p.request_id===body.requestId))return projects.find(p=>p.request_id===body.requestId);
    if(projects.some(p=>p.name.toLocaleLowerCase()===name.toLocaleLowerCase()))throw bad('已存在同名项目，请换一个名称',409);
    const now=new Date().toISOString();
-   const project={id:randomUUID(),name,icon,color:color.toLowerCase(),created_at:now,updated_at:now,conversation_ids:[],...(typeof body.requestId==='string'&&/^[\w-]{1,80}$/.test(body.requestId)?{request_id:body.requestId}:{})};
+   const project={id:randomUUID(),name,icon,color:color.toLowerCase(),description:'',created_at:now,updated_at:now,conversation_ids:[],...(typeof body.requestId==='string'&&/^[\w-]{1,80}$/.test(body.requestId)?{request_id:body.requestId}:{})};
    await mkdir(dirname(file),{recursive:true});const tmp=file+'.'+randomUUID()+'.tmp';
    try{await writeFile(tmp,JSON.stringify({schema_version:'1.0.0',kind:'ceobe.projects',projects:[project,...projects]},null,2),'utf8');await rename(tmp,file)}finally{await unlink(tmp).catch(()=>{})}
    return project;
@@ -44,6 +44,11 @@ export function createProjectStore(file){
      if(typeof body.name!=='string')throw bad('请输入项目名称');const name=body.name.trim().normalize('NFC');
      if(!name||[...name].length>80||/[\x00-\x1f\x7f]/.test(name))throw bad('项目名称须为 1–80 个字符，不能包含控制字符');
      if(projects.some(p=>p.id!==project.id&&p.name.toLocaleLowerCase()===name.toLocaleLowerCase()))throw bad('已存在同名项目，请换一个名称',409);project.name=name;
+    }else if(body.action==='description'){
+     if(typeof body.description!=='string'||body.description.length>4000||/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(body.description))throw bad('项目简介须为不超过 4000 个字符的纯文本');
+     if(typeof body.previousDescription!=='string')throw bad('缺少项目简介版本，请重新打开设置');
+     if(body.previousDescription!==(project.description??''))throw bad('项目简介已在其他窗口更新；请保留当前草稿，重新打开设置后合并修改',409);
+     project.description=body.description.replace(/\r\n?/g,'\n');
     }else if(body.action==='pin'){
      if(typeof body.pinned!=='boolean')throw bad('无效置顶状态');project.pinned_at=body.pinned?(project.pinned_at||new Date().toISOString()):null;
     }else if(body.action==='delete'){
@@ -66,7 +71,7 @@ export function projectsMiddleware(root){
    if(req.method!=='POST')return send(405,{error:'仅支持 GET 和 POST'});
    if(!/^application\/json(?:;|$)/i.test(req.headers['content-type']||''))return send(415,{error:'需要 JSON 请求'});
    if(req.headers['sec-fetch-site']==='cross-site'||(req.headers.origin&&new URL(req.headers.origin).host!==req.headers.host))return send(403,{error:'不允许跨站创建项目'});
-   const chunks=[];let length=0;for await(const chunk of req){length+=chunk.length;if(length>4096)throw bad('请求内容过大',413);chunks.push(chunk)}
+   const chunks=[];let length=0;for await(const chunk of req){length+=chunk.length;if(length>(path==='/api/projects/action'?65536:4096))throw bad('请求内容过大',413);chunks.push(chunk)}
    let body;try{body=JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{throw bad('无效 JSON')}
     release=await acquireMutation(root);
      if(path==='/api/projects/action'){const result=await store.mutate(body);await release();release=null;return send(200,result);}

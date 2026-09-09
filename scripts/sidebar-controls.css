@@ -1,4 +1,5 @@
 /* State changes reuse the frozen official full sidebar and 52px rail. */
+[data-ceobe-project-new]{pointer-events:auto!important}
 [data-ceobe-local-profile]{cursor:default!important;pointer-events:none!important}
 html[data-ceobe-pinned-collapsed=true] [data-chat-pinned-section] > ul{display:none!important}
 [data-ceobe-recent-trigger],[data-ceobe-rail-recent] a,[data-ceobe-rail-recent] button,[data-ceobe-rail-recent] input{pointer-events:auto!important}
