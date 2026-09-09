@@ -245,5 +245,6 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
   await cp(join(projectRoot, 'scripts/file-previews.js'), join(outputRoot, 'file-previews.js'));
   const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = './file-previews.css'; document.head.append(css);
   await cp(join(projectRoot, 'scripts/file-previews.css'), join(outputRoot, 'file-previews.css'));
+  await cp(assets,join(outputRoot,'public/previews'),{recursive:true});
   return previewFiles;
 }

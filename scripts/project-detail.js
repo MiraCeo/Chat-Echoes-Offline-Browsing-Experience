@@ -4,6 +4,7 @@ const initial=JSON.parse(document.getElementById('ceobe-projects-data').textCont
 let projects=initial,chats=[],generation=0,editing=false;
 const date=c=>{const v=c.updated_at||c.created_at||c.captured_at;const d=new Date(typeof v==='number'?v*1000:v);return Number.isNaN(d.getTime())?'':d.toLocaleDateString('zh-CN',{month:'long',day:'numeric'})};
 function render(){if(editing)return;const project=projects.find(p=>p.id===id);list.replaceChildren();document.body.dataset.projectImportId=project?.id||'';document.body.dataset.projectImportName=project?.name||'';
+ const more=document.querySelector('[data-project-more-current]');if(more)more.dataset.projectPinned=String(!!project?.pinned_at);
  title.textContent=project?.name||'项目不存在';document.title=(project?.name||'项目不存在')+' · CEOBE';input.setAttribute('aria-label',project?'导入会话到“'+project.name+'”':'项目不存在，无法导入');
  if(!project){status.textContent='未找到此本地项目，请返回项目列表。';return}
  const box=document.querySelector('main [data-testid=project-folder-icon]'),bank=document.querySelector(`[data-project-picker] input[name=projectIcon][value="${project.icon}"]`);if(bank){const use=bank.closest('label').querySelector('use');box.querySelector('use').setAttribute('href',use.getAttribute('href'))}box.style.color=project.color==='default'?'var(--icon-primary)':project.color;
@@ -16,6 +17,6 @@ async function load(){const token=++generation;try{const [pr,cr]=await Promise.a
 chats=JSON.parse(document.getElementById('ceobe-chat-catalog').textContent).slice();render();load();
 list.addEventListener('click',e=>{if(e.target.closest('button,a,input'))return;e.target.closest('li')?.querySelector('a')?.click()});
 list.addEventListener('focusin',e=>{if(e.target.matches('input[name=title-editor]'))editing=true});
-document.addEventListener('ceobe:chat-updated',()=>{editing=false;load()});document.addEventListener('ceobe:project-moved',load);document.addEventListener('ceobe:project-created',load);document.addEventListener('ceobe:project-imported',load);window.addEventListener('focus',()=>{if(!editing)load()});
+document.addEventListener('ceobe:chat-updated',()=>{editing=false;load()});document.addEventListener('ceobe:project-updated',load);document.addEventListener('ceobe:project-moved',load);document.addEventListener('ceobe:project-created',load);document.addEventListener('ceobe:project-imported',load);window.addEventListener('focus',()=>{if(!editing)load()});
 document.addEventListener('click',e=>{if(e.target.closest('main [aria-disabled=true]')){e.preventDefault();e.stopPropagation()}},true);
 })();

@@ -9,7 +9,7 @@ export function createProjectStore(file){
  async function list(){
   let text;try{text=await readFile(file,'utf8')}catch(e){if(e.code==='ENOENT')return [];throw e}
   const data=JSON.parse(text);if(data.kind!=='ceobe.projects'||!Array.isArray(data.projects))throw new Error('项目数据文件格式异常，未覆盖原文件');
-  return data.projects;
+  return data.projects.sort((a,b)=>String(b.pinned_at||'').localeCompare(String(a.pinned_at||''))||String(b.created_at||'').localeCompare(String(a.created_at||'')));
  }
  function create(body){
   const work=queue.then(async()=>{
@@ -36,12 +36,30 @@ export function createProjectStore(file){
     const tmp=file+"."+randomUUID()+".tmp";try{await writeFile(tmp,JSON.stringify({schema_version:"1.0.0",kind:"ceobe.projects",projects},null,2));await rename(tmp,file)}finally{await unlink(tmp).catch(()=>{})}return project;
    });queue=work.catch(()=>{});return work;
   }
-  return {list,create,move};
+  function mutate(body){
+   const work=queue.then(async()=>{
+    if(typeof body?.id!=='string'||!/^[a-f0-9-]{36}$/i.test(body.id))throw bad('无效项目 ID');
+    const projects=await list(),project=projects.find(p=>p.id===body.id);if(!project)throw bad('项目不存在',404);
+    if(body.action==='rename'){
+     if(typeof body.name!=='string')throw bad('请输入项目名称');const name=body.name.trim().normalize('NFC');
+     if(!name||[...name].length>80||/[\x00-\x1f\x7f]/.test(name))throw bad('项目名称须为 1–80 个字符，不能包含控制字符');
+     if(projects.some(p=>p.id!==project.id&&p.name.toLocaleLowerCase()===name.toLocaleLowerCase()))throw bad('已存在同名项目，请换一个名称',409);project.name=name;
+    }else if(body.action==='pin'){
+     if(typeof body.pinned!=='boolean')throw bad('无效置顶状态');project.pinned_at=body.pinned?(project.pinned_at||new Date().toISOString()):null;
+    }else if(body.action==='delete'){
+     if(body.confirm!==body.id)throw bad('需要明确确认删除项目');projects.splice(projects.indexOf(project),1);
+    }else throw bad('无效项目操作');
+    project.updated_at=new Date().toISOString();const tmp=file+'.'+randomUUID()+'.tmp';
+    try{await writeFile(tmp,JSON.stringify({schema_version:'1.0.0',kind:'ceobe.projects',projects},null,2),'utf8');await rename(tmp,file)}finally{await unlink(tmp).catch(()=>{})}
+    return body.action==='delete'?{deleted:project.id,conversationsPreserved:true}:{project};
+   });queue=work.catch(()=>{});return work;
+  }
+  return {list,create,move,mutate};
 }
 export function projectsMiddleware(root){
  const store=createProjectStore(join(root,'data/private/projects.ceobe.json'));
  return async(req,res,next)=>{
-   const path=req.url.split('?')[0];if(!['/api/projects','/api/projects/move'].includes(path))return next();
+   const path=req.url.split('?')[0];if(!['/api/projects','/api/projects/move','/api/projects/action'].includes(path))return next();
   const send=(status,data)=>{res.statusCode=status;res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');res.end(JSON.stringify(data))};
   let release;try{
     if(req.method==='GET'&&path==='/api/projects')return send(200,{projects:await store.list(),writable:true});
@@ -51,6 +69,7 @@ export function projectsMiddleware(root){
    const chunks=[];let length=0;for await(const chunk of req){length+=chunk.length;if(length>4096)throw bad('请求内容过大',413);chunks.push(chunk)}
    let body;try{body=JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{throw bad('无效 JSON')}
     release=await acquireMutation(root);
+     if(path==='/api/projects/action'){const result=await store.mutate(body);await release();release=null;return send(200,result);}
     if(path==='/api/projects/move'){
      if(typeof body?.conversationId!=='string'||typeof body?.projectId!=='string')throw bad('无效聊天或项目');
      const library=JSON.parse(await readFile(join(root,'archive/library.ceobe.json'),'utf8'));

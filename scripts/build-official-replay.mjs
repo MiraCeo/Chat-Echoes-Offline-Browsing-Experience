@@ -1,3 +1,4 @@
+import { restoreKatexFonts, localizeGeneratedFonts } from './local-katex-fonts.mjs';
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createHash } from 'node:crypto';
 import { prepareLocalSidebar } from './local-sidebar.mjs';
@@ -530,6 +531,7 @@ for (const [path, bytes] of resourceBytes) await writeFile(join(outputRoot, 'pub
 await mkdir(outputOfficialAssets, { recursive: true });
 await cp(join(katexDistribution, "katex.min.css"), join(outputAssets, "katex.min.css"));
 await cp(join(katexDistribution, "fonts"), join(outputAssets, "fonts"), { recursive: true });
+await restoreKatexFonts(projectRoot,outputRoot);
 
 for (const spriteName of officialSpriteNames) {
   await cp(
@@ -538,6 +540,7 @@ for (const spriteName of officialSpriteNames) {
   );
 }
 await cp(join(officialAssetsRoot, officialFontName), join(outputAssets, officialFontName));
+await cp(outputOfficialAssets,join(outputRoot,'public/cdn/assets'),{recursive:true});
 
 const copiedFiles = new Set();
 for (const entry of await readdir(join(officialTemplates.root, 'assets'), { withFileTypes: true })) {
@@ -602,6 +605,7 @@ let output = `<!DOCTYPE html>\n${htmlSafeSvg(baseDocument.documentElement.outerH
 if (nestedPage) output = output.replaceAll('href="./', 'href="../').replaceAll('src="./', 'src="../');
 
 
+await localizeGeneratedFonts(outputRoot);
 await mkdir(dirname(outputPage), { recursive: true });
 await writeFile(outputPage, output, "utf8");
 

@@ -11,15 +11,16 @@ const pinKey='ceobe.pinned-expanded.v1';let pinnedExpanded=true;try{pinnedExpand
  window.addEventListener('storage',e=>{if(e.key===pinKey){pinnedExpanded=e.newValue!=='false';paintPinned()}});
  const overflow=new ResizeObserver(entries=>{for(const {target:e}of entries)e.toggleAttribute('data-marquee-overflowing',e.querySelector('._NCija_content').getBoundingClientRect().width>e.clientWidth+1)});
 async function loadProjects(){const token=++projectGeneration;try{const r=await fetch('/api/projects',{cache:'no-store'}),data=await r.json();if(r.ok&&Array.isArray(data.projects)&&token===projectGeneration){projects=data.projects;render()}}catch{}}
-for(const event of ['ceobe:project-moved','ceobe:project-created','ceobe:project-imported'])document.addEventListener(event,loadProjects);
-const organizer=createChatOrganizer(recent);
+for(const event of ['ceobe:project-moved','ceobe:project-created','ceobe:project-updated'])document.addEventListener(event,loadProjects);
+document.addEventListener('ceobe:project-imported',load);
+ const organizer=createChatOrganizer(recent);
 document.addEventListener('ceobe:organizer-change',render);
 function tell(text){status.textContent=text;status.hidden=false}
 async function post(data){const r=await fetch('/api/chats',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const body=await r.json().catch(()=>null);if(!r.ok||!body)throw new Error(body?.error||'本地服务不可用，操作未确认成功');return body}
 function render(){
- if(!recent||editing)return;overflow.disconnect();recent.replaceChildren();pinned.querySelector('ul').replaceChildren();
+ if(!recent||editing||document.body.hasAttribute('data-project-editing'))return;overflow.disconnect();recent.replaceChildren();pinned.querySelector('ul').replaceChildren();
  const ordered=[...catalog].sort((a,b)=>String(b.pinned_at||'').localeCompare(String(a.pinned_at||'')));
- for(const c of ordered){const source=c.pinned_at?document.getElementById('ceobe-pinned-row').firstElementChild:originals.get(c.id);if(!source)continue;const li=source.cloneNode(true),a=li.querySelector('a'),b=li.querySelector('[data-conversation-options-trigger]');a.href=prefix+'conversations/'+c.id+'.html';a.setAttribute('aria-label',c.title+(c.pinned_at?'，已置顶对话':''));a.draggable=false;
+ for(const c of ordered){const source=c.pinned_at?document.getElementById('ceobe-pinned-row').firstElementChild:(originals.get(c.id)||originals.values().next().value);if(!source)continue;const li=source.cloneNode(true),a=li.querySelector('a'),b=li.querySelector('[data-conversation-options-trigger]');a.href=prefix+'conversations/'+c.id+'.html';a.setAttribute('aria-label',c.title+(c.pinned_at?'，已置顶对话':''));a.draggable=false;
   for(const n of li.querySelectorAll('._NCija_content'))n.textContent=c.title;
   b.dataset.ceobeChatId=c.id;b.dataset.chatPinned=String(Boolean(c.pinned_at));b.dataset.conversationOptionsTrigger=c.id;b.id='chat-options-'+c.id;b.setAttribute('aria-label',`打开“${c.title}”的对话选项`);b.setAttribute('aria-controls','ceobe-chat-menu');b.setAttribute('aria-expanded','false');b.dataset.state='closed';b.tabIndex=0;
   const unpin=[...li.querySelectorAll('button')].find(e=>e!==b);if(unpin){unpin.dataset.chatUnpin=c.id;unpin.setAttribute('aria-label',(c.pinned_at?'取消置顶 ':'置顶 ')+c.title)}

@@ -1,3 +1,4 @@
+const replayRoot=new URL(location.pathname.includes('/conversations/')?'../':'./',location.href);
 const host = document.querySelector('[data-side-pane-shell-host]');
 const dock = host?.lastElementChild;
 let opener;
@@ -11,7 +12,7 @@ async function loadPreview(trigger) {
     const pending = (async () => {
       const filename = trigger.dataset.ceobePreviewFile;
       if (!filename) throw new Error(`Missing preview fragment for ${key}`);
-      const response = await fetch(new URL(`./previews/templates/${filename}`, import.meta.url));
+      const response = await fetch(new URL(`./previews/templates/${filename}`, replayRoot),{cache:'no-store'});
       if (!response.ok) throw new Error(`Unable to load preview fragment for ${key}: ${response.status}`);
       const template = document.createElement('template');
       template.innerHTML = await response.text();
@@ -20,12 +21,12 @@ async function loadPreview(trigger) {
       for (const element of template.content.querySelectorAll('[src], [href]')) {
         for (const attribute of ['src', 'href']) {
           const value = element.getAttribute(attribute);
-          if (value?.startsWith('./')) element.setAttribute(attribute, new URL(value, import.meta.url).href);
+          if (value?.startsWith('./')) element.setAttribute(attribute, new URL(value, replayRoot).href);
         }
       }
       return template;
     })();
-    previewTemplates.set(key, pending);
+    previewTemplates.set(key, pending.catch(error=>{previewTemplates.delete(key);throw error}));
   }
   return previewTemplates.get(key);
 }

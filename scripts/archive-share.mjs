@@ -7,7 +7,7 @@ import { downloadResources, resourceMatches } from './archive-resources.mjs';
 import { exportConversationMarkdown } from './export-conversation-markdown.mjs';
 import { resolveShareResources } from './resolve-share-resources.mjs';
 
-const { values, positionals } = parseArgs({ allowPositionals: true, options: { 'archive-root': { type: 'string' } } });
+const { values, positionals } = parseArgs({ allowPositionals: true, options: { 'archive-root': { type: 'string' }, 'skip-library': { type: 'boolean', default: false } } });
 if (positionals.length !== 1) throw new Error('Usage: npm run archive:share -- <https://chatgpt.com/share/id>');
 const url = new URL(positionals[0]);
 if (url.protocol !== 'https:' || url.hostname !== 'chatgpt.com' || url.username || url.password || !/^\/share\/[\w-]+\/?$/.test(url.pathname)) throw new Error('Expected a public ChatGPT share URL');
@@ -55,6 +55,8 @@ await writeFile(join(folder, 'import-report.json'), JSON.stringify(conversation.
 console.log(run.stdout.trim());
 console.log(`Archive: ${folder}\nReport: ${conversation.import_report.status}\nResources: ${JSON.stringify(conversation.import_report.resource_counts)}`);
 console.log('Review import-report.json before treating this capture as complete.');
+if (!values['skip-library']) {
 const libraryRun = spawnSync(process.execPath, ['scripts/build-library.mjs'], { encoding: 'utf8', windowsHide: true });
 if (libraryRun.status === 0) console.log(libraryRun.stdout.trim());
 else console.warn(`Archive saved, but library index update failed: ${libraryRun.stderr || libraryRun.error}`);
+}
