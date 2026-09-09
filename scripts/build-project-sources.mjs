@@ -1,0 +1,13 @@
+import{readFile,writeFile}from'node:fs/promises';import{join}from'node:path';import{createHash}from'node:crypto';import{parseHTML}from'linkedom';
+// The former Sources tab now reuses the library UI, scoped to project chat membership.
+export async function buildProjectSources(root,d){
+ const base=join(root,'replay'),assets=parseHTML(await readFile(join(base,'assets.html'),'utf8')).document,tabs=[...d.querySelectorAll('main [role=tab]')],panel=d.querySelectorAll('main [role=tabpanel]')[1];
+ panel.replaceChildren();panel.dataset.projectFiles='';panel.dataset.ceobeAssetMain='';panel.hidden=true;panel.dataset.state='inactive';tabs[1].textContent='文件';for(const tab of tabs){tab.removeAttribute('aria-disabled');tab.removeAttribute('title')}
+ const status=d.createElement('p');status.dataset.projectFilesStatus='';status.className='ceobe-project-status';status.setAttribute('role','status');panel.append(status);
+ for(const selector of ['[data-testid=artifacts-surface-library-search-controls]','[data-testid=artifacts-surface-library-toolbar-controls]','[data-page-table-list-header]','[data-asset-summary]','[data-ceobe-asset-rows]','[data-asset-empty]']){const node=assets.querySelector(selector).cloneNode(true);node.querySelector('h1')?.remove();panel.append(node)}
+ const search=panel.querySelector('[data-asset-search]');search.placeholder='搜索项目内文件名或来源聊天';search.setAttribute('aria-label',search.placeholder);
+ for(const selector of ['#ceobe-assets-data','#ceobe-asset-row-template','.ceobe-assets-dialog'])d.body.append(assets.querySelector(selector).cloneNode(true));
+ for(const name of ['asset-library.js','asset-library.css']){const orig=[...assets.querySelectorAll('script[src],link[href]')].find(e=>(e.getAttribute('src')||e.getAttribute('href')).includes('/'+name+'?'));(name.endsWith('.js')?d.body:d.head).append(orig.cloneNode(true))}
+ const helper=await readFile(join(root,'scripts/project-files-data.js'),'utf8'),helperName='project-files-data.'+createHash('sha256').update(helper).digest('hex').slice(0,12)+'.js';await writeFile(join(base,helperName),helper);
+ for(const name of ['project-sources.js','project-sources.css']){let content=await readFile(join(root,'scripts',name),'utf8');if(name.endsWith('.js'))content=content.replace('./project-files-data.js','./'+helperName);const hash=createHash('sha256').update(content).digest('hex').slice(0,12);await writeFile(join(base,name),content);const e=d.createElement(name.endsWith('.js')?'script':'link');if(name.endsWith('.js')){e.type='module';e.src='./'+name+'?v='+hash;d.body.append(e)}else{e.rel='stylesheet';e.href='./'+name+'?v='+hash;d.head.append(e)}}
+}

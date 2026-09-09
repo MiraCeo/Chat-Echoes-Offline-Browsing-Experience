@@ -1,3 +1,4 @@
+import {buildProjectSources} from './build-project-sources.mjs';
 import {readFile,writeFile,copyFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
@@ -27,5 +28,6 @@ export async function buildProjectDetail(root,library){
  for(const use of d.querySelectorAll('main use,#ceobe-project-conversation-row use')){const h=use.getAttribute('href');use.setAttribute('href','./cdn/assets/'+(h.includes('sprites-shell')?'sprites-shell-097001e7.svg':'sprites-core-26c3f2d4.svg')+'#'+h.split('#')[1])}
  for(const name of f.stylesheets){await copyFile(join(root,'official-templates/assets',name),join(base,'assets',name));if(![...d.querySelectorAll('link[rel=stylesheet]')].some(e=>e.getAttribute('href')==='./assets/'+name)){const l=d.createElement('link');l.rel='stylesheet';l.href='./assets/'+name;d.head.append(l)}}
  for(const name of ['project-detail.js','project-detail.css']){const content=await readFile(join(root,'scripts',name));await writeFile(join(base,name),content);const e=d.createElement(name.endsWith('.js')?'script':'link'),url='./'+name+'?v='+createHash('sha256').update(content).digest('hex').slice(0,12);if(name.endsWith('.js')){e.type='module';e.src=url;d.body.append(e)}else{e.rel='stylesheet';e.href=url;d.head.append(e)}}
+ await buildProjectSources(root,d);
  await writeFile(join(base,'project.html'),'<!DOCTYPE html>\n'+htmlSafeSvg(d.documentElement.outerHTML));
 }

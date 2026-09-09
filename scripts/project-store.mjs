@@ -44,6 +44,14 @@ export function createProjectStore(file){
      if(typeof body.name!=='string')throw bad('请输入项目名称');const name=body.name.trim().normalize('NFC');
      if(!name||[...name].length>80||/[\x00-\x1f\x7f]/.test(name))throw bad('项目名称须为 1–80 个字符，不能包含控制字符');
      if(projects.some(p=>p.id!==project.id&&p.name.toLocaleLowerCase()===name.toLocaleLowerCase()))throw bad('已存在同名项目，请换一个名称',409);project.name=name;
+    }else if(body.action==='appearance'){
+     if(typeof body.icon!=='string'||!PROJECT_ICONS.includes(body.icon))throw bad('无效项目图标');
+     if(typeof body.color!=='string'||body.color!=='default'&&!/^#[a-f0-9]{6}$/i.test(body.color))throw bad('颜色须为 default 或六位十六进制色值');
+     if(typeof body.previousIcon!=='string'||typeof body.previousColor!=='string')throw bad('缺少图标与颜色版本，请重新打开选择器');
+     if(body.previousIcon!==(project.icon||'folder')||body.previousColor!==(project.color||'default'))throw bad('图标或颜色已在其他窗口更新；请重新打开设置后再修改',409);
+     project.icon=body.icon;project.color=body.color.toLowerCase();
+    }else if(body.action==='sources-add'||body.action==='sources-remove'){
+     throw bad('项目文件现按聊天自动汇总，不再支持手动关联；请刷新页面',410);
     }else if(body.action==='description'){
      if(typeof body.description!=='string'||body.description.length>4000||/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(body.description))throw bad('项目简介须为不超过 4000 个字符的纯文本');
      if(typeof body.previousDescription!=='string')throw bad('缺少项目简介版本，请重新打开设置');
