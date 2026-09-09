@@ -1,0 +1,31 @@
+{
+  "source": "Authorized live Edge sidebar rail recent-chat menu; personal contents removed.",
+  "menu": "<div hidden data-radix-popper-content-wrapper=\"\" dir=\"ltr\" style=\"position: fixed; left: 0px; top: 0px; transform: translate(42px, 158px); min-width: max-content; --radix-popper-transform-origin: 0px 0%; will-change: transform; z-index: 50; --radix-popper-available-width: 980px; --radix-popper-available-height: 897.3333129882812px; --radix-popper-anchor-width: 40px; --radix-popper-anchor-height: 36px;\"><div data-side=\"right\" data-align=\"start\" role=\"menu\" aria-orientation=\"vertical\" data-state=\"closed\" data-radix-menu-content=\"\" dir=\"ltr\" class=\"z-50 popover bg-token-main-surface-primary dark:bg-[#353535] data-[unbound-width]:min-w-[unset] data-[custom-padding]:py-0 RSj_va_surface corner-superellipse/1.1 rounded-[20px] py-2.5 shadow-short-composer max-w-xs MA-gxq_content [--trigger-width:calc(var(--radix-dropdown-menu-trigger-width)-2*var(--radix-align-offset))] min-w-(--trigger-width) max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto select-none max-h-[50dvh]\" tabindex=\"-1\" data-orientation=\"vertical\" style=\"outline: none; --radix-align-offset: -10px; --radix-dropdown-menu-content-transform-origin: var(--radix-popper-transform-origin); --radix-dropdown-menu-content-available-width: var(--radix-popper-available-width); --radix-dropdown-menu-content-available-height: var(--radix-popper-available-height); --radix-dropdown-menu-trigger-width: var(--radix-popper-anchor-width); --radix-dropdown-menu-trigger-height: var(--radix-popper-anchor-height);\"><div class=\"max-w-(--sidebar-width) overflow-x-auto\"><div class=\"w-(--sidebar-width)\"><h2 class=\"__menu-label font-medium\">最近聊天</h2><ul class=\"m-0 list-none p-0\"></ul></div></div></div></div>",
+  "row": "<li class=\"list-none\"><a tabindex=\"0\" data-fill=\"\" class=\"group __menu-item border-b border-transparent bg-clip-padding hoverable transition-colors keyboard-focused:focus-ring keyboard-focused:-outline-offset-2 transition-opacity duration-150\" data-sidebar-item=\"true\" href=\"#\" data-discover=\"true\" style=\"--menu-item-active: var(--interactive-bg-secondary-selected); --menu-item-background: var(--interactive-bg-secondary-default); --menu-item-highlighted: var(--interactive-bg-secondary-hover); --menu-item-open: var(--interactive-bg-secondary-press); --menu-item-pressed: var(--interactive-bg-secondary-press);\"><div class=\"flex min-w-0 grow items-center gap-2.5\"><div class=\"truncate [&:has([data-marquee-text])]:min-w-0 [&:has([data-marquee-text])]:flex-1 [&:has([data-marquee-text])]:overflow-visible\"><span dir=\"auto\" class=\"_NCija_viewport block w-full min-w-0 whitespace-nowrap\" data-marquee-text=\"true\" draggable=\"false\"><span class=\"_NCija_clipViewport\"><span class=\"_NCija_track\"><span class=\"_NCija_content\"></span></span></span></span></div></div><div class=\"trailing highlight flex min-w-4 shrink-0 items-center justify-center self-stretch text-token-text-tertiary\"><div class=\"flex items-center gap-2\"><button data-rail-action=\"pin\" data-trailing-button=\"\" class=\"disabled:text-token-text-tertiary pointer-events-auto disabled:pointer-events-none touch:min-h-10 keyboard-focused:*:focus-ring relative isolate flex min-h-9 items-center self-stretch rounded-e-[10px] focus:outline-none -my-2 -ms-1 ps-1 -me-2.5 pe-1.5 text-inherit interactive-label-secondary data-[state=open]:text-(--interactive-label-hover-secondary)\" tabindex=\"0\" aria-label=\"置顶聊天\"><div class=\"flex items-center justify-center rounded-lg p-1\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" data-icon-shape=\"non-circular\" focusable=\"false\" class=\"icon-sm\" aria-hidden=\"true\"><use href=\"/cdn/assets/sprites-shell-f705d3e2.svg#pin-sm\" fill=\"currentColor\" /></svg></div></button><button data-rail-action=\"more\" data-trailing-button=\"\" class=\"disabled:text-token-text-tertiary pointer-events-auto disabled:pointer-events-none touch:min-h-10 keyboard-focused:*:focus-ring relative isolate flex min-h-9 items-center self-stretch rounded-e-[10px] focus:outline-none -my-2 -ms-1 ps-1 -me-2.5 pe-1.5 text-inherit interactive-label-secondary data-[state=open]:text-(--interactive-label-hover-secondary)\" tabindex=\"0\" aria-label=\"聊天选项\" type=\"button\" aria-haspopup=\"menu\" aria-expanded=\"false\" data-state=\"closed\"><div class=\"flex items-center justify-center rounded-lg p-1\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"20\" height=\"20\" viewBox=\"0 0 20 20\" data-icon-shape=\"non-circular\" focusable=\"false\" class=\"icon-sm\" aria-hidden=\"true\"><use href=\"/cdn/assets/sprites-shell-f705d3e2.svg#dots-horizontal\" fill=\"currentColor\" /></svg></div></button></div></div></a></li>",
+  "limit": 10,
+  "layout": {
+    "side": "right",
+    "align": "start",
+    "offset": {
+      "x": -4,
+      "y": -10
+    }
+  },
+  "metrics": {
+    "rect": {
+      "x": 42,
+      "y": 158,
+      "w": 260,
+      "h": 416
+    },
+    "wrapper": {
+      "x": 42,
+      "y": 158,
+      "w": 260,
+      "h": 416
+    },
+    "class": "z-50 popover bg-token-main-surface-primary dark:bg-[#353535] data-[unbound-width]:min-w-[unset] data-[custom-padding]:py-0 RSj_va_surface corner-superellipse/1.1 rounded-[20px] py-2.5 shadow-short-composer max-w-xs MA-gxq_content [--trigger-width:calc(var(--radix-dropdown-menu-trigger-width)-2*var(--radix-align-offset))] min-w-(--trigger-width) max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto select-none max-h-[50dvh]",
+    "padding": "10px 0px",
+    "radius": "20px"
+  }
+}

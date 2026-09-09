@@ -6,8 +6,8 @@ import {htmlSafeSvg} from './serialize-html.mjs';
 export async function buildChatMenu(root,library){
  const base=join(root,'replay'),f=JSON.parse(await readFile(join(root,'official-templates/chat-menu.json'),'utf8'));
  if(f.version!==2)throw new Error('The full official chat-menu capture is required');
- const assets={};
- for(const name of ['chat-menu.js','chat-menu.css']){const data=await readFile(join(root,'scripts',name));await writeFile(join(base,name),data);assets[name]=name+'?v='+createHash('sha256').update(data).digest('hex').slice(0,12)}
+ const assets={};const filenameCode=await readFile(join(root,'scripts/markdown-filename.js'),'utf8'),filenameAsset='markdown-filename.'+createHash('sha256').update(filenameCode).digest('hex').slice(0,12)+'.js';await writeFile(join(base,filenameAsset),filenameCode);
+ for(const name of ['chat-menu.js','chat-menu.css']){let data=await readFile(join(root,'scripts',name),'utf8');if(name==='chat-menu.js')data=data.replace("'./markdown-filename.js'","'./"+filenameAsset+"'");await writeFile(join(base,name),data);assets[name]=name+'?v='+createHash('sha256').update(data).digest('hex').slice(0,12)}
  for(const file of f.stylesheets)await copyFile(join(root,'official-templates/assets',file),join(base,'assets',file));
  const icons=JSON.parse(await readFile(join(root,'official-templates/new-project.json'),'utf8')).icons;
  const pages=(await readdir(base)).filter(p=>p.endsWith('.html')).concat((await readdir(join(base,'conversations'))).filter(p=>p.endsWith('.html')).map(p=>'conversations/'+p));
@@ -33,6 +33,7 @@ export async function buildChatMenu(root,library){
    else e.title='此操作暂未接入本地归档';
   });sub.setAttribute('aria-labelledby','ceobe-chat-move');
   main.querySelector('[data-chat-action=archive]').remove();
+   const exportItem=main.querySelector('[data-chat-action=share]');exportItem.dataset.chatAction='export-md';exportItem.title='转存为纯文本 Markdown（不含附件）';for(const e of [exportItem,...exportItem.querySelectorAll('*')])for(const n of e.childNodes)if(n.nodeType===3&&n.textContent.trim()==='分享')n.textContent='转存为 MD';
   for(const action of ['rename','pin','delete'])main.querySelector(`[data-chat-action=${action}]`).removeAttribute('title');
   // Preserve BOTH official inner wrappers and the per-project wrappers/separator.
   const create=sub.querySelector('[role=menuitem]'),list=create.parentElement;

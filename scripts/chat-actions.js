@@ -6,7 +6,10 @@ const prefix=location.pathname.includes('/conversations/')?'../':'./';let catalo
 const originals=new Map([...document.querySelectorAll('[data-ceobe-chat-id]')].filter(b=>!b.closest('main')).map(b=>[b.dataset.ceobeChatId,b.closest('li')?.cloneNode(true)]).filter(([,r])=>r));
 let projects=JSON.parse(document.getElementById('ceobe-projects-data').textContent),projectGeneration=0;
 const labelTemplate=document.getElementById('ceobe-sidebar-project-label').content.firstElementChild;
-const overflow=new ResizeObserver(entries=>{for(const {target:e}of entries)e.toggleAttribute('data-marquee-overflowing',e.querySelector('._NCija_content').getBoundingClientRect().width>e.clientWidth+1)});
+const pinKey='ceobe.pinned-expanded.v1';let pinnedExpanded=true;try{pinnedExpanded=localStorage.getItem(pinKey)!=='false'}catch{}
+ function paintPinned(){if(!pinned)return;const button=pinned.querySelector('button'),svg=button.querySelector('svg');pinned.querySelector('ul').hidden=!pinnedExpanded;button.setAttribute('aria-expanded',String(pinnedExpanded));document.documentElement.dataset.ceobePinnedCollapsed=String(!pinnedExpanded);svg.querySelector('use').setAttribute('href',prefix+'cdn/assets/sprites-shell-097001e7.svg#'+(pinnedExpanded?'chevron-down-sm':'chevron-right-sm'));svg.setAttribute('class',pinnedExpanded?'invisible h-3 w-3 shrink-0 group-hover/sidebar-expando-section:visible':'h-3 w-3 shrink-0 group-hover/sidebar-expando-section:block');svg.toggleAttribute('data-rtl-flip',!pinnedExpanded)}
+ window.addEventListener('storage',e=>{if(e.key===pinKey){pinnedExpanded=e.newValue!=='false';paintPinned()}});
+ const overflow=new ResizeObserver(entries=>{for(const {target:e}of entries)e.toggleAttribute('data-marquee-overflowing',e.querySelector('._NCija_content').getBoundingClientRect().width>e.clientWidth+1)});
 async function loadProjects(){const token=++projectGeneration;try{const r=await fetch('/api/projects',{cache:'no-store'}),data=await r.json();if(r.ok&&Array.isArray(data.projects)&&token===projectGeneration){projects=data.projects;render()}}catch{}}
 for(const event of ['ceobe:project-moved','ceobe:project-created','ceobe:project-imported'])document.addEventListener(event,loadProjects);
 const organizer=createChatOrganizer(recent);
@@ -25,7 +28,7 @@ function render(){
    (c.pinned_at?pinned.querySelector('ul'):recent).append(li);
    if(li.querySelector('[data-sidebar-project-name]'))overflow.observe(li.querySelector('._NCija_viewport'));
  }
- pinned.hidden=!catalog.some(c=>c.pinned_at);
+ pinned.hidden=!catalog.some(c=>c.pinned_at);paintPinned();
   organizer.update(projects,catalog);
  const id=location.pathname.split('/').pop()?.replace('.html','');const current=catalog.find(c=>c.id===id)||(location.pathname.endsWith('/')||location.pathname.endsWith('/index.html')?catalog.find(c=>document.querySelector(`[data-ceobe-chat-id="${c.id}"]`)?.closest('a')?.hasAttribute('data-active')):null);if(current)document.title=current.title;
 }
@@ -46,6 +49,6 @@ confirm.addEventListener('click',async()=>{if(busy||!deleting)return;busy=true;c
 dialog.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();closeDelete()}if(e.key==='Tab'){e.preventDefault();(document.activeElement===cancel?confirm:cancel).focus()}});
 document.addEventListener('ceobe:chat-action',async e=>{const c=catalog.find(x=>x.id===e.detail.id);if(!c)return;if(!writable){tell('当前服务不可写，请使用本地开发或预览服务。');return}if(e.detail.action==='rename')rename(c,e.detail.opener);else if(e.detail.action==='delete')openDelete(c);else if(e.detail.action==='pin'){try{const result=await post({id:c.id,action:'pin',pinned:!c.pinned_at});update(result.conversation)}catch(err){tell(err.message)}}});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-chat-unpin]');if(b){e.preventDefault();e.stopPropagation();document.dispatchEvent(new CustomEvent('ceobe:chat-action',{detail:{id:b.dataset.chatUnpin,action:'pin'}}))}},true);
-pinned?.querySelector('button')?.addEventListener('click',e=>{const ul=pinned.querySelector('ul');ul.hidden=!ul.hidden;e.currentTarget.setAttribute('aria-expanded',String(!ul.hidden))});
+pinned?.querySelector('button')?.addEventListener('click',()=>{pinnedExpanded=!pinnedExpanded;try{localStorage.setItem(pinKey,String(pinnedExpanded))}catch{}paintPinned()});
 render();load();window.addEventListener('focus',()=>{if(!editing&&!deleting)load()});
 })();

@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
 import { projectsMiddleware } from './scripts/project-store.mjs';
 import { chatMiddleware } from './scripts/chat-store.mjs';
+import { markdownExportMiddleware } from './scripts/markdown-export-api.mjs';
 import { acquireMutation } from './scripts/workspace-mutation.mjs';
 
 const replayRoot = resolve('replay');
@@ -15,10 +16,11 @@ try { conversationPages = readdirSync(conversationRoot).filter(name => name.ends
 const projectRoot = resolve('.');
 const projectApi = projectsMiddleware(projectRoot);
 const chatApi = chatMiddleware(projectRoot);
+const markdownApi = markdownExportMiddleware(projectRoot);
 const localProjects = {
   name: 'ceobe-local-projects',
-  configureServer(server) { server.middlewares.use(projectApi); server.middlewares.use(chatApi); },
-  configurePreviewServer(server) { server.middlewares.use(projectApi); server.middlewares.use(chatApi); },
+  configureServer(server) { server.middlewares.use(projectApi); server.middlewares.use(chatApi); server.middlewares.use(markdownApi); },
+  configurePreviewServer(server) { server.middlewares.use(projectApi); server.middlewares.use(chatApi); server.middlewares.use(markdownApi); },
 };
 let activeImport = false;
 

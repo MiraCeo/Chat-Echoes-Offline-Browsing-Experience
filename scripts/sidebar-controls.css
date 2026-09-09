@@ -1,4 +1,10 @@
 /* State changes reuse the frozen official full sidebar and 52px rail. */
+[data-ceobe-local-profile]{cursor:default!important;pointer-events:none!important}
+html[data-ceobe-pinned-collapsed=true] [data-chat-pinned-section] > ul{display:none!important}
+[data-ceobe-recent-trigger],[data-ceobe-rail-recent] a,[data-ceobe-rail-recent] button,[data-ceobe-rail-recent] input{pointer-events:auto!important}
+[data-ceobe-rail-recent][hidden]{display:none!important}
+[data-ceobe-rail-recent] [role=menu]{max-height:50dvh}
+
 html[data-ceobe-sidebar-collapsed=true] #stage-slideover-sidebar{width:var(--sidebar-rail-width)!important}
 html[data-ceobe-sidebar-collapsed=true] [data-ceobe-sidebar-panel]{visibility:hidden;opacity:0!important;pointer-events:none!important}
 html[data-ceobe-sidebar-collapsed=true] #stage-sidebar-tiny-bar{opacity:1!important;visibility:visible;pointer-events:auto!important}
