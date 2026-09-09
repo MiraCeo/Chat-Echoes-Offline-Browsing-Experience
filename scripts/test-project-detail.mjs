@@ -20,7 +20,8 @@ await page.screenshot({path:'data/private/project-detail-acceptance.png',fullPag
 // Mutations are intercepted in memory. No real archive/project data is touched.
 const library=JSON.parse(await readFile('archive/library.ceobe.json','utf8'));let chats=structuredClone(library.conversations).map(c=>({...c,pinned_at:null})),projects=structuredClone(real.projects);const id=project.conversation_ids[0],other=chats.find(c=>!project.conversation_ids.includes(c.id));let imports=0,failMove=false;
 await page.route('**/api/**',async route=>{const req=route.request(),path=new URL(req.url()).pathname,b=req.postDataJSON();let status=200,result;
-if(path==='/api/projects')result={projects,writable:true};
+if(path==='/api/capabilities')result={importShare:true,mode:'development'};
+else if(path==='/api/projects')result={projects,writable:true};
 else if(path==='/api/chats'&&req.method()==='GET')result={conversations:chats,writable:true};
 else if(path==='/api/chats'){const c=chats.find(c=>c.id===b.id);if(b.action==='rename')c.title=b.title;if(b.action==='pin')c.pinned_at=b.pinned?new Date().toISOString():null;result={conversation:c};}
 else if(path==='/api/archive-share'){imports++;result={ok:true,shareId:other.id,title:other.title,messageCount:1,page:'/conversations/'+other.id+'.html'};}

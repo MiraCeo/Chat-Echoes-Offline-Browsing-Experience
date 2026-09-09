@@ -21,17 +21,20 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
   actions.className = 'ceobe-import-actions';
   status.insertAdjacentElement('afterend', actions);
   let busy = false;
+  let available=false;
+  const requests=new Map();
+  const requestId=url=>{if(requests.has(url))return requests.get(url);let id;try{id=sessionStorage.getItem('ceobe.import-request:'+url)}catch{}if(!/^[a-f0-9-]{36}$/i.test(id||''))id=crypto.randomUUID();requests.set(url,id);try{sessionStorage.setItem('ceobe.import-request:'+url,id)}catch{}return id};
   let imported = null;
   let noticeTimer;
   const value = () => input.textContent.trim();
-  const updateButton = () => { submit.disabled = busy || !value(); };
+  const updateButton = () => { submit.disabled = busy || !available || !value(); };
   const showStatus = (text, state) => {
     status.textContent = text;
     status.dataset.state = state;
   };
   const setBusy = state => {
     busy = state;
-    input.setAttribute('contenteditable', String(!state));
+    input.setAttribute('contenteditable', String(!state && available));
     form.setAttribute('aria-busy', String(state));
     submit.setAttribute('aria-busy', String(state));
     submit.setAttribute('aria-label', state ? '正在导入，请稍候' : '导入会话');
@@ -54,7 +57,7 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
   // Keep the captured contenteditable DOM, but never paste rich HTML into it.
   input.addEventListener('paste', event => {
     event.preventDefault();
-    if (busy) return;
+    if (busy || !available) return;
     const text = (event.clipboardData?.getData('text/plain') || '').trim().replace(/[\r\n]+/g, ' ');
     const selection = window.getSelection();
     if (selection?.rangeCount && input.contains(selection.getRangeAt(0).commonAncestorContainer)) {
@@ -78,7 +81,7 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
 
   form.addEventListener('submit', async event => {
     event.preventDefault();
-    if (busy) return;
+    if (busy || !available) return;
     const url = normalizeLink(value());
     actions.replaceChildren();
     if (!url) {
@@ -99,12 +102,13 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
        }
        const response = imported?.url===url ? {ok:true,json:async()=>imported.result} : await fetch('/api/archive-share', {
         method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, requestId:requestId(url) }),
       });
       const result = await response.json().catch(() => null);
       if (!response.ok || !result?.ok) {
-        if (response.status === 409) throw new Error('已有会话正在导入，请等待完成后再重试。');
-        if (response.status === 404 || response.status === 405 || !result) throw new Error('当前服务不支持导入，请使用 npm run dev 启动本地服务。');
+        if (response.status === 409) throw new Error(result?.error||'工作区正在写入，请等待完成后再重试。');
+        if(result?.retryPublish)throw new Error(result.error);
+        if (response.status === 404 || response.status === 405 || !result) throw new Error('当前服务不支持导入。请使用本地开发服务或本地生产预览服务；纯静态部署只支持阅读。');
         console.error('Share import failed:', result.error);
         throw new Error('导入未完成。请确认分享链接可公开访问及网络连接正常，然后重试。');
       }
@@ -116,7 +120,8 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
        }
        const destination = new URL(result.page, location.origin);
       if (destination.origin !== location.origin || !destination.pathname.startsWith('/conversations/')) throw new Error('归档已返回，但会话入口无效，请检查本地档案库。');
-      const counts = result.resourceCounts || {};
+      if(!projectId)document.dispatchEvent(new Event('ceobe:project-imported'));
+       const counts = result.resourceCounts || {};
       const missing = Object.entries(counts).filter(([key]) => ['failed', 'unresolved', 'skipped', 'missing'].includes(key))
         .reduce((sum, [, count]) => sum + (Number(count) || 0), 0);
       showStatus(`已归档「${result.title || '会话'}」，共 ${Number(result.messageCount) || 0} 条消息。${missing ? `有 ${missing} 个资源未保存，可在归档报告中查看。` : '可打开会话查看保存的内容。'}`, 'success');
@@ -125,6 +130,7 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
       actions.append(open);
        if(projectId){status.textContent+=' 已移入“'+document.body.dataset.projectImportName+'”。';}
       open.focus();
+       requests.delete(url);try{sessionStorage.removeItem('ceobe.import-request:'+url)}catch{}imported=null;
     } catch (error) {
       showStatus(error instanceof TypeError ? '连接中断，后台可能仍在归档。请先查看最近会话，确认后再重试。' : error.message, 'error');
       const retry = document.createElement('button');
@@ -135,5 +141,7 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
       clearTimeout(noticeTimer); setBusy(false);
     }
   });
-  updateButton();
+  input.setAttribute('contenteditable','false');
+  showStatus('正在检查本地导入服务…','idle');updateButton();
+  fetch('/api/capabilities',{cache:'no-store',signal:AbortSignal.timeout(5000)}).then(async response=>{const data=await response.json();if(!response.ok||data.importShare!==true)throw Error();available=true;input.setAttribute('contenteditable','true');showStatus('','idle');updateButton()}).catch(()=>{available=false;input.setAttribute('contenteditable','false');showStatus('当前为只读页面或本地服务不可用，无法导入。请启动 npm run dev，或构建后运行 npm run preview，再刷新页面。','unavailable');updateButton()});
 }

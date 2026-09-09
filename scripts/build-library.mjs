@@ -1,3 +1,4 @@
+import { localizeGeneratedFonts } from './local-katex-fonts.mjs';
 import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -92,6 +93,7 @@ async function buildReader(library, selectedId) {
   await buildChatActions(projectRoot, library);
   await buildChatOrganizer(projectRoot);
   await buildSidebarControls(projectRoot);
+  await localizeGeneratedFonts(join(projectRoot,'replay'));
   console.log(`Library reader built: ${library.conversations.length} conversations; home is “${selected?.title || "本地聊天"}”.`);
 }
 
