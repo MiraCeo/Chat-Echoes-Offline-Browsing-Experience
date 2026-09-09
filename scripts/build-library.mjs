@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { buildImportPage } from './build-import-page.mjs';
 import { buildAssetLibrary } from './build-asset-library.mjs';
+import { buildBookmarks } from './build-bookmarks.mjs';
 import { buildReaderUI } from './build-reader-ui.mjs';
 import { buildChatOrganizer } from './build-chat-organizer.mjs';
 import { buildSidebarControls } from './build-sidebar-controls.mjs';
@@ -95,6 +96,7 @@ async function buildReader(library, selectedId) {
   await buildChatOrganizer(projectRoot);
   await buildSidebarControls(projectRoot);
   await buildReaderUI(projectRoot, library);
+  await buildBookmarks(projectRoot, library);
   await localizeGeneratedFonts(join(projectRoot,'replay'));
   console.log(`Library reader built: ${library.conversations.length} conversations; home is “${selected?.title || "本地聊天"}”.`);
 }

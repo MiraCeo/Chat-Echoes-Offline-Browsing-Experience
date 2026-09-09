@@ -3,6 +3,7 @@ import {join,resolve,relative,dirname} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {spawn} from 'node:child_process';
 import {acquireMutation} from './workspace-mutation.mjs';
+import {readBookmarkDocument} from './bookmark-store.mjs';
 const failure=(text,status=400)=>Object.assign(new Error(text),{status});
 export async function readChatMetadata(root){
  try{const data=JSON.parse(await readFile(join(root,'data/private/chats.ceobe.json'),'utf8'));if(data.kind!=='ceobe.chat-metadata'||!data.items||Array.isArray(data.items))throw new Error('聊天元数据格式错误');return data}catch(e){if(e.code==='ENOENT')return {schema_version:'1.0.0',kind:'ceobe.chat-metadata',items:{}};throw e}
@@ -55,10 +56,12 @@ export function createChatStore(root,{rebuild=rebuildDeletionStage}={}){
     delete meta.items[body.id];await atomic(join(stage,'data/private/chats.ceobe.json'),meta);
     const projectFile=join(root,'data/private/projects.ceobe.json');
     if(await exists(projectFile)){const projects=JSON.parse(await readFile(projectFile,'utf8'));if(projects.kind!=='ceobe.projects'||!Array.isArray(projects.projects))throw new Error('项目文件格式错误');for(const p of projects.projects)p.conversation_ids=(p.conversation_ids||[]).filter(id=>id!==body.id);await atomic(join(stage,'data/private/projects.ceobe.json'),projects)}
+    const bookmarkFile=join(root,'data/private/bookmarks.ceobe.json');
+    if(await exists(bookmarkFile)){const bookmarks=await readBookmarkDocument(root);bookmarks.items=bookmarks.items.filter(b=>b.chat_id!==body.id);await atomic(join(stage,'data/private/bookmarks.ceobe.json'),bookmarks)}
     await rebuild(stage,root);
     // Durable journal allows fail-closed manual recovery after a process/OS crash.
     await atomic(join(job,'journal.json'),{id:body.id,state:'prepared',paths:[]});
-    const paths=['archive/chatgpt-share/'+body.id,'archive/library.ceobe.json','data/private/chats.ceobe.json',...(await exists(projectFile)?['data/private/projects.ceobe.json']:[]),'replay','dist'];
+    const paths=[...(await exists(bookmarkFile)?['data/private/bookmarks.ceobe.json']:[]),'archive/chatgpt-share/'+body.id,'archive/library.ceobe.json','data/private/chats.ceobe.json',...(await exists(projectFile)?['data/private/projects.ceobe.json']:[]),'replay','dist'];
     for(const path of paths){const live=join(root,path),old=join(backup,path),fresh=join(stage,path);const item={path,hadOld:false,installed:false};moved.push(item);if(await exists(live)){await mkdir(dirname(old),{recursive:true});await rename(live,old);item.hadOld=true}if(await exists(fresh)){await mkdir(dirname(live),{recursive:true});await rename(fresh,live);item.installed=true}await atomic(join(job,'journal.json'),{id:body.id,state:'committing',paths:moved})}
     committed=true;
     // Success is not returned while raw archives or old generated copies remain.

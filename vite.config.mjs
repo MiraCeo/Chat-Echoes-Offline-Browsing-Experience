@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import { readdirSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { projectsMiddleware } from './scripts/project-store.mjs';
+import { bookmarksMiddleware } from './scripts/bookmark-store.mjs';
 import { chatMiddleware } from './scripts/chat-store.mjs';
 import { markdownExportMiddleware } from './scripts/markdown-export-api.mjs';
 import { projectExportMiddleware } from './scripts/project-export-api.mjs';
@@ -15,12 +16,13 @@ try { conversationPages = readdirSync(conversationRoot).filter(name => name.ends
 const projectRoot = resolve('.');
 const projectApi = projectsMiddleware(projectRoot);
 const chatApi = chatMiddleware(projectRoot);
+const bookmarkApi = bookmarksMiddleware(projectRoot);
 const markdownApi = markdownExportMiddleware(projectRoot);
 const zipApi=projectExportMiddleware(projectRoot);
 const localProjects = {
   name: 'ceobe-local-projects',
-  configureServer(server) { server.middlewares.use(zipApi); server.middlewares.use(projectApi); server.middlewares.use(chatApi); server.middlewares.use(markdownApi); server.middlewares.use(localImportMiddleware(projectRoot)); },
-  configurePreviewServer(server) { server.middlewares.use(zipApi); server.middlewares.use(projectApi); server.middlewares.use(chatApi); server.middlewares.use(markdownApi); server.middlewares.use(localImportMiddleware(projectRoot,{mode:'production'})); },
+  configureServer(server) { server.middlewares.use(bookmarkApi); server.middlewares.use(zipApi); server.middlewares.use(projectApi); server.middlewares.use(chatApi); server.middlewares.use(markdownApi); server.middlewares.use(localImportMiddleware(projectRoot)); },
+  configurePreviewServer(server) { server.middlewares.use(bookmarkApi); server.middlewares.use(zipApi); server.middlewares.use(projectApi); server.middlewares.use(chatApi); server.middlewares.use(markdownApi); server.middlewares.use(localImportMiddleware(projectRoot,{mode:'production'})); },
 };
 export default defineConfig({
   plugins: [localProjects],
