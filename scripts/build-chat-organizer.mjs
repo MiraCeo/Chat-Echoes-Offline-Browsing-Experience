@@ -1,6 +1,7 @@
 import{readFile,writeFile,readdir,copyFile}from'node:fs/promises';import{join}from'node:path';import{parseHTML}from'linkedom';import{htmlSafeSvg}from'./serialize-html.mjs';
 import {createHash} from 'node:crypto';
 export async function buildChatOrganizer(root){const base=join(root,'replay'),f=JSON.parse(await readFile(join(root,'official-templates/chat-organizer.json'),'utf8'));
+f.nestedPinned=JSON.parse(await readFile(join(root,'official-templates/project-pinned-row.json'),'utf8')).row;
 const actions=JSON.parse(await readFile(join(root,'official-templates/project-actions.json'),'utf8'));
 const headerMore=JSON.parse(await readFile(join(root,'official-templates/project-header-more.json'),'utf8'));
 const more=JSON.parse(await readFile(join(root,'official-templates/project-more.json'),'utf8'));
@@ -17,7 +18,7 @@ const css=await readFile(join(root,'scripts/chat-organizer.css'),'utf8'),cssFile
 const pages=(await readdir(base)).filter(n=>n.endsWith('.html')).concat((await readdir(join(base,'conversations'))).filter(n=>n.endsWith('.html')).map(n=>'conversations/'+n));
 for(const page of pages){const d=parseHTML(await readFile(join(base,page),'utf8')).document,prefix=page.startsWith('conversations/')?'../':'./',recent=d.querySelector('[data-chat-recent-list]');if(!recent)continue;const action=d.querySelector('script[src*="chat-actions.js"]');if(action)action.src=prefix+actionFile;const block=recent.closest('.group\\/sidebar-expando-section');block.dataset.organizerRecent='';const header=parseHTML(f.listHeader).document.firstElementChild;block.firstElementChild.replaceWith(header);header.dataset.organizerHeader='';
 const section=parseHTML(f.projectSection).document.firstElementChild;section.dataset.organizerProjects='';section.hidden=true;block.before(section);
-const bank=d.createElement('div');bank.hidden=true;bank.id='ceobe-organizer-bank';for(const key of ['closedSvg','openSvg','projectRow','nested','empty']){const box=d.createElement('div');box.dataset.organizerTemplate=key;box.innerHTML=f[key];bank.append(box)}d.body.append(bank);
+const bank=d.createElement('div');bank.hidden=true;bank.id='ceobe-organizer-bank';for(const key of ['closedSvg','openSvg','projectRow','nested','nestedPinned','empty']){const box=d.createElement('div');box.dataset.organizerTemplate=key;box.innerHTML=f[key];bank.append(box)}d.body.append(bank);
 const menu=parseHTML(f.menu).document.firstElementChild;menu.dataset.organizerPopup='';menu.hidden=true;menu.querySelector('[role=menu]').id='ceobe-organizer-menu';menu.querySelector('[role=menu]').dataset.state='closed';d.body.append(menu);
 const moreWrapper=parseHTML(more.menu).document.firstElementChild;moreWrapper.dataset.projectMorePopup='';moreWrapper.dataset.layout=JSON.stringify(more.layout);moreWrapper.hidden=true;const moreMenu=moreWrapper.querySelector('[role=menu]');moreMenu.id='ceobe-project-more-menu';moreMenu.dataset.state='closed';d.body.append(moreWrapper);
 const headerWrapper=parseHTML(headerMore.menu).document.firstElementChild;headerWrapper.dataset.projectHeaderPopup='';headerWrapper.dataset.layout=JSON.stringify(headerMore.layout);headerWrapper.hidden=true;headerWrapper.querySelector('[role=menu]').id='ceobe-project-header-menu';d.body.append(headerWrapper);

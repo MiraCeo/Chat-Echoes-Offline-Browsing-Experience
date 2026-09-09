@@ -6,6 +6,8 @@ import {readFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
 import {preview} from 'vite';
 const reference=JSON.parse(await readFile('official-templates/project-detail.json','utf8'));
+// Compare equal header content: the approved local share replacement is ZIP export.
+reference.main=reference.main.replaceAll('分享','另存为 ZIP');
 const prod=process.env.CEOBE_TEST_DIST==='1'?await preview({configFile:'vite.config.mjs',root:'replay',build:{outDir:'../dist'},preview:{host:'127.0.0.1',port:0}}):null;
 const base=prod?`http://127.0.0.1:${prod.httpServer.address().port}/`:'http://127.0.0.1:5173/';
 const browser=await chromium.launch({channel:'msedge',headless:true});

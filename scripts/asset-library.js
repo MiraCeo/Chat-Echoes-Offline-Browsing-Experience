@@ -1,4 +1,5 @@
-const data = JSON.parse(document.getElementById('ceobe-assets-data').textContent);
+const projectMode=!!document.querySelector('[data-project-files]');
+let data = projectMode?(window.ceobeProjectFiles||[]):JSON.parse(document.getElementById('ceobe-assets-data').textContent);
 const grid = document.querySelector('[data-ceobe-asset-rows]');
 const template = document.getElementById('ceobe-asset-row-template');
 const search = document.querySelector('[data-asset-search]');
@@ -35,9 +36,9 @@ function render() {
     actionCell.className = 'ceobe-asset-actions'; addLinks(actionCell, item);
     actionCell.setAttribute('role', 'gridcell'); grid.append(row);
   }
-  document.querySelector('[data-asset-summary]').textContent = `${shown.length} / ${data.length} 个附件 · 按文件内容去重，保留全部来源 · 时间为本地归档时间`;
+  document.querySelector('[data-asset-summary]').textContent = `${shown.length} / ${data.length} 个附件 · 按文件内容去重，${projectMode?'仅保留本项目的来源聊天':'保留全部来源'} · 时间为本地归档时间`;
   const empty = document.querySelector('[data-asset-empty]'); empty.hidden = shown.length > 0;
-  if (!data.length) empty.textContent = '还没有归档附件。导入含有附件的会话后，它们会出现在这里。';
+  empty.textContent=data.length?'没有匹配的附件。试试其他关键词或分类。':projectMode?'本项目的聊天中还没有文件。移入或导入含附件的聊天后，这里会自动显示。':'还没有归档附件。导入含有附件的会话后，它们会出现在这里。';
   for (const b of document.querySelectorAll('[data-asset-filter]')) b.setAttribute('aria-pressed', String(b.dataset.assetFilter === filter));
   for (const b of document.querySelectorAll('[data-asset-sort]')) { b.setAttribute('aria-pressed', String(b.dataset.assetSort === sort)); b.setAttribute('aria-label', `${b.textContent}，${b.dataset.assetSort === sort ? (direction > 0 ? '升序' : '降序') : '点击排序'}`); }
 }
@@ -56,7 +57,9 @@ async function open(item, button) {
   } catch { if (version === requestVersion) body.textContent = '预览加载失败。请关闭后重试，或下载原文件。'; }
 }
 function close() { ++requestVersion; dialog.close(); dialog.querySelector('[data-asset-preview-body]').replaceChildren(); previousFocus?.focus(); }
-search.addEventListener('input', render);
+document.addEventListener('ceobe:project-files',e=>{if(!projectMode)return;if(dialog.open)close();data=e.detail.items;if(grid)render()});
+search?.addEventListener('input', render);
+document.addEventListener('ceobe:asset-preview',e=>{const item=data.find(x=>x.id===e.detail?.id);if(item)open(item,e.detail.opener)});
 document.addEventListener('click', event => {
   const target = event.target.closest('button'); if (!target) return;
   if (target.dataset.assetFilter) { filter = target.dataset.assetFilter; render(); }
@@ -69,4 +72,4 @@ document.addEventListener('click', event => {
   }
 });
 dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
-render();
+if(grid)render();

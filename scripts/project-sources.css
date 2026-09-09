@@ -1,0 +1,10 @@
+main [role=tabpanel][hidden]{display:none!important}
+[data-ceobe-project-detail] main [role=tab]{pointer-events:auto!important}
+[data-project-files]{min-width:0;max-width:100%;padding-top:8px}
+[data-project-files-status]{padding:0;margin:8px 0 16px;font-size:12px;color:var(--text-secondary)}
+[data-project-files] [data-testid=artifacts-surface-library-search-controls]>div{margin:0!important;min-height:0!important}
+[data-project-files] [data-testid=artifacts-surface-library-search-controls]{margin-bottom:10px}
+[data-project-files] [data-testid=artifacts-surface-library-search-controls]>div>div{width:100%;margin-inline:0}
+[data-project-files] [data-asset-summary]{padding:10px 0}
+[data-project-files] [data-asset-empty]{padding:48px 16px}
+[data-project-files] [data-ceobe-asset-rows]{min-width:0}

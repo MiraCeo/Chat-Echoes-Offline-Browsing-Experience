@@ -58,7 +58,7 @@ export async function buildAssetLibrary(root, library) {
       }
       if (!item.names.includes(resource.name)) item.names.push(resource.name);
       if (String(entry.captured_at) > String(item.date)) item.date = entry.captured_at;
-      if (!item.sources.some(s => s.id === entry.id)) item.sources.push({ id: entry.id, title: entry.title, page: entry.page });
+      let source=item.sources.find(s=>s.id===entry.id);if(!source){source={id:entry.id,title:entry.title,page:entry.page,name:resource.name||item.name,names:[],date:entry.captured_at};item.sources.push(source)}if(resource.name&&!source.names.includes(resource.name))source.names.push(resource.name);
       if (resource.status !== 'downloaded' || item.download) continue;
       try {
         const bytes = await readArchivedResource(dirname(sourcePath), resource);

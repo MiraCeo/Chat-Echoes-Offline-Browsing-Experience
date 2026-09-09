@@ -1,2 +1,6 @@
 [data-project-more-popup][hidden],[data-organizer-popup][hidden],[data-organizer-projects][hidden],[data-organizer-recent] [hidden],[data-organizer-projects] [hidden],#ceobe-organizer-bank[hidden]{display:none!important}
+/* Retain the official row, but give pinned chat titles priority over the project tag. */
+[data-chat-pinned-section] li>a>div:first-child{flex:1;min-width:0}
+[data-chat-pinned-section] [data-sidebar-project-name]{flex:0 1 auto!important;max-width:35%;margin-inline-start:auto}
+
 [data-project-more-popup] [role=menuitem],[data-project-more-current],[data-organizer-header] button,[data-organizer-header] a,[data-organizer-projects] button,[data-organizer-projects] [role=button],[data-organizer-popup] [role=menuitemradio]{pointer-events:auto!important}
