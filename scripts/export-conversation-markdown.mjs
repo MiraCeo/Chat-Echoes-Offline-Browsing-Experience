@@ -1,11 +1,12 @@
 import { parseHTML } from 'linkedom';
+import { markdownTextOnly } from './markdown-text-only.mjs';
 import { conversationToMarkdownView } from './conversation-to-markdown-view.mjs';
 import { messageCopyContent } from './copy-controls.mjs';
 
-export function exportConversationMarkdown(conversation) {
+export function exportConversationMarkdown(conversation, {textOnly=false} = {}) {
   const { document } = parseHTML('<html><body></body></html>');
   const output = [`# ${conversation.title.replace(/[\r\n]/g, ' ')}`, '',
-    '> 本文件为当前阅读分支的 Markdown 副本；完整消息树、内部记录和原始字段保留在 conversation.ceobe.json。', ''];
+    textOnly ? '> 纯文本 Markdown：仅包含当前阅读分支，不包含附件或外部资源。' : '> 本文件为当前阅读分支的 Markdown 副本；完整消息树、内部记录和原始字段保留在 conversation.ceobe.json。', ''];
   for (const turn of conversationToMarkdownView(conversation)) {
     const parts = turn.parts.filter(part => part.type === 'markdown');
     if (!parts.length) continue;
@@ -15,6 +16,7 @@ export function exportConversationMarkdown(conversation) {
       const prefix = `ref-${part.id.replace(/[^a-zA-Z0-9-]/g, '')}-`;
       let text = messageCopyContent([part], document, prefix).text;
       const partResources = (conversation.resources || []).filter(resource => resource.message_ids.includes(part.id));
+      if (textOnly) { output.push(markdownTextOnly(text, partResources).trim(), ''); continue; }
       const represented = new Set();
       for (const resource of partResources) {
         for (const pointer of resource.pointers || []) {
@@ -38,5 +40,5 @@ export function exportConversationMarkdown(conversation) {
       }
     }
   }
-  return output.join('\n');
+  return textOnly ? markdownTextOnly(output.join('\n')) : output.join('\n');
 }

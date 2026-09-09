@@ -1,5 +1,27 @@
 // Normalize the saved official shell before serialization, not after first paint.
 export function prepareLocalSidebar(document, active = null) {
+  for (const item of document.querySelectorAll('[aria-label="下载应用"]')) item.remove();
+  for (const profile of document.querySelectorAll('[data-testid="accounts-profile-button"]')) {
+    profile.querySelector('.trailing')?.remove();
+    for (const attr of ['tabindex','role','type','id','aria-haspopup','aria-expanded','aria-describedby','data-state','data-testid','data-sidebar-item','data-fill']) profile.removeAttribute(attr);
+    profile.dataset.ceobeLocalProfile = '';
+    profile.setAttribute('aria-label', 'CEOBE 本地归档');
+    for (const cls of ['hoverable','keyboard-focused:focus-ring','keyboard-focused:-outline-offset-2']) profile.classList.remove(cls);
+    const avatar = profile.querySelector('.ceobe-local-avatar');
+    if (avatar) { avatar.textContent = 'CE'; avatar.setAttribute('aria-label', '本地头像 CE'); }
+    const name = profile.querySelector('.truncate');
+    if (name) name.textContent = 'CEOBE';
+    const subscription = profile.querySelector('.text-caption-regular');
+    if (subscription) subscription.textContent = '本地归档';
+  }
+  const wordmark = document.querySelector('#sidebar-header .header-wordmark');
+  if (wordmark) {
+    (wordmark.querySelector('span') || wordmark).textContent = 'CEOBE';
+    const home = wordmark.closest('a');
+    home.setAttribute('href', 'https://github.com/MiraCeo/Chat-Echoes-Offline-Browsing-Experience');
+    home.setAttribute('aria-label', 'CEOBE 项目主页');
+    home.style.setProperty('pointer-events', 'auto', 'important');
+  }
   for (const item of document.querySelectorAll('[data-testid="sidebar-item-tasks"], [data-testid="plugins-button"]')) item.remove();
   for (const item of document.querySelectorAll('[data-sidebar-item]')) {
     if (['已安排', '插件'].includes(item.textContent.trim()) || ['已安排', '插件'].includes(item.getAttribute('aria-label'))) item.remove();

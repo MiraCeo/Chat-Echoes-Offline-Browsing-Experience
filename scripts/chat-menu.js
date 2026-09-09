@@ -1,3 +1,4 @@
+import {markdownFilename} from './markdown-filename.js';
 // Keep handlers scoped when Vite concatenates this module with legacy reader scripts.
 (() => {
 const menu=document.querySelector('[data-ceobe-chat-menu]'),sub=document.querySelector('[data-ceobe-chat-submenu]');
@@ -6,6 +7,20 @@ const layouts=JSON.parse(document.getElementById('ceobe-chat-layout').textConten
 const root=new URL(location.pathname.includes('/conversations/')?'../':'./',location.href);
 let trigger=null,generation=0,busy=false,timer;
 function tell(text){status.textContent=text;status.hidden=false;clearTimeout(timer);timer=setTimeout(()=>status.hidden=true,6000)}
+let exporting=false;
+async function saveMarkdown(id,title){
+ if(exporting||!id)return;exporting=true;let writable=null;
+ try{
+  // Request the native dialog before awaiting network IO, preserving user activation.
+  const handle=typeof window.showSaveFilePicker==='function'&&window.isSecureContext?await window.showSaveFilePicker({id:'ceobe-markdown-export',suggestedName:markdownFilename(title),excludeAcceptAllOption:true,types:[{description:'Markdown 纯文本',accept:{'text/markdown':['.md']}}]}):null;
+  tell('正在准备 Markdown…');
+  const r=await fetch(new URL('api/chats/export-md?id='+encodeURIComponent(id),root),{cache:'no-store',signal:AbortSignal.timeout(30000)}),data=await r.json();
+  if(!r.ok||typeof data.markdown!=='string')throw new Error(data.error||'无法生成 Markdown');
+  if(handle){writable=await handle.createWritable();await writable.write(new Blob([data.markdown],{type:'text/markdown;charset=utf-8'}));await writable.close();writable=null;tell('Markdown 已保存。')}
+  else{const url=URL.createObjectURL(new Blob([data.markdown],{type:'text/markdown;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download=markdownFilename(data.title||title);document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);tell('已交给浏览器下载 Markdown，保存位置由浏览器设置决定。')}
+ }catch(e){if(writable)try{await writable.abort?.()}catch{};tell(e.name==='AbortError'?'已取消转存。':'转存失败：'+(e.message||'请稍后重试。'))}
+ finally{exporting=false}
+}
 function entries(panel){return [...panel.querySelectorAll('[role=menuitem]')]}
 function highlight(panel,item){for(const e of entries(panel))e.toggleAttribute('data-highlighted',e===item)}
 function place(panel,rect,side=false){
@@ -73,7 +88,7 @@ document.addEventListener('click',e=>{
 },true);
 move.addEventListener('pointerenter',()=>{if(sub.hidden)openSub()});move.addEventListener('click',()=>openSub(true));
 menu.addEventListener('pointerover',e=>{const item=e.target.closest('[data-chat-action]');if(item&&item!==move)closeSub()});
-menu.addEventListener('click',e=>{const item=e.target.closest('[data-chat-action]');if(item&&item!==move){if(['rename','delete','pin'].includes(item.dataset.chatAction)){const id=trigger?.dataset.ceobeChatId,opener=trigger;close(false);document.dispatchEvent(new CustomEvent('ceobe:chat-action',{detail:{id,opener,action:item.dataset.chatAction}}))}else tell('“'+item.textContent.trim()+'”暂未接入本地归档，本次未修改聊天。')}});
+menu.addEventListener('click',e=>{const item=e.target.closest('[data-chat-action]');if(item&&item!==move){if(item.dataset.chatAction==='export-md'){const id=trigger?.dataset.ceobeChatId,title=trigger?.closest('li')?.querySelector('._NCija_content, a .font-medium')?.textContent||'聊天';close(false);saveMarkdown(id,title)}else if(['rename','delete','pin'].includes(item.dataset.chatAction)){const id=trigger?.dataset.ceobeChatId,opener=trigger;close(false);document.dispatchEvent(new CustomEvent('ceobe:chat-action',{detail:{id,opener,action:item.dataset.chatAction}}))}else tell('“'+item.textContent.trim()+'”暂未接入本地归档，本次未修改聊天。')}});
 sub.querySelector('[data-chat-new-project]').addEventListener('click',()=>{const detail={opener:trigger,conversationId:trigger?.dataset.ceobeChatId};close(false);document.dispatchEvent(new CustomEvent('ceobe:open-project',{detail}))});
 list.addEventListener('click',async e=>{
  const row=e.target.closest('[data-chat-project]');if(!row||!trigger||busy)return;e.preventDefault();
