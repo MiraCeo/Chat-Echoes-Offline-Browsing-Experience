@@ -114,6 +114,8 @@ try {
   const first = state[0];
   await p.reload({ waitUntil: 'networkidle' });
   assert.equal(await p.locator('[data-bookmark-mark]:visible').count(), 1);
+  await p.setViewportSize({ width: 1920, height: 908 });
+  await p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
   const userCap = p.locator('[data-bookmark-caption="' + user.message_id + '"]');
   await userCap.waitFor();
   assert.equal(await userCap.locator('.ceobe-bookmark-caption-title').innerText(), '书签 <img src=x onerror=alert(1)>');
@@ -194,6 +196,8 @@ try {
   }, assistant.message_id);
   assert.ok(asstPlace.leftOf && asstPlace.top, JSON.stringify(asstPlace));
   assert.equal(await asstCap.locator('[data-bookmark-caption-expand]').isHidden(), true);
+  await p.setViewportSize({ width: 1028, height: 908 });
+  await p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
   const readingBoxBefore = await p.locator('[data-ceobe-message-list]').boundingBox();
   await p.locator('.ceobe-bookmark-rail').click();
   const readingBoxAfter = await p.locator('[data-ceobe-message-list]').boundingBox();
@@ -271,8 +275,12 @@ try {
   for (const b of state) b.chat_title = '重新命名后的聊天';
   await p.evaluate(() => document.dispatchEvent(new Event('ceobe:chat-updated')));
   await p.locator('[data-bookmark-search]').fill('重新命名');
+  assert.equal(await p.locator('[data-bookmark-row]').count(), 0, 'Current scope searches bookmark titles only');
+  await list.locator('[data-bookmark-scope=all]').click();
   await p.locator('[data-bookmark-row]').first().waitFor();
   assert.equal(await p.locator('[data-bookmark-row]').count(), 2);
+  await p.locator('[data-bookmark-search]').fill('');
+  await list.locator('[data-bookmark-scope=current]').click();
   await p.locator('[data-bookmark-edit="' + first.id + '"]').click();
   await p.locator('#bookmark-note').fill('我的未提交草稿');
   state.find((x) => x.id === first.id).version++;

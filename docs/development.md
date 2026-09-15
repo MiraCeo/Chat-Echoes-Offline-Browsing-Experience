@@ -62,6 +62,8 @@ node scripts/test-copy-content.mjs
 | MD／ZIP 导出 | `test-markdown-export.mjs`、`test-markdown-save-browser.mjs`、`test-project-export.mjs` |
 | 菜单、图片与导出界面 | `test-reader-ui-browser.mjs`、`test-project-more.mjs` |
 | 项目内置顶与标题空间 | `test-project-pinned-browser.mjs` |
+| 响应式书签、最近聊天键盘及项目提示 | `test-ui-followups-browser.mjs`；支持 `CEOBE_TEST_DIST=1` 和 `CEOBE_TEST_HEADED=1`，书签为内存夹具、API 只读 |
+| 连续调整宽度、离屏旁注与精确跳转 | `test-bookmark-resize-browser.mjs`；支持生产及可见 Edge，用内存书签检查布局／样式重算次数、空闲稳定性、滚动补齐和跳转 |
 | 侧栏与整理 | `test-sidebar-controls.mjs`、`test-sidebar-polish.mjs`、`test-chat-organizer.mjs` |
 | 导入与发布 | `test-local-import-api.mjs`、`test-production-import.mjs`、`test-link-import-browser.mjs` |
 | 离线资源 | `test-offline-resources.mjs` |
@@ -120,6 +122,10 @@ DOM 经多次序列化时使用 `scripts/serialize-html.mjs` 的处理，避免�
 书签存储测试覆盖稳定 ID、合并回复、版本与书签 ID 的并发校验、损坏数据保护，以及删除构建失败／切换中途失败后的回滚。浏览器测试拦截全部书签写入，默认验证开发服务；设置 `CEOBE_TEST_DIST=1` 可验证生产构建。不要用真实备注做测试数据。
 
 ### 视觉与交互回归
+
+书签布局将 resize 与 ResizeObserver 通知合并到同一个动画帧，先读取几何再批量写入变化；只测量视口附近消息，避免读取离屏子节点时强制渲染 `content-visibility:auto` 内容。稳定消息别名映射按页面生命周期缓存，书签记录与消息 DOM 不做裁剪；精确跳转仍启用完整高度布局。无附件聊天也应使用公共阅读器的离屏渲染规则。
+
+连续缩放回归优先限制布局及样式重算次数，避免用受机器负载影响的固定毫秒阈值；墙钟耗时作为对照记录。
 
 既有桌面基线主要为 1092×935 或 1028×908 CSS 像素，DPR 1.5。尺寸和锚点基线应以对应冻结模板、布局元数据与专项测试为准，而不是不断复制到 README。
 
