@@ -71,10 +71,27 @@
  window.addEventListener('resize',()=>closeRecent(false));
  document.addEventListener('scroll',e=>{if(!recentPopup.hidden&&e.target instanceof Element&&!insideRecent(e.target))closeRecent(false)},true);
  document.addEventListener('ceobe:chat-action',e=>{if(e.detail.action==='rename'&&recentPopup.contains(e.detail.opener)&&recentPopup.querySelector('input')){recentEditing=true}});
- recentMenu.addEventListener('keydown',e=>{if(e.defaultPrevented||e.isComposing||e.target.matches('input,textarea'))return;const rows=recentRows(),i=rows.indexOf(document.activeElement);
+ recentMenu.addEventListener('keydown',e=>{
+  if(e.defaultPrevented||e.isComposing||e.target.matches('input,textarea'))return;
+  const active=document.activeElement,rows=recentRows(),row=active.closest('li'),i=rows.indexOf(row?.querySelector('a'));
+  const controls=parent=>[...parent.querySelectorAll('a,button')].filter(b=>visible(b)&&!b.disabled);
   if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeRecent(true)}
-  else if(e.key==='Tab')e.preventDefault();
-  else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();rows[e.key==='Home'?0:e.key==='End'?rows.length-1:i<0?(e.key==='ArrowUp'?rows.length-1:0):(i+(e.key==='ArrowDown'?1:-1)+rows.length)%rows.length]?.focus()}
+  else if(e.key==='Tab'){
+   const stops=controls(recentList),index=stops.indexOf(active),next=index+(e.shiftKey?-1:1);
+   if(next>=0&&next<stops.length){e.preventDefault();stops[next].focus({preventScroll:true})}
+   // At either boundary, restore the trigger and let native Tab leave the menu.
+   else closeRecent(true);
+  }
+  else if(['ArrowLeft','ArrowRight'].includes(e.key)&&row){
+   e.preventDefault();const stops=controls(row),index=stops.indexOf(active);
+   stops[Math.max(0,Math.min(stops.length-1,index+(e.key==='ArrowRight'?1:-1)))]?.focus({preventScroll:true});
+  }
+  else if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){
+   e.preventDefault();const next=rows[e.key==='Home'?0:e.key==='End'?rows.length-1:i<0?(e.key==='ArrowUp'?rows.length-1:0):(i+(e.key==='ArrowDown'?1:-1)+rows.length)%rows.length];
+   const action=active.dataset.railAction;
+   (action?next?.closest('li').querySelector('[data-rail-action='+action+']'):next)?.focus({preventScroll:true});
+  }
+  else if(e.key===' '&&active.matches('a')){e.preventDefault();active.click()}
  });
  dialog.addEventListener('keydown',e=>{
   if(e.isComposing)return;

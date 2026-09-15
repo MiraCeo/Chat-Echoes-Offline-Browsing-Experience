@@ -31,10 +31,34 @@ const el = (tag, text, cls) => {
     clearTimeout(toast.timer);
     toast.timer = setTimeout(() => (e.hidden = true), 6000);
   };
-function messageTarget(id) {
-  return qa('[data-bookmark-target]').find((e) =>
-    JSON.parse(e.dataset.bookmarkAliases).includes(id),
-  );
+// The archived message DOM is immutable for this page's lifetime. Resolve
+// canonical IDs and merged-message aliases once, not once per caption per frame.
+const messageTargets = new Map();
+for (const section of qa('[data-bookmark-target]'))
+  for (const id of JSON.parse(section.dataset.bookmarkAliases))
+    if (!messageTargets.has(id)) messageTargets.set(id, section);
+const messageTarget = id => messageTargets.get(id);
+let captionEntries = [];
+const nearSections = new WeakSet(), observedSections = new Set();
+// Reading an inner box of an offscreen content-visibility:auto section forces
+// that whole message to render. Observe only the outer section and measure
+// captions shortly before they enter view; exact jumps keep their existing path.
+const captionViewport = new IntersectionObserver(entries => {
+  for (const entry of entries) {
+    if (entry.isIntersecting) nearSections.add(entry.target);
+    else nearSections.delete(entry.target);
+    setFlag(entry.target, 'data-bookmark-near', entry.isIntersecting);
+  }
+  layoutCaptions();
+}, { rootMargin: '400px 0px' });
+function setAttributeIfChanged(node, name, value) {
+  if (node.getAttribute(name) !== value) node.setAttribute(name, value);
+}
+function setFlag(node, name, value) {
+  if (node.hasAttribute(name) !== value) node.toggleAttribute(name, value);
+}
+function setStyle(node, name, value) {
+  if (node.style[name] !== value) node.style[name] = value;
 }
 function forTarget(id) {
   return (
@@ -81,6 +105,7 @@ function syncCaptions() {
     }
     cap.dataset.bookmarkSide = side;
     cap.setAttribute('aria-label', '编辑书签 ' + b.title);
+    cap.title = b.title;
     const icon = el('span', null, 'ceobe-bookmark-caption-icon');
     icon.append(bookmarkIcon(b.role === 'user' ? 'user' : 'gpt'));
     const body = el('span', null, 'ceobe-bookmark-caption-body');
@@ -94,59 +119,116 @@ function syncCaptions() {
     more.dataset.bookmarkCaptionExpand = '';
     more.hidden = true;
     cap.replaceChildren(main, more);
-    cap.style.cssText = '';
+    if (!cap.dataset.bookmarkDisplay) {
+      cap.dataset.bookmarkDisplay = 'icon';
+      cap.style.maxWidth = '28px';
+    }
     if (side === 'end') host.append(cap);
     else host.prepend(cap);
+  }
+  captionEntries = qa('[data-bookmark-caption]').map(cap => {
+    const section = messageTarget(cap.dataset.bookmarkCaption);
+    return {
+      cap, section,
+      box: section.querySelector('.user-message-bubble-color') ||
+        section.querySelector('[data-conversation-screenshot-content]') || section,
+      title: cap.querySelector('.ceobe-bookmark-caption-title'),
+      note: cap.querySelector('.ceobe-bookmark-caption-note'),
+      more: cap.querySelector('[data-bookmark-caption-expand]'),
+    };
+  });
+  const nextSections = new Set(captionEntries.map(entry => entry.section));
+  for (const section of observedSections) if (!nextSections.has(section)) {
+    captionViewport.unobserve(section);
+    observedSections.delete(section);
+    nearSections.delete(section);
+    setFlag(section, 'data-bookmark-near', false);
+  }
+  for (const section of nextSections) if (!observedSections.has(section)) {
+    observedSections.add(section);
+    captionViewport.observe(section);
   }
   layoutCaptions();
 }
 const expandedCaptions = new Set();
-function updateExpandChrome(cap) {
-  const more = cap.querySelector('[data-bookmark-caption-expand]');
-  if (!more) return;
-  const expanded = expandedCaptions.has(cap.dataset.bookmarkCaption);
-  cap.toggleAttribute('data-expanded', expanded);
-  let overflow = false;
-  if (!expanded) {
-    const title = cap.querySelector('.ceobe-bookmark-caption-title'),
-      note = cap.querySelector('.ceobe-bookmark-caption-note');
-    overflow =
-      (title && title.scrollHeight > title.clientHeight + 1) ||
-      (note && note.scrollHeight > note.clientHeight + 1);
-  }
-  const key = (expanded ? '1' : '0') + (expanded || overflow ? '1' : '0');
-  if (more.dataset.capKey === key) return;
-  more.dataset.capKey = key;
-  const mark = el('span', expanded ? '▴' : '▾');
-  mark.setAttribute('aria-hidden', 'true');
-  more.replaceChildren(expanded ? '收起' : '展开', mark);
-  more.hidden = !expanded && !overflow;
-  more.setAttribute('aria-expanded', String(expanded));
-  more.setAttribute('aria-label', expanded ? '收起书签全文' : '展开书签全文');
-}
+// One scheduled geometry pass serves resize, ResizeObserver, panel changes and
+// bookmark refresh. Measure all boxes before changing any attributes or styles.
+let layoutFrame = 0, chromeFrame = 0;
 function layoutCaptions() {
-  const captionNodes = qa('[data-bookmark-caption]');
-  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16,
-    empty = 2 * rem;
-  for (const cap of captionNodes) {
-    const section = messageTarget(cap.dataset.bookmarkCaption);
-    if (!section) continue;
-    const bubble = section.querySelector('.user-message-bubble-color');
-    const shot = section.querySelector('[data-conversation-screenshot-content]') || section;
-    const box = bubble || shot,
-      r = box.getBoundingClientRect(),
-      side = cap.dataset.bookmarkSide;
-    let max;
-    if (side === 'start') {
-      let left = 8;
-      if (listDialog.open && scope === 'current')
-        left = Math.max(left, listDialog.getBoundingClientRect().right + 8);
-      max = r.left - 8 - left;
-    } else max = innerWidth - 8 - (r.right + 8);
-    cap.style.maxWidth = Math.max(0, Math.min(max - empty, max * 0.65)) + 'px';
+  if (chromeFrame) {
+    cancelAnimationFrame(chromeFrame);
+    chromeFrame = 0;
   }
-  for (const cap of captionNodes) {
-    updateExpandChrome(cap);
+  if (!layoutFrame) layoutFrame = requestAnimationFrame(flushBookmarkLayout);
+}
+function flushBookmarkLayout() {
+  layoutFrame = 0;
+  const main = readerMain?.getBoundingClientRect();
+  const isPanel = Boolean(listDialog.open && scope === 'current' && main);
+  const panelWidth = main ? Math.min(280, main.width - 24) : 0;
+  const top = main ? Math.max(60, main.top + 8) : 60;
+  const leftEdge = Math.max(8, main?.left || 0, isPanel ? main.left + 8 + panelWidth + 8 : 0);
+  const empty = 2 * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16);
+  const plans = captionEntries.filter(entry => nearSections.has(entry.section)).map(entry => {
+    const r = entry.box.getBoundingClientRect();
+    const max = entry.cap.dataset.bookmarkSide === 'start'
+      ? r.left - 8 - leftEdge : innerWidth - 8 - (r.right + 8);
+    const available = Math.max(0, Math.min(max - empty, max * 0.65));
+    const mode = available >= 180 ? 'summary' : available >= 96 ? 'title' : 'icon';
+    return { ...entry, mode, inline: mode === 'icon' && max < 28, width: mode === 'icon' ? 28 : available };
+  });
+
+  // Write phase. Idempotent writes also avoid ResizeObserver feedback work.
+  setAttributeIfChanged(listDialog, 'data-bookmark-view', scope);
+  setFlag(document.body, 'data-bookmark-panel-open', false);
+  const panelStyles = isPanel
+    ? { left: main.left + 8 + 'px', top: top + 'px', width: panelWidth + 'px', height: Math.max(160, innerHeight - top - 16) + 'px' }
+    : { left: '', top: '', width: '', height: '' };
+  for (const [key, value] of Object.entries(panelStyles)) setStyle(listDialog, key, value);
+  if (main && panelButton) {
+    setStyle(panelButton, 'right', 'auto');
+    setStyle(panelButton, 'left', main.left + 8 + 'px');
+    setStyle(panelButton, 'top', top + 'px');
+    if (panelButton.hidden !== isPanel) panelButton.hidden = isPanel;
+    setAttributeIfChanged(panelButton, 'aria-expanded', String(isPanel));
+  }
+  for (const { cap, mode, inline, width, more } of plans) {
+    setAttributeIfChanged(cap, 'data-bookmark-display', mode);
+    setFlag(cap, 'data-bookmark-inline', inline);
+    setStyle(cap, 'maxWidth', width + 'px');
+    if (mode !== 'summary') expandedCaptions.delete(cap.dataset.bookmarkCaption);
+    setFlag(cap, 'data-expanded', mode === 'summary' && expandedCaptions.has(cap.dataset.bookmarkCaption));
+    if (mode !== 'summary' && more) {
+      if (!more.hidden) more.hidden = true;
+      setAttributeIfChanged(more, 'aria-expanded', 'false');
+      if (more.dataset.capKey != null) delete more.dataset.capKey;
+    }
+  }
+  // Overflow depends on the newly applied widths. Read it on the next frame,
+  // then update all expand controls together rather than forcing layout per item.
+  if (!chromeFrame) chromeFrame = requestAnimationFrame(updateExpandChrome);
+  schedulePreviewLayout();
+}
+function updateExpandChrome() {
+  chromeFrame = 0;
+  const plans = captionEntries.filter(({ cap, more, section }) => nearSections.has(section) && more && cap.dataset.bookmarkDisplay === 'summary')
+    .map(({ cap, more, title, note }) => {
+      const expanded = expandedCaptions.has(cap.dataset.bookmarkCaption);
+      const overflow = !expanded && Boolean(
+        (title && title.scrollHeight > title.clientHeight + 1) ||
+        (note && note.scrollHeight > note.clientHeight + 1));
+      return { more, expanded, overflow };
+    });
+  for (const { more, expanded, overflow } of plans) {
+    const key = (expanded ? '1' : '0') + (expanded || overflow ? '1' : '0');
+    if (more.dataset.capKey === key) continue;
+    more.dataset.capKey = key;
+    const mark = el('span', expanded ? '▴' : '▾');
+    mark.setAttribute('aria-hidden', 'true');
+    more.replaceChildren(expanded ? '收起' : '展开', mark);
+    more.hidden = !expanded && !overflow;
+    setAttributeIfChanged(more, 'aria-expanded', String(expanded));
+    setAttributeIfChanged(more, 'aria-label', expanded ? '收起书签全文' : '展开书签全文');
   }
 }
 function editorDisabled() {
@@ -187,34 +269,8 @@ if (panelButton) {
   panelButton.title = '展开当前聊天书签';
   panelButton.setAttribute('aria-label', '展开当前聊天书签');
 }
-function placeRail() {
-  if (!readerMain || !panelButton) return;
-  const r = readerMain.getBoundingClientRect();
-  panelButton.style.right = 'auto';
-  panelButton.style.left = r.left + 8 + 'px';
-  panelButton.style.top = Math.max(60, r.top + 8) + 'px';
-  panelButton.hidden = listDialog.open && scope === 'current';
-  panelButton.setAttribute('aria-expanded', String(listDialog.open && scope === 'current'));
-}
-function placeList() {
-  const isPanel = listDialog.open && scope === 'current' && readerMain;
-  listDialog.dataset.bookmarkView = scope;
-  listDialog.style.cssText = '';
-  document.body.removeAttribute('data-bookmark-panel-open');
-  if (isPanel) {
-    const r = readerMain.getBoundingClientRect(),
-      width = Math.min(280, r.width - 24);
-    const top = Math.max(60, r.top + 8);
-
-    listDialog.style.left = r.left + 8 + 'px';
-    listDialog.style.top = top + 'px';
-    listDialog.style.width = width + 'px';
-    listDialog.style.height = Math.max(160, innerHeight - top - 16) + 'px';
-  }
-  placeRail();
-  schedulePreviewLayout();
-  layoutCaptions();
-}
+function placeRail() { layoutCaptions(); }
+function placeList() { layoutCaptions(); }
 function setListMode() {
   if (listDialog.open) listDialog.close();
   if (scope === 'current') listDialog.show();
@@ -240,54 +296,60 @@ function bookmarkIcon(name) {
   return q('#ceobe-bookmark-icon-' + name).content.firstElementChild.cloneNode(true);
 }
 // Explicit two-line layout preserves the edit control and uses ASCII "...", not a browser ellipsis.
+let previewCache = new WeakMap();
 function layoutBookmarkPreviews() {
+  previewFrame = 0;
+  if (!listDialog.open) return;
+  const plans = [];
   for (const box of qa('.ceobe-bookmark-preview')) {
     if (!box.clientWidth) continue;
-    const first = box.querySelector('.ceobe-bookmark-preview-first'),
-      last = box.querySelector('.ceobe-bookmark-preview-last');
+    const first = box.querySelector('.ceobe-bookmark-preview-first');
+    const last = box.querySelector('.ceobe-bookmark-preview-last');
     const style = getComputedStyle(first);
-    previewMeasure.font = style.fontWeight + ' ' + style.fontSize + ' ' + style.fontFamily;
-    const value = previewText.get(box) || '',
-      parts = graphemes ? [...graphemes.segment(value)].map((x) => x.segment) : Array.from(value);
+    const font = style.fontWeight + ' ' + style.fontSize + ' ' + style.fontFamily;
+    const value = previewText.get(box) || '', firstWidth = first.clientWidth, lastWidth = last.clientWidth;
+    const previous = previewCache.get(box);
+    if (previous && previous.value === value && previous.font === font &&
+        previous.firstWidth === firstWidth && previous.lastWidth === lastWidth) continue;
+    previewMeasure.font = font;
+    const parts = graphemes ? [...graphemes.segment(value)].map(x => x.segment) : Array.from(value);
     function take(chars, width) {
-      let stop = chars.findIndex((c) => c === '\n');
+      let stop = chars.indexOf('\n');
       if (stop < 0) stop = chars.length;
-      let lo = 0,
-        hi = stop;
+      let lo = 0, hi = stop;
       while (lo < hi) {
         const mid = Math.ceil((lo + hi) / 2);
         if (previewMeasure.measureText(chars.slice(0, mid).join('')).width <= width) lo = mid;
         else hi = mid - 1;
       }
-      const consumed = lo === stop && chars[stop] === '\n' ? lo + 1 : lo;
-      return { text: chars.slice(0, lo).join(''), rest: chars.slice(consumed) };
+      return { text: chars.slice(0, lo).join(''), rest: chars.slice(lo === stop && chars[stop] === '\n' ? lo + 1 : lo) };
     }
-    const a = take(parts, first.clientWidth),
-      b = take(a.rest, last.clientWidth);
-    first.textContent = a.text;
+    const a = take(parts, firstWidth), b = take(a.rest, lastWidth);
     let tail = b.text;
     if (b.rest.length) {
-      const tailParts = graphemes
-        ? [...graphemes.segment(tail)].map((x) => x.segment)
-        : Array.from(tail);
-      while (
-        tailParts.length &&
-        previewMeasure.measureText(tailParts.join('') + '...').width > last.clientWidth
-      )
-        tailParts.pop();
+      const tailParts = graphemes ? [...graphemes.segment(tail)].map(x => x.segment) : Array.from(tail);
+      while (tailParts.length && previewMeasure.measureText(tailParts.join('') + '...').width > lastWidth) tailParts.pop();
       tail = tailParts.join('') + '...';
     }
-    last.textContent = tail;
-    box.dataset.truncated = String(b.rest.length > 0);
+    plans.push({ box, first, last, firstText: a.text, lastText: tail, truncated: String(b.rest.length > 0) });
+    previewCache.set(box, { value, font, firstWidth, lastWidth });
+  }
+  for (const { box, first, last, firstText, lastText, truncated } of plans) {
+    if (first.textContent !== firstText) first.textContent = firstText;
+    if (last.textContent !== lastText) last.textContent = lastText;
+    setAttributeIfChanged(box, 'data-truncated', truncated);
   }
 }
-let previewFrame;
+let previewFrame = 0;
 function schedulePreviewLayout() {
-  cancelAnimationFrame(previewFrame);
-  previewFrame = requestAnimationFrame(layoutBookmarkPreviews);
+  if (listDialog.open && !previewFrame) previewFrame = requestAnimationFrame(layoutBookmarkPreviews);
 }
 new ResizeObserver(schedulePreviewLayout).observe(q('[data-bookmark-list]'));
-document.fonts?.ready.then(schedulePreviewLayout);
+document.fonts?.ready.then(() => {
+  previewCache = new WeakMap();
+  layoutCaptions();
+  schedulePreviewLayout();
+});
 function renderList() {
   placeList();
   const list = q('[data-bookmark-list]'),
@@ -684,8 +746,7 @@ editor.addEventListener('cancel', (e) => {
 q('[data-bookmark-search]').addEventListener('input', renderList);
 window.addEventListener('resize', () => {
   closeMenu();
-  placeRail();
-  placeList();
+  layoutCaptions();
 });
 listDialog.addEventListener('click', (e) => {
   if (scope === 'all' && e.target === listDialog) {

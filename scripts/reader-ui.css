@@ -10,3 +10,20 @@
 [data-reader-image-viewer] img{display:block;width:100%;height:100%;object-fit:contain;cursor:auto}
 [data-reader-image-viewer] [role=dialog]>div{max-height:85vh;max-width:90vw}
 [data-reader-image-open]:focus-visible,[data-reader-image-viewer] button:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+/* Shared reader optimization: do not make long-chat rendering depend on
+   whether that conversation happens to have a previewable attachment.
+   Also retained in file-previews.css for standalone replay builds. */
+section[data-testid^="conversation-turn-"] {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
+}
+/* Exact bookmark/prompt-rail jumps retain their full-height layout guarantee. */
+html[data-ceobe-accurate-turn-layout] section[data-testid^="conversation-turn-"] {
+  content-visibility: visible;
+}
+/* Nearby bookmark cards may extend below a short message. Remove paint
+   containment there so expanded notes and their controls remain clickable;
+   offscreen messages keep the normal deferred rendering policy. */
+section[data-testid^="conversation-turn-"][data-bookmark-near] {
+  content-visibility: visible;
+}

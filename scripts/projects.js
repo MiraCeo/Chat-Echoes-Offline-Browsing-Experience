@@ -52,7 +52,7 @@ form.addEventListener('submit',async e=>{
 });
 search?.addEventListener('input',render);
 for(const b of main.querySelectorAll('[data-project-filter]'))b.addEventListener('click',()=>{filter=b.dataset.projectFilter;render()});
-async function load(){try{const r=await fetch('/api/projects',{cache:'no-store'});const result=await r.json();if(!r.ok||!Array.isArray(result.projects))throw new Error();projects=result.projects;writable=result.writable===true;status.textContent='项目保存在本地工作区；可通过聊天菜单关联项目；暂未接入附件或共享。';}catch{writable=false;status.textContent='当前为只读快照。新建项目请使用本地 npm run dev 或 npm run preview 服务。';}for(const b of main.querySelectorAll('[data-project-new]')){b.disabled=!writable;b.title=writable?'创建本地项目':'当前服务只读';}render()}
+async function load(){try{const r=await fetch('/api/projects',{cache:'no-store'});const result=await r.json();if(!r.ok||!Array.isArray(result.projects))throw new Error();projects=result.projects;writable=result.writable===true;status.textContent='项目保存在本地工作区；关联聊天中的附件会自动汇总到项目文件；暂不支持手动上传或云端共享。';}catch{writable=false;status.textContent='当前为只读快照。新建项目请使用本地 npm run dev 或 npm run preview 服务。';}for(const b of main.querySelectorAll('[data-project-new]')){b.disabled=!writable;b.title=writable?'创建本地项目':'当前服务只读';}render()}
 document.addEventListener('ceobe:project-updated',load);window.addEventListener('focus',()=>{if(!modal.open)load()});
 render();load();
 

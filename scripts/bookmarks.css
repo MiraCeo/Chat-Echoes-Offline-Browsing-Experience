@@ -136,6 +136,33 @@
 [data-bookmark-caption-expand][hidden] {
   display: none !important;
 }
+/* Three levels based on the measured gutter, not a device-wide breakpoint. */
+.ceobe-bookmark-caption[data-bookmark-display='icon'] {
+  width: 28px;
+  height: 28px;
+  padding: 6px;
+  gap: 0;
+}
+.ceobe-bookmark-caption[data-bookmark-display='icon'] .ceobe-bookmark-caption-main {
+  gap: 0;
+}
+.ceobe-bookmark-caption[data-bookmark-display='icon'] .ceobe-bookmark-caption-icon {
+  margin-top: 0;
+}
+.ceobe-bookmark-caption[data-bookmark-display='icon'] .ceobe-bookmark-caption-body,
+.ceobe-bookmark-caption[data-bookmark-display='title'] .ceobe-bookmark-caption-note,
+.ceobe-bookmark-caption:not([data-bookmark-display='summary']) [data-bookmark-caption-expand] {
+  display: none !important;
+}
+.ceobe-bookmark-caption[data-bookmark-inline] {
+  position: relative;
+  inset: auto;
+  margin: 0 0 4px;
+}
+.ceobe-bookmark-caption[data-bookmark-inline][data-bookmark-side='end'] {
+  margin: 4px 0 0 auto;
+  align-self: flex-end;
+}
 [data-bookmark-menu] {
   position: fixed;
   z-index: 110;

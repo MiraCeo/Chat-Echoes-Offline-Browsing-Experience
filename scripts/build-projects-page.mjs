@@ -28,7 +28,7 @@ export async function buildProjectsPage(root) {
  const status=d.createElement('p');status.dataset.projectStatus='';status.setAttribute('role','status');status.className='ceobe-project-status';group.before(status);
  const modal=parseHTML(create.modal).document.querySelector('dialog');modal.dataset.projectModal='';modal.id='ceobe-create-project';
  const form=modal.querySelector('form');const name=form.querySelector('#project-name');name.maxLength=80;name.setAttribute('maxlength','80');name.setAttribute('aria-describedby','project-form-error');
- form.querySelector('aside p').textContent='创建本地项目，用名称、图标和颜色整理工作。会话与文件关联功能将后续接入；不启用 AI 记忆或云端共享。';
+ form.querySelector('aside p').textContent='创建本地项目，用名称、图标和颜色整理聊天，聊天中的附件会自动汇总。不支持手动上传、AI 记忆或云端共享。';
  const memory=form.querySelector('[data-testid="project-memory-scope-trigger"]');memory.textContent='本地项目';memory.disabled=true;memory.removeAttribute('aria-haspopup');memory.removeAttribute('aria-controls');memory.title='仅保存到当前工作区，不启用 AI 记忆';
  for(const e of form.querySelectorAll('[popover]'))e.remove();
  const err=d.createElement('p');err.id='project-form-error';err.setAttribute('role','alert');err.className='ceobe-project-error';form.querySelector('input').closest('.mb-2').append(err);
