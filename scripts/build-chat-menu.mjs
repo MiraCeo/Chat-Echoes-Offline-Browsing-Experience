@@ -35,6 +35,10 @@ export async function buildChatMenu(root,library){
   });sub.setAttribute('aria-labelledby','ceobe-chat-move');
   main.querySelector('[data-chat-action=archive]').remove();
    const exportItem=main.querySelector('[data-chat-action=share]');exportItem.dataset.chatAction='export-md';exportItem.title='转存为纯文本 Markdown（不含附件）';for(const e of [exportItem,...exportItem.querySelectorAll('*')])for(const n of e.childNodes)if(n.nodeType===3&&n.textContent.trim()==='分享')n.textContent='转存为 MD';
+  // “打开所属项目” sits next to the MD export: the official row markup with the submenu's folder glyph. Hidden until the chat's owning project is known.
+  const projectItem=exportItem.cloneNode(true);projectItem.dataset.chatAction='open-project';projectItem.removeAttribute('title');projectItem.removeAttribute('data-testid');projectItem.hidden=true;
+  for(const e of [projectItem,...projectItem.querySelectorAll('*')])for(const n of e.childNodes)if(n.nodeType===3&&n.textContent.trim()==='转存为 MD')n.textContent='打开所属项目';
+  projectItem.querySelector('svg').replaceChildren(sub.querySelector('a[role=menuitem] svg use').cloneNode(true));exportItem.after(projectItem);
   for(const action of ['rename','pin','delete'])main.querySelector(`[data-chat-action=${action}]`).removeAttribute('title');
   // Preserve BOTH official inner wrappers and the per-project wrappers/separator.
   const create=sub.querySelector('[role=menuitem]'),list=create.parentElement;

@@ -20,7 +20,9 @@ try{
   }
   await page.evaluate(()=>{const ul=document.querySelector('[data-chat-recent-list]'),row=ul.firstElementChild;if(row){for(let i=0;i<35;i++)ul.append(row.cloneNode(true))}});
   const b=page.locator('[data-chat-recent-list] [data-ceobe-chat-id]').last(),menu=page.locator('[data-ceobe-chat-menu]');await b.scrollIntoViewIfNeeded();await b.locator('xpath=ancestor::a').hover();await b.click();
-  const a=await b.boundingBox(),r=await menu.boundingBox();assert.equal(await menu.getAttribute('data-side'),'top');assert.equal(r.height,234,'Full menu, not a 90px viewport-edge sliver');assert.ok(Math.abs(r.y+r.height-a.y-4.333333)<0.1,'Live measured top offset');assert.ok(r.y>=0&&r.y+r.height<=viewport.height);assert.equal(await menu.evaluate(e=>e.scrollHeight===e.clientHeight),true);
+  // The menu grows by one official row when the cloned chat belongs to a project (“打开所属项目”).
+  const full=234+(await menu.locator('[data-chat-action=open-project]').isVisible()?36:0);
+  const a=await b.boundingBox(),r=await menu.boundingBox();assert.equal(await menu.getAttribute('data-side'),'top');assert.equal(r.height,full,'Full menu, not a 90px viewport-edge sliver');assert.ok(Math.abs(r.y+r.height-a.y-4.333333)<0.1,'Live measured top offset');assert.ok(r.y>=0&&r.y+r.height<=viewport.height);assert.equal(await menu.evaluate(e=>e.scrollHeight===e.clientHeight),true);
   await menu.locator('[data-chat-action=move]').hover();await page.locator('[data-ceobe-chat-submenu]').waitFor();assert.equal(await menu.isVisible(),true);await page.keyboard.press('Escape');
   // A second Escape may be needed if the keyboard focus is in the submenu.
   await page.keyboard.press('Escape');
