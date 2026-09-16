@@ -55,6 +55,7 @@ node scripts/test-copy-content.mjs
 | 书签与个人备注 | `test-bookmarks-store.mjs`、`test-bookmarks-browser.mjs`；聊天删除整体验证另见 `test-chat-actions-store.mjs` |
 | 聊天操作 | `test-chat-actions-store.mjs`、`test-chat-actions-browser.mjs` |
 | 阅读更多 | `test-reader-actions-browser.mjs` |
+| 从聊天打开所属项目 | `test-open-project-browser.mjs`；项目归属为内存模拟、API 只读 |
 | 项目管理与入口 | `test-project-actions-store.mjs`、`test-project-actions-browser.mjs`、`test-project-entry-browser.mjs` |
 | 项目简介 | `test-project-description.mjs`、`test-project-description-browser.mjs` |
 | 已有项目图标／颜色 | `test-project-appearance.mjs`、`test-project-appearance-browser.mjs` |
