@@ -48,3 +48,25 @@ export function conversationToHtmlView(conversation) {
   }
   return turns;
 }
+
+/**
+ * Count what a reader actually sees versus what the archive stores.
+ *
+ * `records` is every node on the linear path (system prompts, hidden context,
+ * reasoning, tool calls and results included). `turns` follows the reader's
+ * grouping: one user turn per user message and one assistant turn per run of
+ * assistant output, so it matches the number of visible conversation bubbles.
+ */
+export function conversationCounts(conversation) {
+  const ids = Array.isArray(conversation?.linear_message_ids) ? conversation.linear_message_ids : [];
+  const counts = { records: ids.length, turns: 0, user_turns: 0, assistant_turns: 0 };
+  if (!conversation?.messages) return counts;
+  let turns = [];
+  try { turns = conversationToHtmlView({ title: '', ...conversation }); } catch { return counts; }
+  for (const turn of turns) {
+    counts.turns += 1;
+    if (turn.role === 'user') counts.user_turns += 1;
+    else counts.assistant_turns += 1;
+  }
+  return counts;
+}

@@ -119,6 +119,8 @@ Remove-Item Env:CEOBE_TEST_DIST
 
 DOM 经多次序列化时使用 `scripts/serialize-html.mjs` 的处理，避免空 SVG `title`／`desc` 自闭合形式导致后续 HTML 解析吞掉图表。字体本地化应在页面构建末尾执行。
 
+写入链接属性时使用 `setAttribute('href', …)`，不要用 linkedom 的 `element.href = …`：该 setter 会对值执行 `decodeURI`，来源 URL 中合法的 `%01` 之类转义会被还原成控制字符，Vite 在开发与构建时都会以 parse5 解析错误拒绝整页。`build-official-replay.mjs` 在写出页面前调用 `assertHtmlSerializable` 作为最后一道防线，出现此类字符时构建失败而不是生成无法打开的页面；`test-sources-panel.mjs` 覆盖这一回归。
+
 书签存储测试覆盖稳定 ID、合并回复、版本与书签 ID 的并发校验、损坏数据保护，以及删除构建失败／切换中途失败后的回滚。浏览器测试拦截全部书签写入，默认验证开发服务；设置 `CEOBE_TEST_DIST=1` 可验证生产构建。不要用真实备注做测试数据。
 
 ### 视觉与交互回归

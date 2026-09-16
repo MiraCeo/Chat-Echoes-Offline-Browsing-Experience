@@ -40,7 +40,7 @@ export function localImportMiddleware(root,{mode='development',archive=url=>runL
    record.state='publishing';await atomic(file,record);await rebuild();
    const id=url.pathname.split('/')[2],library=JSON.parse(await readFile(join(root,'archive/library.ceobe.json'),'utf8')),entry=library.conversations?.find(c=>c.id===id);if(!entry)throw Error('归档已保存，但索引中没有该会话');
    if(mode==='production')await publish();
-   const result={ok:true,shareId:id,title:entry.title,messageCount:entry.message_count,resourceCounts:entry.resource_counts,page:'/conversations/'+id+'.html'};
+   const result={ok:true,shareId:id,title:entry.title,messageCount:entry.message_count,turnCount:entry.turn_count,userTurnCount:entry.user_turn_count,assistantTurnCount:entry.assistant_turn_count,resourceCounts:entry.resource_counts,page:'/conversations/'+id+'.html'};
    record.state='complete';record.result=result;await atomic(file,record);return send(200,result);
   }catch(e){console.error('Local import:',e.message);return send(e.status||500,{error:e.status?e.message:record?.captured?'归档已保存，但页面更新失败。重试只更新页面，不重复抓取。':'导入未完成，请检查分享链接、网络和本地服务日志。',archived:!!record?.captured,retryPublish:!!record?.captured})}
   finally{if(release)await release()}
