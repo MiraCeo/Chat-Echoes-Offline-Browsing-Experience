@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { parseHTML } from 'linkedom';
-import { conversationToHtmlView, htmlMessageKind } from './conversation-to-html-view.mjs';
+import { conversationToHtmlView, htmlMessageKind, conversationCounts } from './conversation-to-html-view.mjs';
 import { conversationToMarkdownView } from './conversation-to-markdown-view.mjs';
 
 const build = input => {
@@ -52,4 +52,23 @@ assert.equal(conversationToHtmlView(fixture).length, 1);
 assert.equal(conversationToHtmlView(fixture)[0].entries.length, 2);
 assert.strictEqual(conversationToHtmlView(fixture)[0].entries[0].message, fixture.messages.answer);
 assert.equal(conversationToMarkdownView(fixture)[0].parts.length, 2);
+// Turn/record counts: hidden system context, reasoning and tool activity are
+// records but not reader turns; consecutive assistant output forms one turn.
+const counted = {
+  title: '计数', linear_message_ids: ['s', 'u1', 'think', 'call', 'result', 'a1', 'u2', 'a2'],
+  messages: {
+    s: { id: 's', role: 'system', visible: false, content: { type: 'text', blocks: [] } },
+    u1: { id: 'u1', role: 'user', visible: true, content: { type: 'text', blocks: [{ type: 'text', text: '问' }] } },
+    think: { id: 'think', role: 'assistant', visible: true, content: { type: 'thoughts', blocks: [] } },
+    call: { id: 'call', role: 'assistant', visible: true, recipient: 'web.run', content: { type: 'code', blocks: [] } },
+    result: { id: 'result', role: 'tool', visible: true, content: { type: 'text', blocks: [] } },
+    a1: { id: 'a1', role: 'assistant', visible: true, recipient: 'all', channel: 'final', content: { type: 'text', blocks: [{ type: 'text', text: '答' }] } },
+    u2: { id: 'u2', role: 'user', visible: true, content: { type: 'text', blocks: [{ type: 'text', text: '再问' }] } },
+    a2: { id: 'a2', role: 'assistant', visible: true, content: { type: 'text', blocks: [{ type: 'text', text: '再答' }] } },
+  },
+};
+assert.deepEqual(conversationCounts(counted), { records: 8, turns: 4, user_turns: 2, assistant_turns: 2 });
+assert.deepEqual(conversationCounts(JSON.parse(readFileSync('samples/independent-conversation.json', 'utf8'))), { records: 5, turns: 5, user_turns: 3, assistant_turns: 2 });
+assert.deepEqual(conversationCounts({ title: 'broken', linear_message_ids: ['missing'], messages: {} }), { records: 1, turns: 0, user_turns: 0, assistant_turns: 0 });
+assert.deepEqual(conversationCounts(null), { records: 0, turns: 0, user_turns: 0, assistant_turns: 0 });
 console.log('Independent JSON, empty conversation, ordering, escaping and invalid-input preservation passed.');

@@ -10,7 +10,7 @@ import { createOfficialCitations } from "./official-citations.mjs";
 import { buildFilePreviews } from "./build-file-previews.mjs";
 import { conversationToHtmlView } from "./conversation-to-html-view.mjs";
 import { parseArgs } from "node:util";
-import { htmlSafeSvg } from './serialize-html.mjs';
+import { htmlSafeSvg, assertHtmlSerializable } from './serialize-html.mjs';
 import { createGeneratedFiles } from './generated-files.mjs';
 import { attachCopyControls } from './copy-controls.mjs';
 import { buildSourcesPanel } from './build-sources-panel.mjs';
@@ -274,7 +274,7 @@ const appendBranchFooter = (section, entries) => {
   const link = paragraph?.querySelector('a');
   if (!paragraph || !link) return;
   link.textContent = branch.branching_from_conversation_title || '原对话';
-  link.href = `https://chatgpt.com/c/${branch.branching_from_conversation_id}`;
+  link.setAttribute('href', `https://chatgpt.com/c/${branch.branching_from_conversation_id}`);
   paragraph.replaceChildren(baseDocument.createTextNode('从 '), link, baseDocument.createTextNode(' 建立的分支'));
   const agentTurn = section.querySelector('.agent-turn');
   // In the official DOM the branch divider is a sibling of the agent turn.
@@ -366,13 +366,14 @@ function appendUnavailableContent(container, message, { skipFileAttachments = fa
     const localResources = archivedResources.filter(r => r.status === 'downloaded' && r.message_ids.includes(record.id));
     for (const resource of localResources) {
       const link = baseDocument.createElement('a');
-      link.href = `./archive-resources/${basename(resource.local_path)}`;
+      // setAttribute avoids linkedom's decodeURI href setter (see build-sources-panel.mjs).
+      link.setAttribute('href', `./archive-resources/${basename(resource.local_path)}`);
       link.setAttribute('download', resource.name);
       link.setAttribute('data-ceobe-local-resource', resource.key);
       link.textContent = resource.name;
       if (resource.mime_type?.startsWith('image/') && resource.mime_type !== 'image/svg+xml') {
         const image = baseDocument.createElement('img');
-        image.src = link.href;
+        image.src = link.getAttribute('href');
         image.alt = resource.name;
         image.style.cssText = 'max-width:100%;max-height:600px;object-fit:contain;border-radius:16px';
         link.replaceChildren(image);
@@ -438,7 +439,7 @@ if (library?.conversations?.length && historyLinks.length) {
     const template = entry.id === values['entry-id'] ? activeTemplate : inactiveTemplate;
     const item = cloneIntoBase(template.parentElement);
     const link = item.matches?.('a[data-sidebar-item]') ? item : item.querySelector('a[data-sidebar-item]');
-    link.href = entry.page;
+    link.setAttribute('href', entry.page);
     link.setAttribute('aria-label', entry.title);
     link.toggleAttribute('data-active', entry.id === values['entry-id']);
     const label = link.querySelector('._NCija_content') || link;
@@ -604,7 +605,8 @@ for (const element of baseDocument.querySelectorAll('script[src], link[rel="styl
 prepareLocalSidebar(baseDocument);
 let output = `<!DOCTYPE html>\n${htmlSafeSvg(baseDocument.documentElement.outerHTML)}`;
 if (nestedPage) output = output.replaceAll('href="./', 'href="../').replaceAll('src="./', 'src="../');
-
+// Fail the build instead of writing a page the dev server will answer with 500.
+assertHtmlSerializable(output, `Reader page ${relative(projectRoot, outputPage)}`);
 
 await localizeGeneratedFonts(outputRoot);
 await mkdir(dirname(outputPage), { recursive: true });

@@ -15,6 +15,7 @@ import { buildProjectsPage } from './build-projects-page.mjs';
 import { buildChatMenu } from './build-chat-menu.mjs';
 import { buildChatActions } from './build-chat-actions.mjs';
 import { readChatMetadata } from './chat-store.mjs';
+import { conversationCounts } from './conversation-to-html-view.mjs';
 
 const projectRoot = resolve(import.meta.dirname, '..');
 const archiveRoot = join(projectRoot, 'archive', 'chatgpt-share');
@@ -36,6 +37,7 @@ export async function buildLibraryIndex() {
         const conversation = JSON.parse(await readFile(conversationPath, 'utf8'));
         if (conversation.kind !== 'ceobe.conversation' || typeof conversation.title !== 'string') continue;
         const counts = conversation.import_report?.resource_counts || {};
+        const messageCounts = conversationCounts(conversation);
         conversations.push({
           id: share.name,
           title: conversation.title,
@@ -44,7 +46,13 @@ export async function buildLibraryIndex() {
           captured_at: conversation.source?.captured_at || captureName,
           created_at: conversation.created_at || null,
           updated_at: conversation.updated_at || null,
-          message_count: conversation.linear_message_ids?.length || 0,
+          // `message_count` keeps its historical meaning (every archived record on
+          // the linear path) for existing consumers; `turn_count` is what the
+          // reader displays as conversation bubbles.
+          message_count: messageCounts.records,
+          turn_count: messageCounts.turns,
+          user_turn_count: messageCounts.user_turns,
+          assistant_turn_count: messageCounts.assistant_turns,
           resource_counts: { downloaded: counts.downloaded || 0, unresolved: counts.unresolved || 0, failed: counts.failed || 0 },
           import_status: conversation.import_report?.status || 'unknown',
           structured_payload_status: conversation.completeness?.structured_payload?.status || 'unknown',

@@ -59,7 +59,7 @@ try {
       if (requests === 1) {
         firstSeen(); await pending;
         await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Simulated upstream failure' }) });
-      } else await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, title: '测试会话', messageCount: 8, resourceCounts: { downloaded: 2, failed: 1, unresolved: 1 }, page: '/conversations/test.html' }) });
+      } else await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, title: '测试会话', messageCount: 8, turnCount: 4, resourceCounts: { downloaded: 2, failed: 1, unresolved: 1 }, page: '/conversations/test.html' }) });
     });
     await submit.click(); await seen;
     assert.equal(await submit.isDisabled(), true);
@@ -72,6 +72,7 @@ try {
     assert.equal((await input.innerText()).trim(), valid);
     await page.locator('.ceobe-import-retry').click();
     await page.locator('.ceobe-import-open').waitFor({ state: 'visible' });
+    assert.match(await status.innerText(), /共 4 轮对话，归档 8 条记录/);
     assert.match(await status.innerText(), /2 个资源未保存/);
     assert.equal(requests, 2);
     assert.equal(await input.getAttribute('contenteditable'), 'true');

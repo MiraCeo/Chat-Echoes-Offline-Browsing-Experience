@@ -92,7 +92,9 @@ export async function buildSourcesPanel(document, root, output, conversation, te
       const link = document.createElement('a');
       for (const attribute of button.attributes) link.setAttribute(attribute.name, attribute.value);
       link.removeAttribute('aria-disabled');
-      link.href = './archive-resources/' + resource.local_path.split('/').at(-1);
+      // linkedom's anchor href/download setters run decodeURI, which would turn
+      // percent-escapes back into raw bytes; setAttribute keeps the URL as-is.
+      link.setAttribute('href', './archive-resources/' + resource.local_path.split('/').at(-1));
       link.setAttribute('download', file.name);
       link.title = '下载已归档的文件';
       link.append(...button.childNodes);
@@ -106,7 +108,10 @@ export async function buildSourcesPanel(document, root, output, conversation, te
   }
   for (const [url, title] of urls) {
     const row = cloneNode(sourceTemplate), anchor = row.querySelector('a');
-    anchor.href = url; anchor.title = title; anchor.rel = 'noopener noreferrer';
+    // Source URLs may legitimately contain escapes such as %01; assigning
+    // anchor.href would decode them into control characters and produce a page
+    // that Vite refuses to parse.
+    anchor.setAttribute('href', url); anchor.title = title; anchor.rel = 'noopener noreferrer';
     anchor.querySelector('span.truncate').textContent = title;
     // A captured favicon must not be assigned to a different website.
     const favicon = anchor.querySelector('img');

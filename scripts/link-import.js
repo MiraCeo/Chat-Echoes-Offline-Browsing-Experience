@@ -124,7 +124,13 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
        const counts = result.resourceCounts || {};
       const missing = Object.entries(counts).filter(([key]) => ['failed', 'unresolved', 'skipped', 'missing'].includes(key))
         .reduce((sum, [, count]) => sum + (Number(count) || 0), 0);
-      showStatus(`已归档「${result.title || '会话'}」，共 ${Number(result.messageCount) || 0} 条消息。${missing ? `有 ${missing} 个资源未保存，可在归档报告中查看。` : '可打开会话查看保存的内容。'}`, 'success');
+      // Turns are what the reader shows as bubbles; records also include hidden
+      // system context, reasoning and tool activity kept in the archive.
+      const records = Number(result.messageCount) || 0, turns = Number(result.turnCount);
+      const summary = Number.isFinite(turns) && result.turnCount !== null
+        ? `共 ${turns} 轮对话，归档 ${records} 条记录（含推理与工具活动）`
+        : `共 ${records} 条消息`;
+      showStatus(`已归档「${result.title || '会话'}」，${summary}。${missing ? `有 ${missing} 个资源未保存，可在归档报告中查看。` : '可打开会话查看保存的内容。'}`, 'success');
       const open = document.createElement('a');
       open.href = destination.href; open.className = 'ceobe-import-open'; open.textContent = '打开会话';
       actions.append(open);
