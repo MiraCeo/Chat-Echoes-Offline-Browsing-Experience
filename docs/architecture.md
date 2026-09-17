@@ -28,7 +28,7 @@ ChatGPT 分享页面及公开资源
 
 分享链接归档由 `scripts/archive-share.mjs` 协调，Python 分享解析入口为 `scripts/import-chatgpt-share.py`。
 
-每次抓取在 `archive/chatgpt-share/<share-id>/<时间戳>/` 中保存一份独立快照，包含原始响应、抓取记录、`conversation.ceobe.json`、Markdown 副本、资源及导入报告。失败响应也保留用于诊断，不覆盖旧快照。
+每次抓取在 `archive/chatgpt-share/<share-id>/<时间戳>/` 中保存一份独立快照，包含原始响应、抓取记录、`conversation.ceobe.json`、Markdown 副本、资源及导入报告。失败响应也保留用于诊断，不覆盖旧快照。文件夹名即聊天 ID，是删除、导出等操作的安全边界，不会改为按标题命名；`scripts/build-library.mjs` 在每次重建 `archive/library.ceobe.json` 时同步生成 `archive/chatgpt-share/README.md`（`scripts/chat-index-markdown.mjs`），列出标题、ID、最新快照链接、导入时间与轮数，重命名聊天后由 `chat-store.mjs` 刷新；“打开本地文件夹”菜单项通过 `POST /api/chats/open-folder?id=`（`scripts/open-folder-api.mjs`）让本地服务在资源管理器中打开该快照目录，路径须经 realpath 校验位于 `archive/chatgpt-share/<id>/` 之内。
 
 解析器处理分享页面的流式数据块和主载荷，保留消息节点、来源关系、原始指针和附加协议记录；不能把附加 React 记录一概视为异常。循环引用以指向原始槽位的标记表达。
 

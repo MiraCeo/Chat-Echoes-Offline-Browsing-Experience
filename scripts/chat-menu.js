@@ -1,4 +1,4 @@
-import {saveArchive} from './export-download.js';
+import {saveArchive,openChatFolder} from './export-download.js';
 // Keep handlers scoped when Vite concatenates this module with legacy reader scripts.
 (() => {
 const menu=document.querySelector('[data-ceobe-chat-menu]'),sub=document.querySelector('[data-ceobe-chat-submenu]');
@@ -8,8 +8,6 @@ const root=new URL(location.pathname.includes('/conversations/')?'../':'./',loca
 let trigger=null,generation=0,busy=false,timer;
 function tell(text){status.textContent=text;status.hidden=false;clearTimeout(timer);timer=setTimeout(()=>status.hidden=true,6000)}
 function saveMarkdown(id,title){return saveArchive('md',id,title)}
-// Owning project: stamped on the options trigger by chat-actions.js; rail/project-page triggers fall back to the sidebar row of the same chat.
-function owner(b){const id=b?.dataset.ceobeChatId;return id?[b,...document.querySelectorAll('[data-ceobe-chat-id="'+id+'"]')].map(e=>e.dataset.chatProjectId).find(Boolean)||'':''}
 function entries(panel){return [...panel.querySelectorAll('[role=menuitem]')]}
 function visible(panel){return entries(panel).filter(e=>e.checkVisibility())}
 function highlight(panel,item){for(const e of entries(panel))e.toggleAttribute('data-highlighted',e===item)}
@@ -72,14 +70,13 @@ document.addEventListener('click',e=>{
  const b=e.target.closest('[data-ceobe-chat-id]');if(!b)return;e.preventDefault();e.stopPropagation();
  document.dispatchEvent(new Event('ceobe:close-reader-more'));if(trigger===b){close();return}close(false);trigger=b;b.setAttribute('aria-expanded','true');b.dataset.state='open';
  const pinItem=menu.querySelector('[data-chat-action=pin]');for(const node of pinItem.childNodes)if(node.nodeType===3&&node.textContent.trim())node.textContent=b.dataset.chatPinned==='true'?'取消置顶聊天':'置顶聊天';
- menu.querySelector('[data-chat-action=open-project]').hidden=!owner(b);
  menu.setAttribute('aria-labelledby',b.id);place(menu,b.getBoundingClientRect());
  // Pointer opening focuses the menu container, not an artificially highlighted first row.
  if(e.detail===0)visible(menu)[0].focus();else menu.focus({preventScroll:true});
 },true);
 move.addEventListener('pointerenter',()=>{if(sub.hidden)openSub()});move.addEventListener('click',()=>openSub(true));
 menu.addEventListener('pointerover',e=>{const item=e.target.closest('[data-chat-action]');if(item&&item!==move)closeSub()});
-menu.addEventListener('click',e=>{const item=e.target.closest('[data-chat-action]');if(item&&item!==move){if(item.dataset.chatAction==='export-md'){const id=trigger?.dataset.ceobeChatId,title=trigger?.closest('li')?.querySelector('._NCija_content, a .font-medium')?.textContent||'聊天';close(false);saveMarkdown(id,title)}else if(item.dataset.chatAction==='open-project'){const project=owner(trigger);close(false);if(project)location.href=new URL('project.html?id='+encodeURIComponent(project),root).href;else tell('这条聊天当前不属于任何项目。')}else if(['rename','delete','pin'].includes(item.dataset.chatAction)){const id=trigger?.dataset.ceobeChatId,opener=trigger;close(false);document.dispatchEvent(new CustomEvent('ceobe:chat-action',{detail:{id,opener,action:item.dataset.chatAction}}))}else tell('“'+item.textContent.trim()+'”暂未接入本地归档，本次未修改聊天。')}});
+menu.addEventListener('click',e=>{const item=e.target.closest('[data-chat-action]');if(item&&item!==move){if(item.dataset.chatAction==='export-md'){const id=trigger?.dataset.ceobeChatId,title=trigger?.closest('li')?.querySelector('._NCija_content, a .font-medium')?.textContent||'聊天';close(false);saveMarkdown(id,title)}else if(item.dataset.chatAction==='open-folder'){const id=trigger?.dataset.ceobeChatId;close(false);openChatFolder(id)}else if(['rename','delete','pin'].includes(item.dataset.chatAction)){const id=trigger?.dataset.ceobeChatId,opener=trigger;close(false);document.dispatchEvent(new CustomEvent('ceobe:chat-action',{detail:{id,opener,action:item.dataset.chatAction}}))}else tell('“'+item.textContent.trim()+'”暂未接入本地归档，本次未修改聊天。')}});
 sub.querySelector('[data-chat-new-project]').addEventListener('click',()=>{const detail={opener:trigger,conversationId:trigger?.dataset.ceobeChatId};close(false);document.dispatchEvent(new CustomEvent('ceobe:open-project',{detail}))});
 list.addEventListener('click',async e=>{
  const row=e.target.closest('[data-chat-project]');if(!row||!trigger||busy)return;e.preventDefault();

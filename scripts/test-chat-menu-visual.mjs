@@ -22,14 +22,14 @@ try{
  const wrappers=f.layouts.map(l=>parseHTML(l.wrapper).document.querySelector('[data-radix-popper-content-wrapper]'));
  // User explicitly removed Archive; compare the same intentional product delta.
  wrappers[0].querySelectorAll('[role=menuitem]')[3].remove();
- // Second intentional delta: “打开所属项目” follows the MD row, reusing the official row markup with the submenu's folder glyph.
- const share=wrappers[0].querySelector('[role=menuitem]'),project=share.cloneNode(true);project.querySelector('svg').replaceChildren(wrappers[1].querySelector('a[role=menuitem] svg use').cloneNode(true));for(const n of project.childNodes)if(n.nodeType===3&&n.textContent.trim()==='分享')n.textContent='打开所属项目';share.after(project);
+ // Second intentional delta: “打开本地文件夹” follows the MD row, reusing the official row markup with the official shell “desktop” glyph.
+ const share=wrappers[0].querySelector('[role=menuitem]'),project=share.cloneNode(true),desktopUse=wrappers[1].querySelector('a[role=menuitem] svg use').cloneNode(true);desktopUse.setAttribute('href',desktopUse.getAttribute('href').split('#')[0]+'#desktop');const desktopSvg=project.querySelector('svg');desktopSvg.setAttribute('viewBox','0 0 20 20');desktopSvg.replaceChildren(desktopUse);for(const n of project.childNodes)if(n.nodeType===3&&n.textContent.trim()==='分享')n.textContent='打开本地文件夹';share.after(project);
  const refSub=wrappers[1].querySelector('[role=menu]');const refRows=[...refSub.querySelectorAll('a[role=menuitem]')];refRows[0].querySelector('.truncate').textContent='测试';for(const row of refRows.slice(1))row.parentElement.remove();
  // Baseline has an open submenu, exactly as captured. No local styles/scripts are included.
  const html=`<!DOCTYPE html><html ${Object.entries(f.htmlAttributes).map(([k,v])=>`${k}="${v.replaceAll('\"','&quot;')}"`).join(' ')}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${f.styleSequence.map(s=>s.file?`<link rel="stylesheet" href="/reference-css/${s.file}">`:`<style>${s.text}</style>`).join('')}</head><body>${wrappers.map(w=>w.outerHTML).join('')}</body></html>`;
  await ref.route('**/*',async route=>{const path=new URL(route.request().url()).pathname;if(path==='/official-reference'){await route.fulfill({contentType:'text/html',body:html});return}if(path.startsWith('/reference-css/')){await route.fulfill({contentType:'text/css',body:await readFile('official-templates/assets/'+decodeURIComponent(path.split('/').pop()))});return}await route.abort()});
  await ref.goto(base+'official-reference',{waitUntil:'networkidle'});await ref.mouse.move(1000,900);
- // Every chat belongs to the in-memory project so the “打开所属项目” row is visible and measured like the others.
+ // Every chat belongs to the in-memory project so sidebar rows carry a project label, as in the reference capture.
  const chats=(await(await fetch(base+'api/chats')).json()).conversations.map(c=>c.id);
  await page.route('**/api/projects',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({writable:true,projects:[{id:'visual-test',name:'测试',icon:'folder',color:'default',conversation_ids:chats}]})}));
  await page.route('**/api/chats',async route=>{const r=await route.fetch();const data=await r.json();for(const c of data.conversations)delete c.pinned_at;await route.fulfill({response:r,json:data})});
