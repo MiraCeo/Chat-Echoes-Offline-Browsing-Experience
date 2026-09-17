@@ -16,5 +16,5 @@ export function markdownExportMiddleware(root){const store=createChatStore(root)
   if(req.headers['sec-fetch-site']==='cross-site'||req.headers.origin&&new URL(req.headers.origin).host!==req.headers.host)return send(403,{error:'不允许跨站读取归档'});
   const id=url.searchParams.get('id');if(!id||!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,99}$/.test(id))return send(400,{error:'无效聊天 ID'});
   const entry=(await store.list()).find(c=>c.id===id);if(!entry)return send(404,{error:'聊天不存在或已删除'});
-     return send(200,await readMarkdownEntry(root,entry));}catch(e){console.error('Markdown export:',e.message);return send(e.status||(e.code==='ENOENT'?404:500),{error:e.code==='ENOENT'?'聊天归档不存在或已删除':'转存失败，请检查本地归档和服务日志'})}
+     return send(200,await readMarkdownEntry(root,entry));}catch(e){console.error('Markdown export:',e.message);return send(e.status||(e.code==='ENOENT'?404:500),{error:e.code==='ENOENT'?'聊天归档不存在或已删除':'导出失败，请检查本地归档和服务日志'})}
 }}
