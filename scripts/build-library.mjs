@@ -15,6 +15,7 @@ import { buildProjectsPage } from './build-projects-page.mjs';
 import { buildChatMenu } from './build-chat-menu.mjs';
 import { buildChatActions } from './build-chat-actions.mjs';
 import { readChatMetadata } from './chat-store.mjs';
+import { writeChatIndexMarkdown } from './chat-index-markdown.mjs';
 import { conversationCounts } from './conversation-to-html-view.mjs';
 
 const projectRoot = resolve(import.meta.dirname, '..');
@@ -70,6 +71,8 @@ export async function buildLibraryIndex() {
   conversations.sort((a, b) => String(b.captured_at).localeCompare(String(a.captured_at)));
   const library = { schema_version: '1.0.0', kind: 'ceobe.library', generated_at: new Date().toISOString(), conversations };
   await writeFile(indexPath, JSON.stringify(library, null, 2));
+  // Human-readable companion of the JSON index, kept next to the ID-named folders it describes.
+  await writeChatIndexMarkdown(projectRoot, conversations, { generatedAt: library.generated_at });
   return library;
 }
 

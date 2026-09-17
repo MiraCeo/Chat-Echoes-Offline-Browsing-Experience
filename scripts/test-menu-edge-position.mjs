@@ -20,14 +20,14 @@ try{
   }
   await page.evaluate(()=>{const ul=document.querySelector('[data-chat-recent-list]'),row=ul.firstElementChild;if(row){for(let i=0;i<35;i++)ul.append(row.cloneNode(true))}});
   const b=page.locator('[data-chat-recent-list] [data-ceobe-chat-id]').last(),menu=page.locator('[data-ceobe-chat-menu]');await b.scrollIntoViewIfNeeded();await b.locator('xpath=ancestor::a').hover();await b.click();
-  // The menu grows by one official row when the cloned chat belongs to a project (“打开所属项目”).
-  const full=234+(await menu.locator('[data-chat-action=open-project]').isVisible()?36:0);
+  // The menu carries one extra official row for every chat (“打开本地文件夹”): 234px official height + one 36px row.
+  const full=270;assert.equal(await menu.locator('[data-chat-action=open-folder]').isVisible(),true);
   const a=await b.boundingBox(),r=await menu.boundingBox();assert.equal(await menu.getAttribute('data-side'),'top');assert.equal(r.height,full,'Full menu, not a 90px viewport-edge sliver');assert.ok(Math.abs(r.y+r.height-a.y-4.333333)<0.1,'Live measured top offset');assert.ok(r.y>=0&&r.y+r.height<=viewport.height);assert.equal(await menu.evaluate(e=>e.scrollHeight===e.clientHeight),true);
   await menu.locator('[data-chat-action=move]').hover();await page.locator('[data-ceobe-chat-submenu]').waitFor();assert.equal(await menu.isVisible(),true);await page.keyboard.press('Escape');
   // A second Escape may be needed if the keyboard focus is in the submenu.
   await page.keyboard.press('Escape');
   await page.evaluate(()=>{const b=document.createElement('button');b.id='edge-position-fixture';b.dataset.ceobeChatId='edge-position-fixture';b.textContent='fixture';b.style.cssText='position:fixed;left:200px;top:24px;width:34px;height:36px;z-index:999';document.body.append(b)});
-  const fixture=page.locator('#edge-position-fixture');await fixture.click();assert.equal(await menu.getAttribute('data-side'),'bottom','Reopening resets previous top placement');assert.equal((await menu.boundingBox()).height,234);await page.keyboard.press('Escape');
+  const fixture=page.locator('#edge-position-fixture');await fixture.click();assert.equal(await menu.getAttribute('data-side'),'bottom','Reopening resets previous top placement');assert.equal((await menu.boundingBox()).height,full);await page.keyboard.press('Escape');
   // Neither side fits: choose the larger side, keep scrolling available and stay in viewport.
   await page.setViewportSize({width:viewport.width,height:160});await fixture.evaluate(e=>e.style.top='100px');await fixture.click();assert.equal(await menu.getAttribute('data-side'),'top');const small=await menu.boundingBox();assert.ok(small.y>=-0.1&&small.y+small.height<=160.1);assert.ok(await menu.evaluate(e=>e.scrollHeight>e.clientHeight));await menu.evaluate(e=>e.scrollTop=e.scrollHeight);assert.equal(await menu.isVisible(),true);
   assert.deepEqual(errors,[]);console.log('PASS menu edges',JSON.stringify(viewport),'full top menu, measured offset, submenu, bottom reset, short viewport scrolling, organizer list/project offsets; GET only');await page.close();

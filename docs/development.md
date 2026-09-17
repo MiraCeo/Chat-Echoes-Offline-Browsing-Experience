@@ -55,7 +55,8 @@ node scripts/test-copy-content.mjs
 | 书签与个人备注 | `test-bookmarks-store.mjs`、`test-bookmarks-browser.mjs`；聊天删除整体验证另见 `test-chat-actions-store.mjs` |
 | 聊天操作 | `test-chat-actions-store.mjs`、`test-chat-actions-browser.mjs` |
 | 阅读更多 | `test-reader-actions-browser.mjs` |
-| 从聊天打开所属项目 | `test-open-project-browser.mjs`；项目归属为内存模拟、API 只读 |
+| 从聊天打开本地文件夹 | `test-open-folder-api.mjs`（服务端：POST／同源／ID／路径包含检查，打开动作为注入桩，不会启动资源管理器）、`test-open-folder-browser.mjs`（两处菜单；浏览器内拦截 POST，不打开任何窗口、不写入数据） |
+| 归档标题索引 `archive/chatgpt-share/README.md` | `test-chat-index-markdown.mjs`；临时目录内生成，验证转义、快照链接与重命名后刷新 |
 | 项目管理与入口 | `test-project-actions-store.mjs`、`test-project-actions-browser.mjs`、`test-project-entry-browser.mjs` |
 | 项目简介 | `test-project-description.mjs`、`test-project-description-browser.mjs` |
 | 已有项目图标／颜色 | `test-project-appearance.mjs`、`test-project-appearance-browser.mjs` |

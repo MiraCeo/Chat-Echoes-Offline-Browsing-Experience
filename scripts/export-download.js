@@ -1,6 +1,13 @@
 import {markdownFilename} from './markdown-filename.js';
 let busy=false,timer;
 function tell(text){const node=document.getElementById('ceobe-chat-status');if(!node)return;node.textContent=text;node.hidden=false;clearTimeout(timer);timer=setTimeout(()=>node.hidden=true,7000)}
+// Ask the local service to reveal a chat's archive folder in the OS file manager. Works only with the local dev/preview server.
+let openingFolder=false;
+export async function openChatFolder(id){if(openingFolder||!id)return;openingFolder=true;
+ try{const response=await fetch('/api/chats/open-folder?id='+encodeURIComponent(id),{method:'POST',cache:'no-store',signal:AbortSignal.timeout(15000)});const data=await response.json().catch(()=>null);
+  if(!response.ok||!data?.opened)throw Error(data?.error||'无法打开文件夹，请使用本地服务');tell('已在资源管理器中打开：'+data.folder)}
+ catch(e){tell('打开文件夹失败：'+(e.name==='TimeoutError'?'本地服务无响应。':e.message||'请稍后重试。'))}finally{openingFolder=false}
+}
 export async function saveArchive(kind,id,title){if(busy||!id)return;busy=true;let writable;const zip=kind==='zip',extension=zip?'.zip':'.md',mime=zip?'application/zip':'text/markdown',suggested=markdownFilename(title||(zip?'项目':'聊天')).slice(0,-3)+extension;
  try{const handle=typeof window.showSaveFilePicker==='function'&&window.isSecureContext?await window.showSaveFilePicker({id:'ceobe-'+kind+'-export',suggestedName:suggested,excludeAcceptAllOption:true,types:[{description:zip?'项目 Markdown 压缩包':'Markdown 纯文本',accept:{[mime]:[extension]}}]}):null;
   tell(zip?'正在打包项目内全部 Markdown…':'正在准备 Markdown…');const response=await fetch('/api/'+(zip?'projects/export-zip':'chats/export-md')+'?id='+encodeURIComponent(id),{cache:'no-store',signal:AbortSignal.timeout(zip?120000:30000)});let blob,filename;

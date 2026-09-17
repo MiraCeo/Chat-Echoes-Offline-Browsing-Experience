@@ -4,6 +4,7 @@ import {randomUUID} from 'node:crypto';
 import {spawn} from 'node:child_process';
 import {acquireMutation} from './workspace-mutation.mjs';
 import {readBookmarkDocument} from './bookmark-store.mjs';
+import {writeChatIndexMarkdown,CHAT_INDEX_FILE} from './chat-index-markdown.mjs';
 const failure=(text,status=400)=>Object.assign(new Error(text),{status});
 export async function readChatMetadata(root){
  try{const data=JSON.parse(await readFile(join(root,'data/private/chats.ceobe.json'),'utf8'));if(data.kind!=='ceobe.chat-metadata'||!data.items||Array.isArray(data.items))throw new Error('聊天元数据格式错误');return data}catch(e){if(e.code==='ENOENT')return {schema_version:'1.0.0',kind:'ceobe.chat-metadata',items:{}};throw e}
@@ -33,7 +34,10 @@ export function createChatStore(root,{rebuild=rebuildDeletionStage}={}){
    if(body.action==='rename'){
     if(typeof body.title!=='string')throw failure('请输入聊天标题');const title=body.title.trim().normalize('NFC');
     if(!title||[...title].length>200||/[\x00-\x1f\x7f]/.test(title))throw failure('标题须为 1–200 个字符，不能含控制字符');
-    meta.items[body.id]={...meta.items[body.id],title};await atomic(join(root,'data/private/chats.ceobe.json'),meta);return {conversation:{...entry,title}};
+    meta.items[body.id]={...meta.items[body.id],title};await atomic(join(root,'data/private/chats.ceobe.json'),meta);
+    // The Markdown index is derived data: refresh it best-effort so titles stay current without a full rebuild.
+    try{await writeChatIndexMarkdown(root,await list())}catch(e){console.error('Chat index:',e.message)}
+    return {conversation:{...entry,title}};
    }
    if(body.action==='pin'){
     if(typeof body.pinned!=='boolean')throw failure('无效置顶状态');const pinned_at=body.pinned?(entry.pinned_at||new Date().toISOString()):null;
@@ -61,7 +65,7 @@ export function createChatStore(root,{rebuild=rebuildDeletionStage}={}){
     await rebuild(stage,root);
     // Durable journal allows fail-closed manual recovery after a process/OS crash.
     await atomic(join(job,'journal.json'),{id:body.id,state:'prepared',paths:[]});
-    const paths=[...(await exists(bookmarkFile)?['data/private/bookmarks.ceobe.json']:[]),'archive/chatgpt-share/'+body.id,'archive/library.ceobe.json','data/private/chats.ceobe.json',...(await exists(projectFile)?['data/private/projects.ceobe.json']:[]),'replay','dist'];
+    const paths=[...(await exists(bookmarkFile)?['data/private/bookmarks.ceobe.json']:[]),'archive/chatgpt-share/'+body.id,'archive/library.ceobe.json',CHAT_INDEX_FILE,'data/private/chats.ceobe.json',...(await exists(projectFile)?['data/private/projects.ceobe.json']:[]),'replay','dist'];
     for(const path of paths){const live=join(root,path),old=join(backup,path),fresh=join(stage,path);const item={path,hadOld:false,installed:false};moved.push(item);if(await exists(live)){await mkdir(dirname(old),{recursive:true});await rename(live,old);item.hadOld=true}if(await exists(fresh)){await mkdir(dirname(live),{recursive:true});await rename(fresh,live);item.installed=true}await atomic(join(job,'journal.json'),{id:body.id,state:'committing',paths:moved})}
     committed=true;
     // Success is not returned while raw archives or old generated copies remain.
