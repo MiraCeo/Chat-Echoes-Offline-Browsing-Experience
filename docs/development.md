@@ -64,7 +64,7 @@ node scripts/test-copy-content.mjs
 | 菜单、图片与导出界面 | `test-reader-ui-browser.mjs`、`test-project-more.mjs` |
 | 项目内置顶与标题空间 | `test-project-pinned-browser.mjs` |
 | 响应式书签、最近聊天键盘及项目提示 | `test-ui-followups-browser.mjs`；支持 `CEOBE_TEST_DIST=1` 和 `CEOBE_TEST_HEADED=1`，书签为内存夹具、API 只读 |
-| 连续调整宽度、离屏旁注与精确跳转 | `test-bookmark-resize-browser.mjs`；支持生产及可见 Edge，用内存书签检查布局／样式重算次数、空闲稳定性、滚动补齐和跳转 |
+| 连续调整宽度、离屏旁注与精确跳转 | `test-bookmark-resize-browser.mjs`（`npm run test:bookmarks:browser`）；在临时目录构建隔离副本（`bookmark-browser-fixture.mjs` + `fixtures/browser/bookmark-conversations.mjs`，100／500 条消息、20／100 条书签），不依赖本地 5173，不读写使用者归档；支持 `CEOBE_TEST_DIST=1` 与 `CEOBE_TEST_HEADED=1`，检查布局／样式重算次数、懒滚动、精确跳转与面板开关 |
 | 侧栏与整理 | `test-sidebar-controls.mjs`、`test-sidebar-polish.mjs`、`test-chat-organizer.mjs` |
 | 导入与发布 | `test-local-import-api.mjs`、`test-production-import.mjs`、`test-link-import-browser.mjs` |
 | 离线资源 | `test-offline-resources.mjs` |
@@ -104,7 +104,7 @@ Remove-Item Env:CEOBE_TEST_DIST
 - 真实分享链接导入仅通过显式配置启用，例如 `CEOBE_TEST_SHARE_URL`；不要默认联网归档。
 - 异常锁和恢复目录不是缓存，不应未经核查清除。
 
-原生保存接口桩用于验证建议文件名、内容、取消与失败路径；浏览器下载回退另行验证。它们不能替代实际 Windows 保存窗口的目录、权限和覆盖操作验收。
+原生保存接口桩用于验证建议文件名、内容、取消与失败路径；浏览器下载回退另行验证。它们不能替代实际 Windows 保存窗口的目录、权限和覆盖操作验收；该项人工验收已完成，见 `TODO.md`。
 
 ## 界面与模板维护
 
