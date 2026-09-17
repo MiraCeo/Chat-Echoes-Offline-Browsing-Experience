@@ -13,3 +13,5 @@ html:not([data-ceobe-sidebar-collapsed=true]) #stage-sidebar-tiny-bar{visibility
 [data-ceobe-sidebar-toggle],[data-ceobe-search-trigger],[data-ceobe-search] button,[data-ceobe-search] input,[data-ceobe-search] a{pointer-events:auto!important}
 [data-ceobe-search][hidden],[data-ceobe-search] [hidden]{display:none!important}
 [data-ceobe-search] .F_cuGW_resultRow:focus-visible{outline:2px solid var(--text-primary);outline-offset:-2px}
+[data-ceobe-search] .F_cuGW_resultRow:hover{background-color:var(--interactive-bg-secondary-hover)}
+[data-ceobe-search] .F_cuGW_resultSubtitle,[data-ceobe-search] .F_cuGW_resultDate{pointer-events:none}

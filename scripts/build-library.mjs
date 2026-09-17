@@ -10,6 +10,7 @@ import { buildBookmarks } from './build-bookmarks.mjs';
 import { buildReaderUI } from './build-reader-ui.mjs';
 import { buildChatOrganizer } from './build-chat-organizer.mjs';
 import { buildSidebarControls } from './build-sidebar-controls.mjs';
+import { writeSearchIndex } from './search-index.mjs';
 import { buildProjectDetail } from './build-project-detail.mjs';
 import { buildProjectsPage } from './build-projects-page.mjs';
 import { buildChatMenu } from './build-chat-menu.mjs';
@@ -106,6 +107,7 @@ async function buildReader(library, selectedId) {
   await buildChatActions(projectRoot, library);
   await buildChatOrganizer(projectRoot);
   await buildSidebarControls(projectRoot);
+  await writeSearchIndex(projectRoot, library);
   await buildReaderUI(projectRoot, library);
   await buildBookmarks(projectRoot, library);
   await localizeGeneratedFonts(join(projectRoot,'replay'));
