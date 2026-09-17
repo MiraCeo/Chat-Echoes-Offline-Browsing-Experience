@@ -256,6 +256,11 @@ const appendUserImages = (section, entries) => {
       image.classList.remove('opacity-0');
       image.classList.add('opacity-100');
       image.setAttribute('data-ceobe-local-resource', resource.key);
+      // Official markup lazy-loads from the CDN and sizes the tile from the decoded bitmap, so an
+      // unloaded local image measures 0×0 until scrolled into view (content then jumps). Local
+      // files are cheap: load them eagerly and reserve the box from the archived dimensions.
+      image.setAttribute('loading', 'eager');
+      if (attachment.width && attachment.height) image.style.aspectRatio = `${attachment.width} / ${attachment.height}`;
       if (button) {
         button.setAttribute('aria-label', attachments.length === 1
           ? `打开图片：${attachment.name}`

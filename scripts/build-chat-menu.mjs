@@ -34,10 +34,10 @@ export async function buildChatMenu(root,library){
    else e.title='此操作暂未接入本地归档';
   });sub.setAttribute('aria-labelledby','ceobe-chat-move');
   main.querySelector('[data-chat-action=archive]').remove();
-   const exportItem=main.querySelector('[data-chat-action=share]');exportItem.dataset.chatAction='export-md';exportItem.title='转存为纯文本 Markdown（不含附件）';for(const e of [exportItem,...exportItem.querySelectorAll('*')])for(const n of e.childNodes)if(n.nodeType===3&&n.textContent.trim()==='分享')n.textContent='转存为 MD';
+   const exportItem=main.querySelector('[data-chat-action=share]');exportItem.dataset.chatAction='export-md';exportItem.title='另存为纯文本 Markdown（不含附件）';for(const e of [exportItem,...exportItem.querySelectorAll('*')])for(const n of e.childNodes)if(n.nodeType===3&&n.textContent.trim()==='分享')n.textContent='另存为 MD';
   // “打开本地文件夹” sits next to the MD export: the official row markup with the official shell “desktop” glyph (the folder glyph already means “project” in this menu). Every chat has an archive folder, so the row is always shown.
   const folderItem=exportItem.cloneNode(true);folderItem.dataset.chatAction='open-folder';folderItem.title='在资源管理器中打开这条聊天的本地归档目录（需本地服务）';folderItem.removeAttribute('data-testid');
-  for(const e of [folderItem,...folderItem.querySelectorAll('*')])for(const n of e.childNodes)if(n.nodeType===3&&n.textContent.trim()==='转存为 MD')n.textContent='打开本地文件夹';
+  for(const e of [folderItem,...folderItem.querySelectorAll('*')])for(const n of e.childNodes)if(n.nodeType===3&&n.textContent.trim()==='另存为 MD')n.textContent='打开本地文件夹';
   const desktopUse=sub.querySelector('a[role=menuitem] svg use').cloneNode(true);desktopUse.setAttribute('href',desktopUse.getAttribute('href').split('#')[0]+'#desktop');const folderSvg=folderItem.querySelector('svg');folderSvg.setAttribute('viewBox','0 0 20 20');folderSvg.replaceChildren(desktopUse);exportItem.after(folderItem);
   for(const action of ['rename','pin','delete'])main.querySelector(`[data-chat-action=${action}]`).removeAttribute('title');
   // Preserve BOTH official inner wrappers and the per-project wrappers/separator.

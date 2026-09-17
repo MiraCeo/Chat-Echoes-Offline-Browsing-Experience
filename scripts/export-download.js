@@ -15,5 +15,5 @@ export async function saveArchive(kind,id,title){if(busy||!id)return;busy=true;l
   else{const data=await response.json().catch(()=>null);if(!response.ok||typeof data?.markdown!=='string')throw Error(data?.error||'无法生成 Markdown，请使用本地服务');blob=new Blob([data.markdown],{type:mime+';charset=utf-8'});filename=markdownFilename(data.title||title)}
   if(handle){writable=await handle.createWritable();await writable.write(blob);await writable.close();writable=null;tell((zip?'ZIP':'Markdown')+' 已保存。')}
   else{const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);tell('已交给浏览器下载 '+(zip?'ZIP':'Markdown')+'，保存位置由浏览器设置决定。')}
- }catch(e){if(writable)try{await writable.abort?.()}catch{}tell(e.name==='AbortError'?'已取消转存。':'转存失败：'+(e.message||'请稍后重试。'))}finally{busy=false}
+ }catch(e){if(writable)try{await writable.abort?.()}catch{}tell(e.name==='AbortError'?'已取消保存。':'保存失败：'+(e.message||'请稍后重试。'))}finally{busy=false}
 }
