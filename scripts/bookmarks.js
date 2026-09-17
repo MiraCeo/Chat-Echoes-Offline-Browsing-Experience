@@ -760,6 +760,14 @@ window.addEventListener('storage', (e) => {
   if (e.key === 'ceobe:bookmarks:changed') refresh();
 });
 document.addEventListener('ceobe:chat-updated', refresh);
+// Body-search hits on the current page reuse the exact jump; cross-page hits arrive as #bookmark= on load.
+document.addEventListener('ceobe:jump-message', (e) => {
+  if (!seed.chatId || e.detail?.chatId !== seed.chatId) return;
+  e.preventDefault();
+  const id = e.detail.messageId;
+  if (messageTarget(id)) jump({ chat_id: seed.chatId, message_id: id, target_state: 'available' });
+  else toast('当前页面没有该原消息，请刷新归档页面；不会跳到相邻消息。');
+});
 (async () => {
   await refresh();
   if (location.hash.startsWith('#bookmark=')) {

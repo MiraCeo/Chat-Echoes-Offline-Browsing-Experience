@@ -119,6 +119,10 @@ ChatGPT 分享页面及公开资源
 
 `build-bookmarks.mjs` 复用冻结菜单与资料库弹窗外壳；`bookmarks.js` 提供消息操作、正文左侧可收起的非模态当前列表、全局列表和独立备注编辑窗。其余无本地含义的消息操作只提供说明，不调用云端服务。
 
+## 全文搜索
+
+`search-index.mjs` 在 `npm run library` 时为每个可见回复块生成一条记录（`replay/public/search-index.json`），键为与书签相同的规范化消息 ID，文本来自 `bookmark-targets.mjs` 的同一投影（提问与最终回复的 `text`／`code` 块），不含推理、隐藏上下文、引用、工具往来和附件名；索引不保存标题，标题始终取自当前目录（`/api/chats` 或页面快照），重命名无需重建。搜索弹窗（`sidebar-controls.js`）首次打开时按需加载索引并在浏览器内匹配（与标题相同的 NFKC 折叠），正文命中只对目录中存在的聊天生成，链接为 `conversations/<id>.html#bookmark=<message_id>`；当前页命中改为触发 `ceobe:jump-message`，由 `bookmarks.js` 复用精确定位，不重新加载页面。索引缺失或损坏时退回仅按标题搜索。
+
 ## 导出与备份的区别
 
 文本导出复用 JSON → Markdown 转换器。图片、附件与普通资源链接降为可读文字，代码示例中的链接语法不改写。

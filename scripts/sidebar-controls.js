@@ -4,6 +4,7 @@
  const root=new URL(location.pathname.includes('/conversations/')?'../':'./',location.href),key='ceobe.sidebar-collapsed.v1';
  const input=dialog.querySelector('input'),list=dialog.querySelector('ol'),heading=dialog.querySelector('h3'),clear=dialog.querySelector('.F_cuGW_clearButton'),divider=dialog.querySelector('.F_cuGW_headerActionDivider'),status=dialog.querySelector('[data-ceobe-search-status]');
  const initial=JSON.parse(document.getElementById('ceobe-chat-catalog').textContent);let catalog=initial,opener=null,inerted=[],generation=0,offline=false;
+ const bodySection=dialog.querySelector('[data-ceobe-search-body]'),bodyList=bodySection.querySelector('ol'),bodyHeading=bodySection.querySelector('h3'),currentChat=document.body.dataset.readerChatId||null;let index=null,indexState='idle',indexPromise=null;
  const recentPopup=document.querySelector('[data-ceobe-rail-recent]'),recentTrigger=document.querySelector('[data-ceobe-recent-trigger]'),recentMenu=recentPopup.querySelector('[role=menu]'),recentList=recentMenu.querySelector('ul'),recentLayout=JSON.parse(recentPopup.dataset.layout);let recentGeneration=0,recentEditing=false,recentCloseRequested=false;
  const normal=s=>String(s||'').normalize('NFKC').toLocaleLowerCase().trim();
  const visible=e=>e&&e.isConnected&&e.checkVisibility();
@@ -18,16 +19,54 @@
  setCollapsed(document.documentElement.dataset.ceobeSidebarCollapsed==='true',false,false);
  for(const b of document.querySelectorAll('[data-ceobe-sidebar-toggle]'))b.addEventListener('click',()=>setCollapsed(b.dataset.ceobeSidebarToggle==='close',true));
  window.addEventListener('storage',e=>{if(e.key===key)setCollapsed(e.newValue==='true',false,false)});
+ const BODY_LIMIT=50;
+ // Body search: one build-time record per rendered turn (replay/public/search-index.json), loaded on first open, matched with the same NFKC folding as titles.
+ function loadIndex(){
+  if(indexPromise)return indexPromise;indexState='loading';
+  return indexPromise=(async()=>{
+   try{const r=await fetch(new URL('search-index.json',root),{cache:'no-cache'}),data=await r.json();if(!r.ok||data.kind!=='ceobe.search-index'||!Array.isArray(data.conversations))throw Error();
+    index=new Map(data.conversations.filter(c=>c&&typeof c.id==='string').map(c=>[c.id,(Array.isArray(c.turns)?c.turns:[]).filter(t=>t&&typeof t.message_id==='string'&&typeof t.text==='string').map(t=>({...t,key:normal(t.text)}))]));indexState='ready'}
+   catch{indexState='failed';indexPromise=null}
+   if(!dialog.hidden)render();
+  })();
+ }
+ function mark(el,text,query,cls){
+  const pos=query?text.toLocaleLowerCase().indexOf(query):-1;el.replaceChildren();
+  if(pos<0||text.slice(pos,pos+query.length).toLocaleLowerCase()!==query){el.textContent=text;return}
+  const hit=document.createElement('span');hit.className=cls;hit.textContent=text.slice(pos,pos+query.length);el.append(text.slice(0,pos),hit,text.slice(pos+query.length));
+ }
+ function snippet(turn,query){
+  // Prefer the original casing; fall back to the folded text when the match only exists after NFKC folding (full-width letters, ligatures).
+  let source=turn.text,pos=source.toLocaleLowerCase().indexOf(query);
+  if(pos<0||source.slice(pos,pos+query.length).toLocaleLowerCase()!==query){source=turn.key;pos=source.indexOf(query)}
+  const start=Math.max(0,pos-24),end=Math.min(source.length,pos+query.length+160);
+  return {before:(start>0?'…':'')+source.slice(start,pos),match:source.slice(pos,pos+query.length),after:source.slice(pos+query.length,end)+(end<source.length?'…':'')};
+ }
+ function occurrences(key,query){let n=0,i=key.indexOf(query);while(i>=0){n++;i=key.indexOf(query,i+query.length)}return n}
  function render(){
-  const query=normal(input.value),seen=new Set(),matches=catalog.filter(c=>c&&typeof c.id==='string'&&typeof c.title==='string'&&!seen.has(c.id)&&seen.add(c.id)&&(!query||normal(c.title).includes(query)));
-  list.replaceChildren();dialog.querySelector('[data-ceobe-search-empty]')?.remove();heading.textContent=(query?'搜索结果':'最近聊天')+(offline?'（离线索引）':'');clear.hidden=divider.hidden=!input.value;
-  for(const c of matches){const row=document.getElementById('ceobe-search-row').content.firstElementChild.cloneNode(true),a=row.querySelector('a');a.href=new URL('conversations/'+encodeURIComponent(c.id)+'.html',root).href;a.dataset.searchChatId=c.id;row.querySelector('.F_cuGW_resultTitleText').textContent=c.title;list.append(row)}
-  if(!matches.length){const empty=document.getElementById('ceobe-search-empty').content.firstElementChild.cloneNode(true);empty.dataset.ceobeSearchEmpty='';list.after(empty)}
-  status.textContent=(offline?'无法刷新索引，使用本页离线索引。':'')+'找到 '+matches.length+' 个聊天。';
+  // A background catalog/index refresh must not steal keyboard focus from a result the user has already arrowed to.
+  const active=document.activeElement,focused=active&&dialog.contains(active)&&active.matches('ol a')?{chat:active.dataset.searchChatId,message:active.dataset.searchMessageId||''}:null;
+  const query=normal(input.value),seen=new Set(),chats=catalog.filter(c=>c&&typeof c.id==='string'&&typeof c.title==='string'&&!seen.has(c.id)&&seen.add(c.id)),matches=chats.filter(c=>!query||normal(c.title).includes(query));
+  list.replaceChildren();bodyList.replaceChildren();dialog.querySelector('[data-ceobe-search-empty]')?.remove();heading.textContent=(query?'搜索结果':'最近聊天')+(offline?'（离线索引）':'');clear.hidden=divider.hidden=!input.value;
+  for(const c of matches){const row=document.getElementById('ceobe-search-row').content.firstElementChild.cloneNode(true),a=row.querySelector('a');a.href=new URL('conversations/'+encodeURIComponent(c.id)+'.html',root).href;a.dataset.searchChatId=c.id;mark(row.querySelector('.F_cuGW_resultTitleText'),c.title,query,'F_cuGW_titleHighlight');list.append(row)}
+  // Body hits follow the catalog order, so deleted chats or a stale index never produce dead links.
+  const hits=[];let total=0;
+  if(query&&index)for(const c of chats)for(const turn of index.get(c.id)||[]){if(!turn.key.includes(query))continue;total++;if(hits.length<BODY_LIMIT)hits.push({c,turn})}
+  for(const {c,turn} of hits){
+   const row=document.getElementById('ceobe-search-body-row').content.firstElementChild.cloneNode(true),a=row.querySelector('a'),s=snippet(turn,query),sub=row.querySelector('.F_cuGW_resultSubtitle'),hit=document.createElement('span'),n=occurrences(turn.key,query);
+   a.href=new URL('conversations/'+encodeURIComponent(c.id)+'.html#bookmark='+encodeURIComponent(turn.message_id),root).href;a.dataset.searchChatId=c.id;a.dataset.searchMessageId=turn.message_id;
+   row.querySelector('.F_cuGW_resultTitleText').textContent=c.title;hit.className='F_cuGW_subtitleHighlight';hit.textContent=s.match;sub.replaceChildren(s.before,hit,s.after);
+   row.querySelector('.F_cuGW_resultDate').textContent=(turn.role==='user'?'用户':'GPT')+' · 第 '+(Number(turn.order)+1||'?')+' 轮'+(n>1?' · '+n+' 处':'');bodyList.append(row);
+  }
+  bodySection.hidden=!hits.length;bodyHeading.textContent='正文命中'+(total>hits.length?'（显示前 '+hits.length+' 条，共 '+total+' 条）':'（'+total+' 条）');
+  if(!matches.length&&!hits.length){const empty=document.getElementById('ceobe-search-empty').content.firstElementChild.cloneNode(true);empty.dataset.ceobeSearchEmpty='';list.after(empty)}
+  status.textContent=(offline?'无法刷新索引，使用本页离线索引。':'')+'找到 '+matches.length+' 个聊天'+(!query?'。':index?'，正文命中 '+total+' 条。':indexState==='loading'?'，正在加载正文索引。':'，正文索引不可用，仅按标题搜索。');
+
+  if(focused){const again=[...dialog.querySelectorAll('ol a')].find(a=>a.dataset.searchChatId===focused.chat&&(a.dataset.searchMessageId||'')===focused.message);if(again)again.focus();else input.focus({preventScroll:true})}
  }
  async function refresh(){const token=++generation;try{const r=await fetch(new URL('api/chats',root),{cache:'no-store'}),data=await r.json();if(!r.ok||!Array.isArray(data.conversations))throw Error();if(token!==generation||dialog.hidden)return;catalog=data.conversations;offline=false}catch{if(token!==generation||dialog.hidden)return;offline=true}render()}
  function blockingDialog(){return [...document.querySelectorAll('[role=dialog]')].some(e=>e!==dialog&&visible(e))}
- function openSearch(from){if(blockingDialog()||recentEditing)return;if(!dialog.hidden){input.focus();return}closeMenus();opener=from||document.activeElement;dialog.hidden=false;input.value='';render();
+ function openSearch(from){if(blockingDialog()||recentEditing)return;if(!dialog.hidden){input.focus();return}closeMenus();opener=from||document.activeElement;dialog.hidden=false;input.value='';render();loadIndex();
   inerted=[...document.body.children].filter(e=>e!==dialog&&!['SCRIPT','STYLE','LINK','TEMPLATE'].includes(e.tagName)).map(e=>[e,e.inert]);for(const [e]of inerted)e.inert=true;
   input.focus();refresh();
  }
@@ -37,6 +76,14 @@
  dialog.addEventListener('pointerdown',e=>{if(e.target===dialog)closeSearch()});
  input.addEventListener('input',render);clear.addEventListener('click',()=>{input.value='';render();input.focus()});
  document.addEventListener('ceobe:chat-updated',()=>{recentEditing=false;if(recentCloseRequested){recentCloseRequested=false;closeRecent(false)}else if(!recentPopup.hidden)refreshRecent();if(!dialog.hidden)refresh()});
+ // Archive changes rebuild the index on disk; drop the cached copy so the next open refetches it (the stale copy stays usable meanwhile).
+ for(const event of ['ceobe:chat-updated','ceobe:project-imported'])document.addEventListener(event,()=>{indexPromise=null;if(!dialog.hidden)loadIndex()});
+ bodyList.addEventListener('click',e=>{
+  const a=e.target.closest('a[data-search-message-id]');if(!a||e.button!==0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey||a.dataset.searchChatId!==currentChat)return;
+  // Same reader page: reuse the exact bookmark jump instead of reloading. If nothing handles the request, the link itself still carries the hash.
+  const request=new CustomEvent('ceobe:jump-message',{cancelable:true,detail:{chatId:a.dataset.searchChatId,messageId:a.dataset.searchMessageId}});
+  closeSearch();if(!document.dispatchEvent(request))e.preventDefault();
+ });
  function recentRows(){return [...recentList.querySelectorAll('a')]}
  function closeRecent(focus=false){
   if(recentEditing){recentCloseRequested=true;return}
@@ -96,7 +143,7 @@
  dialog.addEventListener('keydown',e=>{
   if(e.isComposing)return;
   if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeSearch();return}
-  const rows=[...list.querySelectorAll('a')],i=rows.indexOf(document.activeElement);
+  const rows=[...dialog.querySelectorAll('ol a')],i=rows.indexOf(document.activeElement);
   if(['ArrowDown','ArrowUp'].includes(e.key)){e.preventDefault();const next=i<0?(e.key==='ArrowDown'?0:rows.length-1):i+(e.key==='ArrowDown'?1:-1);if(next<0)input.focus();else rows[Math.min(next,rows.length-1)]?.focus()}
   else if(e.key==='Enter'&&document.activeElement===input){e.preventDefault();rows[0]?.click()}
   else if(e.key==='Tab'){const stops=[...dialog.querySelectorAll('input,button,a[href]')].filter(e=>visible(e)&&!e.disabled),i=stops.indexOf(document.activeElement);if(e.shiftKey&&i<=0){e.preventDefault();stops.at(-1)?.focus()}else if(!e.shiftKey&&i===stops.length-1){e.preventDefault();stops[0]?.focus()}}

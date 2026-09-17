@@ -66,7 +66,7 @@ node scripts/test-copy-content.mjs
 | 项目内置顶与标题空间 | `test-project-pinned-browser.mjs` |
 | 响应式书签、最近聊天键盘及项目提示 | `test-ui-followups-browser.mjs`；支持 `CEOBE_TEST_DIST=1` 和 `CEOBE_TEST_HEADED=1`，书签为内存夹具、API 只读 |
 | 连续调整宽度、离屏旁注与精确跳转 | `test-bookmark-resize-browser.mjs`（`npm run test:bookmarks:browser`）；在临时目录构建隔离副本（`bookmark-browser-fixture.mjs` + `fixtures/browser/bookmark-conversations.mjs`，100／500 条消息、20／100 条书签），不依赖本地 5173，不读写使用者归档；支持 `CEOBE_TEST_DIST=1` 与 `CEOBE_TEST_HEADED=1`，检查布局／样式重算次数、懒滚动、精确跳转与面板开关 |
-| 侧栏与整理 | `test-sidebar-controls.mjs`、`test-sidebar-polish.mjs`、`test-chat-organizer.mjs` |
+| 侧栏、搜索与整理 | `test-sidebar-controls.mjs`（标题与正文搜索、片段高亮、页内精确跳转与跨页哈希跳转；正文索引和 `/api/chats` 均为只读夹具）、`test-search-index.mjs`（索引只含可见提问／回复／代码，排除推理、隐藏上下文、引用与附件名）、`test-sidebar-polish.mjs`、`test-chat-organizer.mjs` |
 | 导入与发布 | `test-local-import-api.mjs`、`test-production-import.mjs`、`test-link-import-browser.mjs` |
 | 离线资源 | `test-offline-resources.mjs` |
 
