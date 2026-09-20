@@ -295,6 +295,11 @@
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+  /* The gutter-docked panel is only as wide as the free margin, so the scope row wraps. */
+  flex-wrap: wrap;
+}
+.ceobe-bookmark-toolbar button {
+  min-width: 0;
 }
 .ceobe-bookmark-toolbar [aria-pressed='true'] {
   background: var(--bg-tertiary, #ececec);
@@ -594,4 +599,24 @@
   [data-bookmark-composer] > span {
     font-size: 12px;
   }
+}
+/* Docked, the panel is a flat part of the margin; overlaying the text it has to read as a
+   transient layer, so it carries a shadow and stays short. */
+.ceobe-bookmarks-modal[data-bookmark-view="current"][data-bookmark-panel-mode="overlay"] > div {
+  box-shadow: 0 14px 40px #00000029;
+}
+/* Empty state: a short note in the margin, not a full-height column. The list normally stretches
+   to fill the panel, so with nothing to show the panel has to stop stretching. */
+.ceobe-bookmarks-modal[data-bookmark-view="current"][data-bookmark-panel-empty="true"] > div {
+  height: auto !important;
+  /* The shell keeps a min-height of its own for the roomy modal; a one-line hint must not inherit it. */
+  min-height: 0 !important;
+}
+.ceobe-bookmarks-modal[data-bookmark-view="current"][data-bookmark-panel-empty="true"] .ceobe-bookmark-list-body {
+  flex: 0 0 auto;
+  gap: 10px;
+}
+.ceobe-bookmarks-modal[data-bookmark-view="current"][data-bookmark-panel-empty="true"] .ceobe-bookmark-empty {
+  padding: 6px 4px 2px;
+  line-height: 1.7;
 }
