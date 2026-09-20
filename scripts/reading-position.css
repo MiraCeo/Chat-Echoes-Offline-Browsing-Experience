@@ -1,0 +1,64 @@
+/* Continue-reading notice. It sits in the right margin under the bookmark rail, so at
+   desktop widths it never covers the reading column, and it removes itself. */
+[data-ceobe-reading-position] {
+  position: fixed;
+  inset-inline-end: 56px;
+  bottom: 120px;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: min(340px, calc(100vw - 32px));
+  padding: 8px 10px;
+  border: 1px solid var(--border-light, #e5e5e5);
+  border-radius: 12px;
+  background: var(--bg-primary, #fff);
+  box-shadow: 0 8px 24px #0000001f;
+  color: var(--text-primary, #111);
+  font-size: 13px;
+  line-height: 1.4;
+  pointer-events: auto;
+}
+[data-ceobe-reading-position] > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* The frozen baseline turns page-wide pointer events off and re-enables them island by
+   island, so the notice's own buttons have to opt back in explicitly. */
+[data-ceobe-reading-position] button {
+  pointer-events: auto !important;
+  flex: none;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-secondary, #555);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+[data-ceobe-reading-position] button:hover {
+  background: var(--bg-tertiary, #f0f0f0);
+  color: var(--text-primary, #111);
+}
+[data-ceobe-reading-position] :focus-visible {
+  outline: 2px solid var(--text-secondary, #777);
+  outline-offset: 2px;
+}
+@media (max-width: 600px) {
+  [data-ceobe-reading-position] {
+    inset-inline-end: 16px;
+    bottom: 96px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-ceobe-reading-position] {
+    animation: ceobe-reading-chip 180ms ease-out;
+  }
+}
+@keyframes ceobe-reading-chip {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}

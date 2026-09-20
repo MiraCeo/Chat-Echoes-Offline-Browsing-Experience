@@ -16,7 +16,8 @@ export async function buildBookmarks(root, library) {
     );
   const hash = (s) => createHash('sha256').update(s).digest('hex').slice(0, 12),
     files = {};
-  for (const name of ['bookmarks.js', 'bookmarks.css']) {
+  // Reading position ships as its own pair of hashed assets, injected into readers only.
+  for (const name of ['bookmarks.js', 'bookmarks.css', 'reading-position.js', 'reading-position.css']) {
     const s = await readFile(join(root, 'scripts', name), 'utf8');
     files[name] = name.replace('.', '.' + hash(s) + '.');
     await writeFile(join(base, files[name]), s);
@@ -212,7 +213,11 @@ export async function buildBookmarks(root, library) {
     status.setAttribute('role', 'status');
     status.hidden = true;
     d.body.append(status);
-    for (const name of ['bookmarks.js', 'bookmarks.css']) {
+    for (const name of [
+      'bookmarks.js',
+      'bookmarks.css',
+      ...(chatId ? ['reading-position.js', 'reading-position.css'] : []),
+    ]) {
       const e = d.createElement(name.endsWith('.js') ? 'script' : 'link');
       if (name.endsWith('.js')) {
         e.type = 'module';

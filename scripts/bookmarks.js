@@ -161,13 +161,38 @@ function layoutCaptions() {
   }
   if (!layoutFrame) layoutFrame = requestAnimationFrame(flushBookmarkLayout);
 }
+// The reading column keeps its position and width, so the panel must never take space from `main`.
+// It docks in the free gutter left of the text when that gutter can hold it; otherwise it floats as
+// a short overlay that dismisses itself on the next click outside (see the pointerdown guard).
+const PANEL_MAX_WIDTH = 280, PANEL_MIN_DOCK = 150, PANEL_OVERLAY_HEIGHT = 420;
+// The official column is centered inside a padded wrapper, so its two inherited CSS variables give
+// the text edge without reading a rect of a section that lazy layout has skipped.
+function readingColumnLeft(rect) {
+  const wrap = readerMain.querySelector('section[data-testid^="conversation-turn-"] > div');
+  const column = wrap?.querySelector('[data-conversation-screenshot-content]');
+  if (!column) return rect.left + 16;
+  const raw = getComputedStyle(column).getPropertyValue('--thread-content-max-width').trim();
+  const number = parseFloat(raw);
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const padding = parseFloat(getComputedStyle(wrap).paddingLeft) || 0;
+  // The official column sizes itself in rem, so the unit has to be converted before comparing.
+  const maxWidth = Number.isFinite(number) ? number * (/rem$/.test(raw) ? rem : 1) : NaN;
+  const inner = Math.max(0, rect.width - padding * 2);
+  const width = Number.isFinite(maxWidth) ? Math.min(maxWidth, inner) : inner;
+  return rect.left + padding + (inner - width) / 2;
+}
 function flushBookmarkLayout() {
   layoutFrame = 0;
   const main = readerMain?.getBoundingClientRect();
   const isPanel = Boolean(listDialog.open && scope === 'current' && main);
-  const panelWidth = main ? Math.min(280, main.width - 24) : 0;
+  const panelLeft = main ? main.left + 8 : 0;
+  const gutter = main ? Math.round(readingColumnLeft(main) - panelLeft - 8) : 0;
+  const docked = isPanel && gutter >= PANEL_MIN_DOCK;
+  const panelWidth = main ? Math.min(PANEL_MAX_WIDTH, docked ? gutter : main.width - 24) : 0;
   const top = main ? Math.max(60, main.top + 8) : 60;
-  const leftEdge = Math.max(8, main?.left || 0, isPanel ? main.left + 8 + panelWidth + 8 : 0);
+  const compact = isPanel && listDialog.dataset.bookmarkPanelEmpty === 'true';
+  const panelHeight = Math.max(160, Math.min(docked ? innerHeight : PANEL_OVERLAY_HEIGHT, innerHeight - top - 16));
+  const leftEdge = Math.max(8, main?.left || 0, isPanel ? panelLeft + panelWidth + 8 : 0);
   const empty = 2 * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16);
   const plans = captionEntries.filter(entry => nearSections.has(entry.section)).map(entry => {
     const r = entry.box.getBoundingClientRect();
@@ -181,9 +206,18 @@ function flushBookmarkLayout() {
   // Write phase. Idempotent writes also avoid ResizeObserver feedback work.
   setAttributeIfChanged(listDialog, 'data-bookmark-view', scope);
   setFlag(document.body, 'data-bookmark-panel-open', false);
+  setAttributeIfChanged(listDialog, 'data-bookmark-panel-mode', isPanel ? (docked ? 'dock' : 'overlay') : 'closed');
+  // Compact keeps the panel as short as its content, but a narrow window still caps it so it
+  // cannot grow taller than the reading column it floats over.
   const panelStyles = isPanel
-    ? { left: main.left + 8 + 'px', top: top + 'px', width: panelWidth + 'px', height: Math.max(160, innerHeight - top - 16) + 'px' }
-    : { left: '', top: '', width: '', height: '' };
+    ? {
+        left: panelLeft + 'px',
+        top: top + 'px',
+        width: panelWidth + 'px',
+        height: compact ? 'auto' : panelHeight + 'px',
+        maxHeight: compact ? panelHeight + 'px' : '',
+      }
+    : { left: '', top: '', width: '', height: '', maxHeight: '' };
   for (const [key, value] of Object.entries(panelStyles)) setStyle(listDialog, key, value);
   if (main && panelButton) {
     setStyle(panelButton, 'right', 'auto');
@@ -372,6 +406,13 @@ function renderList() {
           : b.updated_at.localeCompare(a.updated_at) || a.id.localeCompare(b.id),
       );
   list.replaceChildren();
+  // An empty list is a note, not a column: the panel shrinks to its content instead of standing
+  // between the reader and the chat for no reason.
+  setAttributeIfChanged(listDialog, 'data-bookmark-panel-empty', String(!filtered.length));
+  // Only the panel has to be re-measured here. Asking for a full caption pass would cancel the
+  // pending expand-control update that the captions themselves are waiting for.
+  if (scope === 'current' && listDialog.open && !layoutFrame)
+    layoutFrame = requestAnimationFrame(flushBookmarkLayout);
   searchBox.placeholder = searchHint;
   searchBox.setAttribute('aria-label', searchHint);
   q('[data-bookmark-list-status]').textContent =
@@ -711,6 +752,16 @@ document.addEventListener('click', async (e) => {
 });
 document.addEventListener('pointerdown', (e) => {
   if (!menu.hidden && !menu.contains(e.target) && !menuTrigger?.contains(e.target)) closeMenu();
+  // An overlay panel does cover text, so it is transient by contract: any click outside it (or
+  // Escape, handled below) puts the reading view back. A docked panel never covers text, so it stays.
+  if (
+    listDialog.open &&
+    scope === 'current' &&
+    listDialog.dataset.bookmarkPanelMode === 'overlay' &&
+    !listDialog.contains(e.target) &&
+    !e.target.closest('.ceobe-bookmark-rail')
+  )
+    listDialog.close();
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !menu.hidden) {
