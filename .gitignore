@@ -17,3 +17,6 @@ archive/*
 
 data/private/*
 attachments/private/*
+
+# Assistant workspace: local session memory, not project source.
+.workbuddy-ai/
