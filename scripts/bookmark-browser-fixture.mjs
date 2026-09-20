@@ -1,11 +1,23 @@
 import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
+import { createServer as createProbeServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { build, createServer, preview } from 'vite';
 import { createBookmarkStore } from './bookmark-store.mjs';
 import { bookmarkProfiles, makeBookmarkConversation } from '../fixtures/browser/bookmark-conversations.mjs';
+
+// Vite reads `port: 0` as falsy and falls back to its default 5173, so asking for an ephemeral port
+// does not isolate anything: with `npm run dev` running, the fixture would bind 5174 instead and can
+// fail outright where that port is reserved. Reserve a free port first, then hand Vite the number.
+async function freePort() {
+  const probe = createProbeServer();
+  await new Promise((done, fail) => { probe.once('error', fail); probe.listen(0, '127.0.0.1', done); });
+  const { port } = probe.address();
+  await new Promise(done => probe.close(done));
+  return port;
+}
 
 // Build the real application in an isolated root, rather than replacing markup
 // in a user's reader. Only runtime source and frozen public assets are reused.
@@ -37,11 +49,12 @@ export async function createBookmarkBrowserFixture({ profiles = bookmarkProfiles
     try {
       process.chdir(root);
       const common = { configFile: join(root, 'vite.config.mjs'), root: join(root, 'replay'), logLevel: 'error' };
+      const port = await freePort();
       if (production) {
         await build({ ...common, build: { outDir: join(root, 'dist'), emptyOutDir: true } });
-        server = await preview({ ...common, build: { outDir: join(root, 'dist') }, preview: { host: '127.0.0.1', port: 0, open: false } });
+        server = await preview({ ...common, build: { outDir: join(root, 'dist') }, preview: { host: '127.0.0.1', port, open: false } });
       } else {
-        server = await createServer({ ...common, server: { host: '127.0.0.1', port: 0, open: false, hmr: false } });
+        server = await createServer({ ...common, server: { host: '127.0.0.1', port, open: false, hmr: false } });
         await server.listen();
       }
     } finally { process.chdir(previous); }
