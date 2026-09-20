@@ -4,7 +4,7 @@
  const root=new URL(location.pathname.includes('/conversations/')?'../':'./',location.href),key='ceobe.sidebar-collapsed.v1';
  const input=dialog.querySelector('input'),list=dialog.querySelector('ol'),heading=dialog.querySelector('h3'),clear=dialog.querySelector('.F_cuGW_clearButton'),divider=dialog.querySelector('.F_cuGW_headerActionDivider'),status=dialog.querySelector('[data-ceobe-search-status]');
  const initial=JSON.parse(document.getElementById('ceobe-chat-catalog').textContent);let catalog=initial,opener=null,inerted=[],generation=0,offline=false;
- const bodySection=dialog.querySelector('[data-ceobe-search-body]'),bodyList=bodySection.querySelector('ol'),bodyHeading=bodySection.querySelector('h3'),currentChat=document.body.dataset.readerChatId||null;let index=null,indexState='idle',indexPromise=null;
+ const bodySection=dialog.querySelector('[data-ceobe-search-body]'),bodyList=bodySection.querySelector('ol'),bodyHeading=bodySection.querySelector('h3'),currentChat=document.body.dataset.readerChatId||null;let index=null,indexState='idle',indexPromise=null;let lastQuery=null,forceTop=true;
  const recentPopup=document.querySelector('[data-ceobe-rail-recent]'),recentTrigger=document.querySelector('[data-ceobe-recent-trigger]'),recentMenu=recentPopup.querySelector('[role=menu]'),recentList=recentMenu.querySelector('ul'),recentLayout=JSON.parse(recentPopup.dataset.layout);let recentGeneration=0,recentEditing=false,recentCloseRequested=false;
  const normal=s=>String(s||'').normalize('NFKC').toLocaleLowerCase().trim();
  const visible=e=>e&&e.isConnected&&e.checkVisibility();
@@ -20,6 +20,10 @@
  for(const b of document.querySelectorAll('[data-ceobe-sidebar-toggle]'))b.addEventListener('click',()=>setCollapsed(b.dataset.ceobeSidebarToggle==='close',true));
  window.addEventListener('storage',e=>{if(e.key===key)setCollapsed(e.newValue==='true',false,false)});
  const BODY_LIMIT=50;
+ // Every keystroke replaces the whole result set, so the scroll offset has to travel with it:
+ // after a longer previous list the first new hits would otherwise stay scrolled out of view.
+ // The official scroller is named; the ancestor walk keeps the reset working if that ever changes.
+ const resultScrollers=()=>{const out=new Set([dialog]);for(const start of [list,bodyList])for(let e=start;e&&e!==document.body;e=e.parentElement){if(/(auto|scroll)/.test(getComputedStyle(e).overflowY))out.add(e)}const named=dialog.querySelector('.F_cuGW_resultsScroller');if(named)out.add(named);return [...out]};
  // Body search: one build-time record per rendered turn (replay/public/search-index.json), loaded on first open, matched with the same NFKC folding as titles.
  function loadIndex(){
   if(indexPromise)return indexPromise;indexState='loading';
@@ -47,6 +51,9 @@
   // A background catalog/index refresh must not steal keyboard focus from a result the user has already arrowed to.
   const active=document.activeElement,focused=active&&dialog.contains(active)&&active.matches('ol a')?{chat:active.dataset.searchChatId,message:active.dataset.searchMessageId||''}:null;
   const query=normal(input.value),seen=new Set(),chats=catalog.filter(c=>c&&typeof c.id==='string'&&typeof c.title==='string'&&!seen.has(c.id)&&seen.add(c.id)),matches=chats.filter(c=>!query||normal(c.title).includes(query));
+  // The effective query is the whole result set, so it also decides when to return to the top.
+  let restore=focused;const queryChanged=query!==lastQuery||forceTop;forceTop=false;
+  const keepTops=queryChanged?null:resultScrollers().map(s=>s.scrollTop);
   list.replaceChildren();bodyList.replaceChildren();dialog.querySelector('[data-ceobe-search-empty]')?.remove();heading.textContent=(query?'搜索结果':'最近聊天')+(offline?'（离线索引）':'');clear.hidden=divider.hidden=!input.value;
   for(const c of matches){const row=document.getElementById('ceobe-search-row').content.firstElementChild.cloneNode(true),a=row.querySelector('a');a.href=new URL('conversations/'+encodeURIComponent(c.id)+'.html',root).href;a.dataset.searchChatId=c.id;mark(row.querySelector('.F_cuGW_resultTitleText'),c.title,query,'F_cuGW_titleHighlight');list.append(row)}
   // Body hits follow the catalog order, so deleted chats or a stale index never produce dead links.
@@ -62,11 +69,19 @@
   if(!matches.length&&!hits.length){const empty=document.getElementById('ceobe-search-empty').content.firstElementChild.cloneNode(true);empty.dataset.ceobeSearchEmpty='';list.after(empty)}
   status.textContent=(offline?'无法刷新索引，使用本页离线索引。':'')+'找到 '+matches.length+' 个聊天'+(!query?'。':index?'，正文命中 '+total+' 条。':indexState==='loading'?'，正在加载正文索引。':'，正文索引不可用，仅按标题搜索。');
 
-  if(focused){const again=[...dialog.querySelectorAll('ol a')].find(a=>a.dataset.searchChatId===focused.chat&&(a.dataset.searchMessageId||'')===focused.message);if(again)again.focus();else input.focus({preventScroll:true})}
+  // A new result set starts at its first row and keeps the caret in the input: restoring the old
+  // arrow-key row would drop focus onto a row that is no longer the one the user was reading.
+  if(queryChanged){for(const e of resultScrollers())e.scrollTop=0;restore=null}
+  // A refresh rebuilds every row, so the browser would otherwise drop the list back to its top; a query
+  // that did not change must not move the reader. This runs before the focus is handed back, so keyboard
+  // navigation keeps the last word about where the list is scrolled.
+  if(keepTops)for(const [i,e] of resultScrollers().entries()){const want=keepTops[i];if(want&&e.scrollTop!==want)e.scrollTop=want}
+  lastQuery=query;
+  if(restore){const again=[...dialog.querySelectorAll('ol a')].find(a=>a.dataset.searchChatId===restore.chat&&(a.dataset.searchMessageId||'')===restore.message);if(again)again.focus();else input.focus({preventScroll:true})}
  }
  async function refresh(){const token=++generation;try{const r=await fetch(new URL('api/chats',root),{cache:'no-store'}),data=await r.json();if(!r.ok||!Array.isArray(data.conversations))throw Error();if(token!==generation||dialog.hidden)return;catalog=data.conversations;offline=false}catch{if(token!==generation||dialog.hidden)return;offline=true}render()}
  function blockingDialog(){return [...document.querySelectorAll('[role=dialog]')].some(e=>e!==dialog&&visible(e))}
- function openSearch(from){if(blockingDialog()||recentEditing)return;if(!dialog.hidden){input.focus();return}closeMenus();opener=from||document.activeElement;dialog.hidden=false;input.value='';render();loadIndex();
+ function openSearch(from){if(blockingDialog()||recentEditing)return;if(!dialog.hidden){input.focus();return}closeMenus();opener=from||document.activeElement;dialog.hidden=false;input.value='';forceTop=true;render();loadIndex();
   inerted=[...document.body.children].filter(e=>e!==dialog&&!['SCRIPT','STYLE','LINK','TEMPLATE'].includes(e.tagName)).map(e=>[e,e.inert]);for(const [e]of inerted)e.inert=true;
   input.focus();refresh();
  }
