@@ -56,6 +56,7 @@ node scripts/test-copy-content.mjs
 | 书签与个人备注 | `test-bookmarks-store.mjs`、`test-bookmarks-browser.mjs`；聊天删除整体验证另见 `test-chat-actions-store.mjs` |
 | 正文内联组件（引用／文件／链接） | `test-genui-inline-components.mjs`：解析 `metadata.genui_components` 的字符区间与无元数据时的标记扫描、官方引用模板渲染、无模板组件的降级，以及复制／导出文本不含原始标记 |
 | 官方 DOM 快照工具 | `test-official-dom-snapshot.mjs`：输出目录约束（拒绝 `archive/` 与 `data/private/` 之外）、结构签名不含正文、样式族配对、类漂移分类、离线 `--compare-only` 与无参数拒绝执行 |
+| DIL 生成式 UI 文档 | `test-dil-document.mjs`：`model_dil_v2` 载荷的表达式提取、常量／映射／三元／模板字符串／hooks 求值、组件标识符，以及未知标识符只记录不执行 |
 | 聊天操作 | `test-chat-actions-store.mjs`、`test-chat-actions-browser.mjs` |
 | 阅读更多 | `test-reader-actions-browser.mjs` |
 | 从聊天打开本地文件夹 | `test-open-folder-api.mjs`（服务端：POST／同源／ID／路径包含检查，打开动作为注入桩，不会启动资源管理器）、`test-open-folder-browser.mjs`（两处菜单；浏览器内拦截 POST，不打开任何窗口、不写入数据） |

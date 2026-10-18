@@ -7,7 +7,7 @@
 ## 官方界面适配（A）
 
 - [ ] **补齐降级组件的冻结模板**：`MemoryCite` 与 `writing_block` 卡片目前在匿名分享页上根本不渲染（已用 `capture-official-dom.mjs` 快照核实：渲染后的回合里 `data-memory`、`data-writing-block` 均为 0 次），因此**维持纯文本降级**，不为此开放登录态采集。`charts_widget_v2` 等客户端自定义组件在匿名页可用官方图表 DOM（`data-client-defined-widget="visualization"`），已由既有图表模板覆盖，无需新增冻结。
-- [ ] **DIL 文档渲染**：`metadata.model_dil_v2` 生成式 UI 文档尚未渲染，助手回复仍走 Markdown 回退文本。分层目标：结构类组件（`title`／`table`／`list`／`box`／`grid`／`divider`／`text`）按官方渲染，装饰类与未知组件回退 Markdown；解析用纯解析器，不执行载荷。映射来源已具备：匿名快照里官方 DIL 输出带 `data-d-component` 语义标记（`text`／`table-cell`／`box`／`badge`／`icon`／`math`／`popover-trigger` 等），可直接按组件冻结官方 DOM。
+- [ ] **DIL 组件树渲染（解析已完成）**：`scripts/dil-document.mjs` 已能纯解析 `metadata.model_dil_v2`（352/352 历史载荷解析成功、无未解析标识符；对匿名快照里 6 个官方回合的正文比对，长度比 0.88–1.05）。剩余工作是把组件树映射到官方 DOM：结构类组件（`text`／`title`／`table`／`list`／`box`／`grid`／`divider`）按官方渲染，装饰类与未知组件回退 Markdown，并决定与 Markdown 回退文本的取舍。映射来源：匿名快照里官方 DIL 输出带 `data-d-component` 语义标记，可按组件冻结官方 DOM。
 - [ ] **外观漂移评估**：用户消息气泡（`corner-superellipse`／`rounded-[22px]`／`user-message-bubble-color`）、附件行标签、“展开”控件与 `cot-v5` 相对冻结模板的差异，决定是否发起一次完整的模板再冻结；优先由差异报告决定，不凭观感重做。
 
 ## 采集路线
