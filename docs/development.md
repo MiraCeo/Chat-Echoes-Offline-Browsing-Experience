@@ -45,6 +45,7 @@ npm test
 node scripts/test-official-template-package.mjs
 node scripts/test-reader-rendering.mjs
 node scripts/test-official-citations.mjs
+node scripts/test-genui-inline-components.mjs
 node scripts/test-copy-content.mjs
 ```
 
@@ -53,6 +54,8 @@ node scripts/test-copy-content.mjs
 | 范围 | 主要入口（位于 `scripts/`） |
 |---|---|
 | 书签与个人备注 | `test-bookmarks-store.mjs`、`test-bookmarks-browser.mjs`；聊天删除整体验证另见 `test-chat-actions-store.mjs` |
+| 正文内联组件（引用／文件／链接） | `test-genui-inline-components.mjs`：解析 `metadata.genui_components` 的字符区间与无元数据时的标记扫描、官方引用模板渲染、无模板组件的降级，以及复制／导出文本不含原始标记 |
+| 官方 DOM 快照工具 | `test-official-dom-snapshot.mjs`：输出目录约束（拒绝 `archive/` 与 `data/private/` 之外）、结构签名不含正文、样式族配对、类漂移分类、离线 `--compare-only` 与无参数拒绝执行 |
 | 聊天操作 | `test-chat-actions-store.mjs`、`test-chat-actions-browser.mjs` |
 | 阅读更多 | `test-reader-actions-browser.mjs` |
 | 从聊天打开本地文件夹 | `test-open-folder-api.mjs`（服务端：POST／同源／ID／路径包含检查，打开动作为注入桩，不会启动资源管理器）、`test-open-folder-browser.mjs`（两处菜单；浏览器内拦截 POST，不打开任何窗口、不写入数据） |
@@ -112,13 +115,28 @@ Remove-Item Env:CEOBE_TEST_DIST
 
 界面以获授权的官方 DOM 与样式为基线，不凭截图重新设计一套近似控件。
 
-1. 将官方页面作为一次明确的迁移输入，默认仅查看、导航与捕获，不提交远端写入。
+1. 将官方页面作为一次明确的迁移输入，默认仅查看、导航与捕获，不提交远端写入。迁移输入可以是保存页，也可以先用 `scripts/capture-official-dom.mjs` 确认差异；两者都只用匿名浏览器，不使用登录态。
 2. 去除个人名称、实际内容、认证信息、临时资源地址与无效状态。
 3. 把所需模板、样式和图标冻结到独立包中；禁止构建读取私人捕获目录。
 4. 确认图标、字体、预览片段等资源均可本地解析，再对照行为与计算样式。
 5. 同时验证开发和生产构建，尤其注意嵌套页面路径、按需资源及脚本依赖链。
 
 模板提取入口 `npm run extract:templates` 用于校验和整理独立包，不应恢复对已删除参考目录的永久依赖。
+
+### 官方 DOM 快照与差异
+
+`scripts/capture-official-dom.mjs` 是显式调用的维护工具，用来确认官方页面相对冻结模板包发生了什么变化。它不参与 `npm run library`、`npm run build` 或 `npm test`，也不被任何构建步骤读取。
+
+```powershell
+node scripts/capture-official-dom.mjs --url <分享链接> [--label <名称>]
+node scripts/capture-official-dom.mjs --saved <已保存页面目录> [--label <名称>]
+node scripts/capture-official-dom.mjs --compare-only <快照目录>
+```
+
+- **只使用独立匿名浏览器上下文**：不读取个人浏览器配置、cookie 或登录态。登录态才能看到的界面（例如记忆芯片）不作为捕获来源，取不到就维持降级。
+- 产物（静态响应、渲染后 DOM、样式表、截图、`report.json` 与 `report.md`）只写入 `data/private/official-dom/`；脚本会拒绝写入 `archive/` 或 `data/private/` 之外的路径。这些文件含聊天内容，不提交、不外传。
+- 报告只统计结构与样式：冻结模板组件类中有哪些已不再被当前样式定义（区分“本页加载的界面”和“本页未加载的界面”）、各样式族的选择器重合度与设计 token 变化、以及 DIL、展开控件等组件标记探针。
+- `--compare-only` 对既有快照离线重算报告，便于同一份快照对照不同冻结包版本；无参数执行会直接失败，避免误触发联网采集。
 
 DOM 经多次序列化时使用 `scripts/serialize-html.mjs` 的处理，避免空 SVG `title`／`desc` 自闭合形式导致后续 HTML 解析吞掉图表。字体本地化应在页面构建末尾执行。
 
