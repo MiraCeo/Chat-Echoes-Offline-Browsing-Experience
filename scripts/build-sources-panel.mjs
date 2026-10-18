@@ -1,14 +1,15 @@
 import { cp } from 'node:fs/promises';
 import { join } from 'node:path';
+import { stripInlineComponents } from './dil-inline-components.mjs';
 
 export async function buildSourcesPanel(document, root, output, conversation, templates) {
   const clone = name => templates.clone(name, document);
   const cloneNode = node => node.cloneNode(true);
-  const messageText = message => (message?.content?.blocks || [])
+  const messageText = message => stripInlineComponents((message?.content?.blocks || [])
     .filter(block => block.type === 'text' || block.type === 'markdown')
     .map(block => block.text || '')
     .join('\n')
-    .trim();
+    .trim(), { message });
   const previewText = value => value
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')

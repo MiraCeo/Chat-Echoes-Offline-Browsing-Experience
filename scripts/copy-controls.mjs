@@ -1,4 +1,5 @@
 import { marked, Renderer } from 'marked';
+import { collectInlineComponents, inlineComponentMarkdown } from './dil-inline-components.mjs';
 
 const safeUrl = value => {
   try { const url = new URL(value); return ['https:', 'http:', 'mailto:'].includes(url.protocol) ? url.href : null; }
@@ -11,7 +12,17 @@ export function messageCopyContent(parts, document, referencePrefix = '') {
   const definitions = new Map();
   const text = parts.filter(part => part.type === 'markdown').map(part => {
     const references = new Map((part.contentReferences || []).map(ref => [ref.matched_text, ref]));
-    return part.markdown.replace(/\uE200([^\uE201\uE202]+)(?:\uE202(.*?))?\uE201/gs, (raw, kind, payload = '') => {
+    // DIL-era inline components are lifted out first; raw component markup must not reach the clipboard.
+    const inline = collectInlineComponents(part.markdown, {
+      components: part.genuiComponents || [],
+      message: part.message,
+    });
+    let markdownPart = part.markdown;
+    for (const component of [...inline].sort((left, right) => right.start - left.start)) {
+      const replacement = inlineComponentMarkdown(component, { definitions, referencePrefix });
+      markdownPart = markdownPart.slice(0, component.start) + replacement + markdownPart.slice(component.end);
+    }
+    return markdownPart.replace(/\uE200([^\uE201\uE202]+)(?:\uE202(.*?))?\uE201/gs, (raw, kind, payload = '') => {
       const ref = references.get(raw) || {};
       if (kind === 'cite') {
         const items = ref.items || (ref.url ? [ref] : []);

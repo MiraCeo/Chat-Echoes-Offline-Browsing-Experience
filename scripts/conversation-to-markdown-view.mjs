@@ -1,5 +1,6 @@
-export function conversationToMarkdownView(conversation) {
-  if (!conversation || typeof conversation.title !== 'string' || !conversation.messages || !Array.isArray(conversation.linear_message_ids)) {
+import { messageComponents } from './dil-inline-components.mjs';
+
+export function conversationToMarkdownView(conversation) {  if (!conversation || typeof conversation.title !== 'string' || !conversation.messages || !Array.isArray(conversation.linear_message_ids)) {
     throw new Error('Expected CEOBE JSON with title, messages and linear_message_ids.');
   }
   const messages = [];
@@ -30,6 +31,9 @@ export function conversationToMarkdownView(conversation) {
       id, type,
       markdown: activity ? raw.content || (raw.thoughts || []).map(t => t.summary || t.content || '').join('\n') : markdown,
       contentReferences: source.content_references || [],
+      // DIL-era inline components resolve per message; exports reuse the same normalization.
+      genuiComponents: messageComponents(source),
+      message: source,
       attachments: source.attachments || [],
       unsupported: blocks.filter(b => !['text','code','file_citation','web_citation','widget','url','embedded_reference'].includes(b.type)),
     };

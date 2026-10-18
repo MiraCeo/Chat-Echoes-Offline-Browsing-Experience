@@ -71,6 +71,18 @@ ChatGPT 分享页面及公开资源
 
 `--sample-assets` 仅用于明确的样本演示，允许按样本消息 ID 复用媒体快照；正常归档阅读不会把缺失资源替换成测试样本。
 
+### 正文内联组件
+
+当前官方助手正文把引用等组件直接内嵌在文本里，例如 `<Cite refs={["turn131558view0"]}/>`、`<FileCite ref="turn0file0" line_range_start={49} line_range_end={50}/>`、`<Link url="…" title="…"/>`、`<MemoryCite />`、`<Entity category="software" value="…"/>` 和 `<Chart content={{…}}/>`。这些标记只是文本，旧版本会把它们原样显示出来。
+
+`metadata.genui_components` 为每个内联组件给出字符区间、`safe_urls` 和 `entities` 引用；区间是权威来源，偏移量按 `build-official-replay.mjs` 拼接助手文本的同一规则换算。`scripts/dil-inline-components.mjs` 只做解析、不执行载荷，并沿用冻结的官方模板渲染：
+
+- `cite` 经 `search_result_groups` 的 `turnNNNsearchN` 引用表解析站点名，复用官方网页引用药丸模板；`link` 复用官方修饰链接模板；`file_cite` 从消息附件还原文件名，复用官方文件引用模板。
+- 尚无冻结模板的组件降级为可读文本（`MemoryCite` 标为“记忆”，`Entity` 取 `value`，`WritingBlock` 只保留正文），原始标记不会出现在阅读页、复制内容或 Markdown 导出中。
+- 缺少 `genui_components` 的抓取按已知标签做保守扫描；普通正文与代码里的同名字符串不受影响。
+
+抓取当前的助手回复同时携带 Markdown 回退文本和 `metadata.model_dil_v2` 生成式 UI 文档；阅读器目前渲染回退文本，DIL 文档本身尚未渲染，见 [TODO](../TODO.md)。
+
 原始 `参考文件/` 已清理。正常构建只读取冻结模板，不依赖最初保存的参考网页。
 
 ## 资源与文件预览

@@ -15,6 +15,7 @@ import { createGeneratedFiles } from './generated-files.mjs';
 import { attachCopyControls } from './copy-controls.mjs';
 import { buildSourcesPanel } from './build-sources-panel.mjs';
 import { loadOfficialTemplatePackage } from './official-template-package.mjs';
+import { messageComponents } from './dil-inline-components.mjs';
 
 const projectRoot = resolve(import.meta.dirname, "..");
 const { values } = parseArgs({ options: {
@@ -146,6 +147,27 @@ const assistantMarkdown = (entries) => entries
   .join("\n\n")
   .trim();
 
+// `metadata.genui_components` ranges address each message's own text. Shift them onto the joined
+// assistant text the renderer actually parses, mirroring the join and trim above.
+const assistantInlineComponents = (entries, source) => {
+  const parts = entries.filter(entry => entry.kind === 'document');
+  const joined = parts.map(entry => recordMarkdown(entry.message)).join("\n\n");
+  const lead = joined.length - joined.trimStart().length;
+  const components = [];
+  let offset = 0;
+  for (const entry of parts) {
+    const markdown = recordMarkdown(entry.message);
+    for (const component of messageComponents(entry.message)) {
+      const start = offset + component.start - lead;
+      const end = offset + component.end - lead;
+      if (start < 0 || end > source.length || end <= start) continue;
+      components.push({ ...component, start, end });
+    }
+    offset += markdown.length + 2;
+  }
+  return components;
+};
+
 const assistantReferences = (entries) => entries
   .filter(entry => entry.kind === 'document')
   .flatMap(entry => entry.message.content_references || []);
@@ -159,6 +181,9 @@ const copyParts = (entries) => entries
     type: 'markdown',
     markdown: recordMarkdown(message),
     contentReferences: message.content_references || [],
+    // Per-message ranges: part markdown is one message, so no offset shift is needed here.
+    genuiComponents: messageComponents(message),
+    message,
   }));
 
 const laterUserTemplate = officialTemplates.clone('message:user');
@@ -349,15 +374,17 @@ const buildAssistantSection = (turnNumber, message) => {
   const section = cloneIntoBase(assistantTemplate);
   setTurnIdentity(section, turnNumber, "assistant");
   const markdownContainer = section.querySelector(".markdown.prose") || section.querySelector(".markdown");
+  const assistantSource = assistantMarkdown(message.entries);
   markdownContainer.innerHTML = renderAssistantMarkdown(
     baseDocument,
-    assistantMarkdown(message.entries),
+    assistantSource,
     {
       officialChartTemplates,
       officialTableTemplate,
       officialCitations,
       generatedFiles,
       contentReferences: assistantReferences(message.entries),
+      genuiComponents: assistantInlineComponents(message.entries, assistantSource),
     },
   );
   appendUnavailableContent(markdownContainer, message);

@@ -2,6 +2,7 @@ import hljs from "highlight.js";
 import katex from "katex";
 import { marked, Renderer } from "marked";
 import { htmlSafeSvg } from './serialize-html.mjs';
+import { collectInlineComponents, renderInlineComponent, inlineComponentText } from './dil-inline-components.mjs';
 
 const labels = {
   bash: "Bash", shell: "Shell", sh: "Shell", html: "HTML",
@@ -138,18 +139,51 @@ const enhanceTables = (document, container, officialTableTemplate) => {
 export const renderAssistantMarkdown = (
   document,
   source,
-  { officialChartTemplates = {}, officialTableTemplate, contentReferences = [], officialCitations, generatedFiles } = {},
+  { officialChartTemplates = {}, officialTableTemplate, contentReferences = [], officialCitations, generatedFiles, genuiComponents = [], genuiMessage } = {},
 ) => {
   const math = [];
   const sources = [];
   const charts = [];
   const references = [];
+  const inlines = [];
+  const renderChart = (specification) => {
+    try {
+      const content = typeof specification === 'string' ? JSON.parse(specification) : specification;
+      return genuiChart(JSON.stringify({ chart: { content } }), officialChartTemplates);
+    } catch {
+      return null;
+    }
+  };
+  // Inline DIL-era components sit inside ordinary prose, so they are lifted out before parsing and
+  // put back as official DOM afterwards. Nothing from the payload is executed.
+  const inlineComponents = collectInlineComponents(source, { components: genuiComponents, message: genuiMessage });
+  let inlineSource = source;
+  for (const component of [...inlineComponents].sort((left, right) => right.start - left.start)) {
+    const rendered = renderInlineComponent(component, {
+      officialCitations,
+      officialChartTemplates,
+      message: genuiMessage,
+      renderChart,
+    });
+    const replacement = rendered
+      || (component.tag === 'WritingBlock' ? component.children : null);
+    if (replacement === null) {
+      const token = "CEOBEINLINE" + inlines.length + "TOKEN";
+      inlines.push({ token, rendered: null, component });
+      inlineSource = inlineSource.slice(0, component.start) + token + inlineSource.slice(component.end);
+      continue;
+    }
+    // A writing block keeps its body as Markdown; rendered components are opaque HTML tokens.
+    const token = rendered ? "CEOBEINLINE" + inlines.length + "TOKEN" : replacement;
+    if (rendered) inlines.push({ token, rendered, component });
+    inlineSource = inlineSource.slice(0, component.start) + token + inlineSource.slice(component.end);
+  }
   const referenceByToken = new Map(
     contentReferences
       .filter((reference) => reference && typeof reference.matched_text === "string")
       .map((reference) => [reference.matched_text, reference]),
   );
-  const groupedSource = source.replace(
+  const groupedSource = inlineSource.replace(
     /\uE200filecite\uE202[^\uE201]+\uE201(?:[\t ]+\uE200filecite\uE202[^\uE201]+\uE201)+/g,
     group => {
       const tokens = group.match(/\uE200filecite\uE202[^\uE201]+\uE201/g) || [];
@@ -237,6 +271,10 @@ export const renderAssistantMarkdown = (
   }
   for (const item of references) {
     html = html.replaceAll(item.token, item.rendered);
+  }
+  for (const item of inlines) {
+    // Unsupported inline components must not leave their raw markup in the reader.
+    html = html.replaceAll(item.token, item.rendered ?? inlineComponentText(item.component));
   }
   if (contentReferences.some(reference => reference?.type === 'file')) {
     html += officialCitations.sourcesButton();
