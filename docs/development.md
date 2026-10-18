@@ -57,6 +57,7 @@ node scripts/test-copy-content.mjs
 | 正文内联组件（引用／文件／链接） | `test-genui-inline-components.mjs`：解析 `metadata.genui_components` 的字符区间与无元数据时的标记扫描、官方引用模板渲染、无模板组件的降级，以及复制／导出文本不含原始标记 |
 | 官方 DOM 快照工具 | `test-official-dom-snapshot.mjs`：输出目录约束（拒绝 `archive/` 与 `data/private/` 之外）、结构签名不含正文、样式族配对、类漂移分类、离线 `--compare-only` 与无参数拒绝执行 |
 | DIL 生成式 UI 文档 | `test-dil-document.mjs`：`model_dil_v2` 载荷的表达式提取、常量／映射／三元／模板字符串／hooks 求值、组件标识符，以及未知标识符只记录不执行 |
+| DIL 组件外壳冻结 | `test-dil-templates.mjs`：外壳只保留标签／类／枚举属性（丢弃正文、id、行内样式、资源 URL）、同组件多形态收集、样式表归属判定、`--report` 只读且无参数拒绝执行 |
 | 聊天操作 | `test-chat-actions-store.mjs`、`test-chat-actions-browser.mjs` |
 | 阅读更多 | `test-reader-actions-browser.mjs` |
 | 从聊天打开本地文件夹 | `test-open-folder-api.mjs`（服务端：POST／同源／ID／路径包含检查，打开动作为注入桩，不会启动资源管理器）、`test-open-folder-browser.mjs`（两处菜单；浏览器内拦截 POST，不打开任何窗口、不写入数据） |
@@ -138,6 +139,18 @@ node scripts/capture-official-dom.mjs --compare-only <快照目录>
 - 产物（静态响应、渲染后 DOM、样式表、截图、`report.json` 与 `report.md`）只写入 `data/private/official-dom/`；脚本会拒绝写入 `archive/` 或 `data/private/` 之外的路径。这些文件含聊天内容，不提交、不外传。
 - 报告只统计结构与样式：冻结模板组件类中有哪些已不再被当前样式定义（区分“本页加载的界面”和“本页未加载的界面”）、各样式族的选择器重合度与设计 token 变化、以及 DIL、展开控件等组件标记探针。
 - `--compare-only` 对既有快照离线重算报告，便于同一份快照对照不同冻结包版本；无参数执行会直接失败，避免误触发联网采集。
+
+### DIL 组件外壳冻结
+
+`scripts/freeze-dil-templates.mjs` 把快照里官方 DIL 输出的组件外壳冻结进模板包（迁移第 3 步）：
+
+```powershell
+node scripts/freeze-dil-templates.mjs --snapshot data/private/official-dom/<label> [--label <名称>]
+node scripts/freeze-dil-templates.mjs --report data/private/official-dom/<label>
+```
+
+- 每个组件保留**多种形态**（`title` 会按尺寸渲染成 `h1`／`h2`，`table-cell` 是 `th` 或 `td`），只收标签、类和枚举属性；正文、`id`、行内样式、`href`／`src` 与 aria 文本一律丢弃，渲染时由解析出的组件树补齐。
+- 同时把定义这些类的样式表复制进 `official-templates/assets/`，并在 `official-templates/dil.json` 里记录来源与未找到归属的类；`--report` 只打印不写入。
 
 DOM 经多次序列化时使用 `scripts/serialize-html.mjs` 的处理，避免空 SVG `title`／`desc` 自闭合形式导致后续 HTML 解析吞掉图表。字体本地化应在页面构建末尾执行。
 
