@@ -74,20 +74,43 @@ export const messageFromApi = message => ({
   raw: message,
 });
 
-export const pickConversation = payload => {
-  if (payload && Array.isArray(payload.messages) && payload.conversation_id) return payload;
-  const responses = Array.isArray(payload?.responses) ? payload.responses : [];
-  let best = null;
-  for (const response of responses) {
-    try {
-      const parsed = JSON.parse(response.text);
-      if (parsed && Array.isArray(parsed.messages) && parsed.conversation_id) {
-        if (!best || parsed.messages.length > best.messages.length) best = parsed;
-      }
-    } catch { /* not this one */ }
+/**
+ * Conversations arrive in pages (`page_info.has_next_page`), so several captured responses can carry
+ * the same conversation. Merge them by message id instead of throwing away all but the largest page.
+ */
+export const mergeConversationPayloads = payload => {
+  const candidates = [];
+  const push = value => {
+    if (value && Array.isArray(value.messages) && value.conversation_id) candidates.push(value);
+  };
+  if (Array.isArray(payload?.responses)) {
+    for (const response of payload.responses) {
+      try { push(JSON.parse(response.text)); } catch { /* not a conversation */ }
+    }
+  } else {
+    push(payload);
   }
-  return best;
+  if (!candidates.length) return null;
+
+  const groups = new Map();
+  for (const candidate of candidates) {
+    const key = candidate.conversation_id;
+    if (!groups.has(key)) groups.set(key, { ...candidate, messages: [], pageInfos: [] });
+    const group = groups.get(key);
+    group.messages.push(...candidate.messages);
+    if (candidate.page_info) group.pageInfos.push(candidate.page_info);
+    if ((candidate.update_time || 0) >= (group.update_time || 0)) group.update_time = candidate.update_time;
+    if (candidate.current_node) group.current_node = candidate.current_node;
+  }
+
+  const best = [...groups.values()].sort((left, right) => right.messages.length - left.messages.length)[0];
+  const byId = new Map();
+  for (const message of best.messages) byId.set(message.id, message);
+  const pageInfo = best.pageInfos.find(info => info && info.has_next_page === false) || best.pageInfos[0] || null;
+  return { ...best, messages: [...byId.values()], page_info: pageInfo };
 };
+
+export const pickConversation = payload => mergeConversationPayloads(payload);
 
 export const convertWebCapture = (payload, { capturedAt = new Date().toISOString(), sourceUrl = null } = {}) => {
   const conversation = pickConversation(payload);

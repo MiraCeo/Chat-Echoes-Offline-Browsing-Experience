@@ -50,6 +50,32 @@ assert.equal(pickConversation(wrapper)?.conversation_id, conversation.conversati
 assert.equal(pickConversation(conversation)?.conversation_id, conversation.conversation_id);
 assert.equal(pickConversation({ responses: [] }), null);
 
+// Pagination: the endpoint returns a page of messages, so several captured responses for the same
+// conversation must be merged by id rather than keeping only the largest page.
+const pageOne = {
+  conversation_id: conversation.conversation_id, title: conversation.title,
+  create_time: conversation.create_time, update_time: conversation.update_time,
+  messages: conversation.messages.slice(0, 3),
+  page_info: { has_next_page: true, end_cursor: 'c1' },
+};
+const pageTwo = {
+  conversation_id: conversation.conversation_id, title: conversation.title,
+  create_time: conversation.create_time, update_time: conversation.update_time + 1,
+  messages: conversation.messages.slice(2),
+  page_info: { has_next_page: false, end_cursor: 'c2' },
+};
+const merged = pickConversation({ responses: [
+  { url: '/conversations/<id>?num_turns=2', text: JSON.stringify(pageOne) },
+  { url: '/conversations/<id>?num_turns=2&after=c1', text: JSON.stringify(pageTwo) },
+] });
+assert.equal(merged.messages.length, 5, 'overlapping pages must not duplicate messages');
+assert.equal(merged.page_info.has_next_page, false, 'the last page wins for pagination state');
+const mergedCanonical = convertWebCapture({ responses: [
+  { text: JSON.stringify(pageOne) },
+  { text: JSON.stringify(pageTwo) },
+] });
+assert.deepEqual(mergedCanonical.linear_message_ids, ['m1', 'm2', 'm3', 'm4', 'm5'], 'merged pages keep one linear order');
+
 // Block projection keeps text, code, assets and the CoT records the reader renders.
 assert.deepEqual(blocksFromContent({ content_type: 'text', parts: ['a', 'b'] }), [{ type: 'text', text: 'ab' }]);
 assert.deepEqual(blocksFromContent({ content_type: 'code', language: 'js', text: 'x' }), [{ type: 'code', language: 'js', text: 'x' }]);
