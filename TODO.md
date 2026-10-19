@@ -8,7 +8,10 @@
 
 - [ ] **补齐降级组件的冻结模板**：`MemoryCite` 与 `writing_block` 卡片目前在匿名分享页上根本不渲染（已用 `capture-official-dom.mjs` 快照核实：渲染后的回合里 `data-memory`、`data-writing-block` 均为 0 次），因此**维持纯文本降级**，不为此开放登录态采集。`charts_widget_v2` 等客户端自定义组件在匿名页可用官方图表 DOM（`data-client-defined-widget="visualization"`），已由既有图表模板覆盖，无需新增冻结。
 - [ ] **DIL 渲染的使用反馈**：解析、外壳冻结与组件树渲染均已实现（本抓取 138 轮页面里 17 类组件、3521 个 DIL 节点走冻结外壳；含 `visualization` 等无法忠实表示的组件时整条回复退回 Markdown）。待办是实际阅读反馈：结构类外壳的观感、装饰组件（`icon`／`favicon`）缺失是否可接受、以及是否需要为图表类组件单独补 DIL 渲染路径。
-- [ ] **外观漂移评估**：用户消息气泡（`corner-superellipse`／`rounded-[22px]`／`user-message-bubble-color`）、附件行标签、“展开”控件与 `cot-v5` 相对冻结模板的差异，决定是否发起一次完整的模板再冻结；优先由差异报告决定，不凭观感重做。
+- [ ] **外观漂移（已按差异报告定案：不做整体再冻结）**：`capture-official-dom.mjs` 对当前分享页的报告显示，本页加载的样式族里只有 2 个冻结组件类消失（`Rx43rG_codemirror`、`cm-editor`），选择器重合为 `conversation-small` 92.6%、`root` 96.3%、`react` 88.9%、`WidgetRenderer` 99.5%，属于局部演进而非改版，因此不发起完整模板再冻结。遗留定点项：
+  - [ ] 代码块：官方已不使用 `cm-editor` 系类，核对阅读器代码块观感，必要时只冻结新的代码块外壳。
+  - [ ] 长回答的“展开”控件（`A_HxFq`）：官方折叠长内容，阅读器目前整段展开；先确认是否跟随。
+  - [ ] `WidgetRenderer` 的 11 项 token 变化：核对图表观感后决定是否同步。
 
 ## 采集路线
 
