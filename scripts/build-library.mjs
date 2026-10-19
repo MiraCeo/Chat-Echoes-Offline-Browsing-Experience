@@ -134,8 +134,15 @@ if (pathToFileURL(process.argv[1]).href === import.meta.url) {
     // `--only a,b` rebuilds just those conversation pages; see buildReader.
     only: { type: 'string' },
   } });
-  const library = await buildLibraryIndex();
-  console.log(`Library index: ${indexPath} (${library.conversations.length} conversations)`);
   const only = values.only ? values.only.split(',').map(value => value.trim()).filter(Boolean) : null;
+  // Page-only refreshes must not touch the archive: reuse the existing index instead of rewriting it.
+  let library;
+  if (only?.length) {
+    library = JSON.parse(await readFile(indexPath, 'utf8'));
+    console.log(`Library index reused: ${indexPath} (${library.conversations.length} conversations, archive untouched)`);
+  } else {
+    library = await buildLibraryIndex();
+    console.log(`Library index: ${indexPath} (${library.conversations.length} conversations)`);
+  }
   if (!values['index-only']) await buildReader(library, values.select, only);
 }

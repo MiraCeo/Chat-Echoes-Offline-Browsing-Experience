@@ -67,6 +67,13 @@ try {
   assert.ok(archiveShare.includes('formatSnapshotPlan'), 'archive-share.mjs must print the dry-run plan');
   const importApi = await readFile(resolve('scripts/local-import-api.mjs'), 'utf8');
   assert.ok(importApi.includes('archive-share.mjs'), 'the local import path archives through archive-share.mjs, so it inherits the guard');
+
+  // A page-only rebuild is a read of the archive, never a write: it reuses the index instead of
+  // regenerating it (which would rewrite archive/library.ceobe.json and the index README).
+  const buildLibrary = await readFile(resolve('scripts/build-library.mjs'), 'utf8');
+  assert.match(buildLibrary, /only\?\.length[\s\S]{0,400}readFile\(indexPath/,
+    'page-only rebuilds must reuse the existing index instead of rewriting the archive');
+  assert.ok(buildLibrary.includes('--only'), 'the CLI documents the single-page entry');
 } finally {
   await rm(workspace, { recursive: true, force: true });
 }
