@@ -1,4 +1,4 @@
-﻿// CEOBE 采集器（扩展版，MAIN world）——0.1 探针
+﻿// CEOBE 采集器（扩展版，MAIN world）——0.2 逐条消息
 // 页面上下文运行，因此可以读到 React fiber 上的 props；userscript 做不到这一点。
 (() => {
   'use strict';
@@ -58,6 +58,76 @@
     return { found, examined, seen: seen.size };
   };
 
+  // 页面不保留完整 mapping，但每个消息组件都把消息对象挂在 props 上。
+  // 按 DOM 顺序收集，id 去重，得到的数组足以重建 canonical messages。
+  const looksLikeMessage = value => Boolean(value)
+    && typeof value === 'object'
+    && typeof value.id === 'string'
+    && value.author && typeof value.author === 'object'
+    && value.content && typeof value.content === 'object';
+
+  const collectMessages = () => {
+    const byId = new Map();
+    const seen = new Set();
+    const nodes = document.querySelectorAll('[data-turn-key], [data-user-message-bubble], [data-d-component], main div, main section');
+    for (const node of nodes) {
+      const key = fiberKeyOf(node);
+      if (!key) continue;
+      let fiber = node[key];
+      for (let depth = 0; fiber && depth < 60; depth += 1) {
+        const props = fiber.memoizedProps;
+        if (props && typeof props === 'object' && !seen.has(props)) {
+          seen.add(props);
+          for (const field of ['message', 'msg', 'messageObject', 'data', 'item']) {
+            const candidate = props[field];
+            if (looksLikeMessage(candidate) && !byId.has(candidate.id)) byId.set(candidate.id, candidate);
+          }
+          if (looksLikeMessage(props) && !byId.has(props.id)) byId.set(props.id, props);
+        }
+        fiber = fiber.return;
+      }
+    }
+    return [...byId.values()];
+  };
+
+  const reportMessages = () => {
+    const messages = collectMessages();
+    const roles = {};
+    let dil = 0;
+    let attachments = 0;
+    for (const message of messages) {
+      const role = message.author?.role || 'unknown';
+      roles[role] = (roles[role] || 0) + 1;
+      if (message.metadata?.model_dil_v2) dil += 1;
+      attachments += message.metadata?.attachments?.length || 0;
+    }
+    console.log('[CEOBE] messages', { count: messages.length, roles, dil, attachments });
+    if (!messages.length) { toast('探针：fiber props 里没有找到消息对象', 'error'); return; }
+    toast('探针：找到 ' + messages.length + ' 条消息；角色 ' + JSON.stringify(roles) + '；含 DIL ' + dil + '，附件 ' + attachments);
+  };
+
+  const exportMessages = () => {
+    const messages = collectMessages();
+    if (!messages.length) { toast('没有消息可导出，先点「探针」', 'error'); return; }
+    const text = JSON.stringify({
+      kind: 'ceobe.message-capture',
+      schema_version: '0.1.0',
+      captured_at: new Date().toISOString(),
+      source: { type: 'chatgpt_web_extension', url: location.href, method: 'react-fiber-messages' },
+      order: messages.map(message => message.id),
+      messages,
+    }, null, 2);
+    const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'ceobe-messages-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json';
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    toast('已导出 ' + messages.length + ' 条消息');
+  };
+
   const report = () => {
     const { found, examined, seen } = scanProps();
     console.log('[CEOBE] probe', { examined, seen, found: found.map(item => ({ ...item, props: undefined })) });
@@ -107,10 +177,10 @@
       button.addEventListener('click', handler);
       return button;
     };
-    bar.append(make('CEOBE 探针', report), make('CEOBE 导出', collect));
+    bar.append(make('CEOBE 探针', reportMessages), make('CEOBE 导出', exportMessages));
     document.body.append(bar);
   };
 
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount, { once: true });
-  console.info('[CEOBE] 扩展版 0.1 就绪（MAIN world）');
+  console.info('[CEOBE] 扩展版 0.2 就绪（MAIN world）');
 })();
