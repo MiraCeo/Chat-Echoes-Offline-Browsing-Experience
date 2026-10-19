@@ -118,7 +118,7 @@
     if (document.getElementById('ceobe-extension-bar')) return;
     const button = document.createElement('button');
     button.id = 'ceobe-extension-bar';
-    button.textContent = 'CEOBE 采集';
+    button.textContent = 'CEOBE 扩展采集';
     Object.assign(button.style, {
       position: 'fixed', left: '12px', bottom: '12px', zIndex: 2147483647,
       padding: '6px 10px', borderRadius: '8px', border: '1px solid #d0d5dd', background: '#fff',
@@ -129,5 +129,5 @@
   };
 
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount, { once: true });
-  console.info('[CEOBE] 扩展版 0.2.0 就绪（滚动分页采集）');
+  console.info('[CEOBE] 扩展版 0.2.2 就绪（滚动分页采集）');
 })();
