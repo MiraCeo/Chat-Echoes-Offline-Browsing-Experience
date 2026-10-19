@@ -1,0 +1,16 @@
+﻿{
+  "manifest_version": 3,
+  "name": "CEOBE 采集器（扩展版）",
+  "version": "0.1.0",
+  "description": "从你自己的会话读取结构化消息树与 DIL 载荷，导出为 CEOBE 采集包。",
+  "permissions": ["downloads", "activeTab", "scripting"],
+  "host_permissions": ["https://chatgpt.com/*", "http://127.0.0.1/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*"],
+      "js": ["content-main.js"],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    }
+  ]
+}
