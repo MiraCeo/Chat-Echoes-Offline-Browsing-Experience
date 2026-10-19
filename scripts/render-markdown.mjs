@@ -56,7 +56,7 @@ const genuiChart = (source, officialChartTemplates) => {
   }
 };
 
-const enhanceCodeBlocks = (document, container) => {
+const enhanceCodeBlocks = (document, container, officialCodeBlockTemplate) => {
   for (const code of [...container.querySelectorAll("pre > code")]) {
     const originalPre = code.parentElement;
     const languageClass = [...code.classList].find((name) => name.startsWith("language-"));
@@ -65,6 +65,21 @@ const enhanceCodeBlocks = (document, container) => {
     const highlighted = language !== "text" && hljs.getLanguage(language)
       ? hljs.highlight(source, { language }).value
       : escapeHtml(source);
+    // Plan B: official code-block shell, our highlighted body inside it.
+    if (officialCodeBlockTemplate) {
+      const markup = String(officialCodeBlockTemplate)
+        .replaceAll('{{language}}', escapeHtml(language))
+        .replaceAll('{{code}}', highlighted);
+      const holder = document.createElement('div');
+      holder.innerHTML = htmlSafeSvg(markup);
+      const block = holder.firstElementChild;
+      const label = block?.querySelector('[data-ceobe-code-language]');
+      if (label) label.textContent = labels[language] || language;
+      if (block && block.querySelector('pre > code')) {
+        originalPre.replaceWith(block);
+        continue;
+      }
+    }
     const wrapper = document.createElement("div");
     wrapper.className = "relative w-full mt-4 mb-1 ceobe-code-block";
     wrapper.innerHTML = [
@@ -139,7 +154,7 @@ const enhanceTables = (document, container, officialTableTemplate) => {
 export const renderAssistantMarkdown = (
   document,
   source,
-  { officialChartTemplates = {}, officialTableTemplate, contentReferences = [], officialCitations, generatedFiles, genuiComponents = [], genuiMessage } = {},
+  { officialChartTemplates = {}, officialTableTemplate, officialCodeBlockTemplate, contentReferences = [], officialCitations, generatedFiles, genuiComponents = [], genuiMessage } = {},
 ) => {
   const math = [];
   const sources = [];
@@ -291,7 +306,7 @@ export const renderAssistantMarkdown = (
       element.setAttribute('title', '该资源尚未关联可用的本地地址');
     }
   }
-  enhanceCodeBlocks(document, container);
+  enhanceCodeBlocks(document, container, officialCodeBlockTemplate);
   enhanceTables(document, container, officialTableTemplate);
   return htmlSafeSvg(container.innerHTML);
 };
