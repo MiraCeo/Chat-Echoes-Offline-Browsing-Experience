@@ -24,6 +24,16 @@
 - [ ] 与本地服务联调所需的新增写入接口须先 dry-run 输出目标路径并拒绝覆盖已有快照。
 - [ ] 验收重点：无分享链接的场景、长对话虚拟化完整性、附件指针、推理与工具记录、取消与半途失败、重复导入不覆盖旧快照。
 
+
+### 第二轨·独立形态（已定）
+
+- 采集器**独立可用**：本地服务在跑 → 直推 /api/intake；没跑 → 下载自包含采集包（M1 为原始会话 JSON，M2 起为 .ceobe.zip）。
+- 边界：插件只产出数据，不写 rchive/、不做阅读器；写入、重建与阅读永远在本地项目侧（经归档守卫）。
+- [ ] M1（已交付未实测）：scripts/userscript/ceobe-capture.user.js，菜单命令取 /backend-api/conversation/<id>、汇总消息树并下载 JSON；服务可达时尝试投递（令牌未配置则回退下载）。
+- [ ] M2：同构转换器（端点 JSON → CEOBE schema）＋打包 .ceobe.zip（raw/、conversation.ceobe.json、assets/、capture.json），并用同一条会话的分享版做结构对账。
+- [ ] M3：POST /api/intake（本机＋一次性令牌）＋ 
+pm run import:bundle（走守卫、拒绝覆盖）＋ 附件字节分块下载。
+
 ### 第三轨：官方 Export Data
 
 - [ ] 新增官方导出（`conversations.json` 及其分片、附件）到 CEOBE Schema 的 importer。
