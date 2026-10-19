@@ -15,6 +15,8 @@ import { spawnSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import { assertSnapshotTarget, planSnapshot } from './archive-guard.mjs';
 import { exportConversationMarkdown } from './export-conversation-markdown.mjs';
+import { downloadResources, resourceMatches } from './archive-resources.mjs';
+import { resolveShareResources } from './resolve-share-resources.mjs';
 
 const projectRoot = resolve(import.meta.dirname, '..');
 
@@ -75,12 +77,33 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
       throw new Error(`decode failed; raw page kept at ${plan.dir}: ${run.stderr || run.error}`);
     }
     const conversation = JSON.parse(await readFile(join(plan.dir, 'conversation.ceobe.json'), 'utf8'));
+
+    // Resolve and download the public share resources so a ZIP import is offline-complete too.
+    console.log('正在匿名浏览器中解析分享页的附件与图片地址…');
+    const resolutions = await resolveShareResources(conversation, capture.source_url);
+    await writeFile(join(plan.dir, 'raw', 'resource-responses.json'), `${JSON.stringify(resolutions, null, 2)}\n`);
+    conversation.resources = await downloadResources(conversation, plan.dir, { resolutions });
+    conversation.import_report.resource_resolution = { responses_file: 'raw/resource-responses.json', errors: resolutions.filter(item => !item.key) };
+    conversation.import_report.resources = conversation.resources;
+    conversation.import_report.resource_counts = Object.fromEntries(['downloaded', 'unresolved', 'failed'].map(status =>
+      [status, conversation.resources.filter(resource => resource.status === status).length]));
+    for (const asset of conversation.import_report.assets) {
+      const resource = conversation.resources.find(item => resourceMatches(item, asset));
+      asset.local_status = resource?.status || 'unresolved';
+      if (resource?.local_path) asset.local_path = resource.local_path;
+    }
+    conversation.import_report.complete_offline_archive = conversation.resources.every(resource => resource.status === 'downloaded')
+      && conversation.import_report.status === 'structure_checked'
+      && conversation.completeness?.structured_payload?.status === 'usable';
+
+    await writeFile(join(plan.dir, 'conversation.ceobe.json'), `${JSON.stringify(conversation, null, 2)}\n`);
     await writeFile(join(plan.dir, 'conversation.md'), exportConversationMarkdown(conversation));
     await writeFile(join(plan.dir, 'import-report.json'), `${JSON.stringify(conversation.import_report, null, 2)}\n`);
 
     const counts = { messages: Object.keys(conversation.messages).length, nodes: Object.keys(conversation.nodes).length };
+    const resources = conversation.import_report.resource_counts || {};
     console.log(`已归档：${plan.dir}`);
-    console.log(`消息 ${counts.messages} 条 / 节点 ${counts.nodes} 个；下次运行 npm run library 即可出现在应用里。`);
+    console.log(`消息 ${counts.messages} 条 / 节点 ${counts.nodes} 个；资源 ${JSON.stringify(resources)}；离线完整：${conversation.import_report.complete_offline_archive}`);
     const entries = await readdir(plan.dir);
     console.log('文件：' + entries.join('、'));
   }
