@@ -107,7 +107,7 @@ export const mergeConversationPayloads = payload => {
   const byId = new Map();
   for (const message of best.messages) byId.set(message.id, message);
   const pageInfo = best.pageInfos.find(info => info && info.has_next_page === false) || best.pageInfos[0] || null;
-  return { ...best, messages: [...byId.values()], page_info: pageInfo };
+  return { ...best, messages: [...byId.values()], page_info: pageInfo, pageCount: best.pageInfos.length };
 };
 
 export const pickConversation = payload => mergeConversationPayloads(payload);
@@ -160,7 +160,9 @@ export const convertWebCapture = (payload, { capturedAt = new Date().toISOString
         status: 'usable_linear',
         message_count: messages.length,
         visible_message_count: visible.length,
-        note: 'The web endpoint returns a linear message list without a branch tree; branches are not captured.',
+        note: 'The web endpoint returns a linear message list without a branch tree; branches are not captured. '
+          + 'Messages are the union of the captured windows, which overlap and cannot prove there is no gap.',
+        windows: { pages: conversation.pageCount || 1 },
       },
       rendered_dom: { status: 'absent', authoritative: false },
       renderer_policy: 'Rebuild every visible turn from canonical JSON; never infer completeness from the rendered DOM.',
