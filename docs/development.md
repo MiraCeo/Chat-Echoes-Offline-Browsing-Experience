@@ -60,6 +60,7 @@ node scripts/test-copy-content.mjs
 | DIL 生成式 UI 文档 | `test-dil-document.mjs`：`model_dil_v2` 载荷的表达式提取、常量／映射／三元／模板字符串／hooks 求值、组件标识符，以及未知标识符只记录不执行 |
 | DIL 组件外壳冻结 | `test-dil-templates.mjs`：外壳只保留标签／类／枚举属性（丢弃正文、id、行内样式、资源 URL）、固定内层包装收成 slot、同组件多形态收集、样式表归属判定、`--report` 只读且无参数拒绝执行 |
 | DIL 组件树渲染 | `test-render-dil.mjs`：按 props 选外壳形态（`title` 尺寸、`table-cell` 表头、`box` 方向）、内联格式、引用解析与降级、装饰组件不产出、未知组件上报以触发 Markdown 回退、正文转义 |
+| 登录态采集转换 | `test-convert-web-capture.mjs`：会话响应挑选（优先会话载荷）、按 `create_time` 排序、线性节点链、隐藏记录保留但不可见、DIL 与附件指针保留、`usable_linear` 明确标注、导入目标仍过归档守卫 |
 | 聊天操作 | `test-chat-actions-store.mjs`、`test-chat-actions-browser.mjs` |
 | 阅读更多 | `test-reader-actions-browser.mjs` |
 | 从聊天打开本地文件夹 | `test-open-folder-api.mjs`（服务端：POST／同源／ID／路径包含检查，打开动作为注入桩，不会启动资源管理器）、`test-open-folder-browser.mjs`（两处菜单；浏览器内拦截 POST，不打开任何窗口、不写入数据） |
