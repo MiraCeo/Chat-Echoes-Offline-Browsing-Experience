@@ -1,0 +1,48 @@
+﻿/* Print view (plan A): the reader downgraded from screen chrome to a document.
+   Linked from shell.html with media="print", so screen rendering is untouched. */
+
+@media print {
+  @page { size: A4; margin: 16mm 14mm; }
+
+  html { color-scheme: light !important; }
+  html, body { background: #fff !important; }
+
+  /* 1. Chrome that must never reach paper. */
+  nav, aside, form[data-type="unified-composer"], #thread-bottom-container,
+  [data-ceobe-prompt-rail], [data-ceobe-sources-panel], [data-ceobe-sources-toggle],
+  [data-bookmark-dialog], [data-ceobe-bookmark-panel], [data-ceobe-reading-position],
+  [data-ceobe-chat-menu], [data-ceobe-chat-submenu], [data-testid="conversation-options-button"],
+  [data-testid="copy-turn-action-button"], [data-testid="copy-code-button"],
+  button[aria-label="复制"], button[title="复制"], button[aria-label="复制表格"],
+  [data-ceobe-snapshot-scroller] { display: none !important; }
+
+  /* 2. Reading column: 48rem is wider than the A4 text box. */
+  :root { --thread-content-max-width: 46rem !important; }
+  main, #thread, [class*="thread-content-max-width"] { max-width: 100% !important; }
+
+  /* 3. Sticky elements become static, or they repeat on every page. */
+  .sticky, [class*="StickyActionBar"] { position: static !important; }
+
+  /* 4. Code: horizontal scroll clips to nothing on paper, so wrap instead. */
+  pre, pre code { white-space: pre-wrap !important; overflow: visible !important; overflow-wrap: anywhere; word-break: break-word; }
+  [data-ceobe-code-body] { overflow: visible !important; }
+  .ceobe-code-block { break-inside: avoid; }
+
+  /* 5. Tables keep their headers and never split a row. */
+  table { break-inside: auto; }
+  thead { display: table-header-group; }
+  tr, td, th { break-inside: avoid; }
+  [class*="tableWrapper"] { break-inside: avoid; }
+
+  /* 6. Images scale to the text box and never straddle a page boundary. */
+  img, video { max-width: 100% !important; height: auto !important; max-height: 210mm; object-fit: contain; break-inside: avoid; }
+  figure, p:has(> img) { break-inside: avoid; }
+
+  /* 7. Keep backgrounds (chips, badges, code surfaces) and prevent heading orphans. */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  h1, h2, h3, h4 { break-after: avoid; }
+  blockquote, ol, ul, [data-d-component="box"], [data-d-component="grid-item"] { break-inside: avoid; }
+
+  /* 8. Screen-only adornments inside content. */
+  [data-ceobe-jump], [data-toc-item-index] { text-decoration: none !important; }
+}
