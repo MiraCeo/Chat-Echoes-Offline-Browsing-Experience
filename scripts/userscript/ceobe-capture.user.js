@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         CEOBE 采集器（DOM 版 v0.5）
+// @name         CEOBE 采集器（DOM 版 v0.6）
 // @namespace    ceobe.local
-// @version      0.5.0
+// @version      0.6.0
 // @description  读取当前会话已渲染的回合并导出为采集包；不调用私有接口、不挂钩子，沙箱内即可运行。
 // @match        https://chatgpt.com/*
 // @grant        GM_registerMenuCommand
@@ -48,8 +48,21 @@
 
   const collect = async () => {
     const turns = new Map();
+    // 分享页用 section[data-testid^=conversation-turn-]，登录页结构不同，这里按候选列表自动探测。
+    const candidates = [
+      'section[data-testid^="conversation-turn-"]',
+      '[data-testid^="conversation-turn-"]',
+      'article[data-message-author-role]',
+      '[data-message-author-role]',
+      '[data-turn-id]',
+    ];
+    const counts = candidates.map(selector => ({ selector, count: document.querySelectorAll(selector).length }));
+    const ranked = [...counts].sort((left, right) => right.count - left.count);
+    const turnSelector = (ranked[0] && ranked[0].count) ? ranked[0].selector : candidates[0];
+    window.__ceobeTurnCounts = counts;
+    console.info('[CEOBE] 回合候选', counts, '→ 使用', turnSelector);
     const grab = () => {
-      for (const turn of document.querySelectorAll('section[data-testid^="conversation-turn-"]')) {
+      for (const turn of document.querySelectorAll(turnSelector)) {
         const id = turn.getAttribute('data-turn-id') || turn.getAttribute('data-testid');
         if (!id || turns.has(id)) continue;
         const html = turn.outerHTML;
@@ -119,7 +132,11 @@
     toast('正在走查会话（会滚动页面）…');
     let collected;
     try { collected = await collect(); } catch (error) { toast(`走查失败：${error.message}`, 'error'); return; }
-    if (!collected.turns.length) { toast('没有找到回合：请确认页面已加载出对话', 'error'); return; }
+    if (!collected.turns.length) {
+      const counts = window.__ceobeTurnCounts || [];
+      toast('没有找到回合容器；候选计数见控制台（' + counts.map(item => item.selector + '=' + item.count).join('; ').slice(0, 120) + '）', 'error');
+      return;
+    }
 
     const payload = {
       kind: 'ceobe.dom-capture',
@@ -156,5 +173,5 @@
   GM_registerMenuCommand('CEOBE：采集当前会话（DOM）', capture);
   window.addEventListener('ceobe-capture', capture);
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount, { once: true });
-  console.info('[CEOBE] DOM 采集器 v0.5 就绪');
+  console.info('[CEOBE] DOM 采集器 v0.6 就绪');
 })();
