@@ -3,6 +3,8 @@
   'use strict';
 
   const captured = [];
+  const requestHints = new Map();
+  const fetchResults = [];
   const MAX = 40 * 1024 * 1024;
   const interesting = text => Boolean(text) && text.length < MAX
     && /("messages"\s*:\s*\[|"mapping"|model_dil_v2)/.test(text);
@@ -17,8 +19,13 @@
   try {
     const originalFetch = window.fetch;
     window.fetch = async function (...args) {
+      const requestUrl = String(args[0]?.url || args[0]);
+      const init = (args[1] && typeof args[1] === 'object') ? args[1] : {};
+      if (/\/backend-api\/conversations\/[0-9a-f-]{36}/i.test(requestUrl) && init.headers) {
+        requestHints.set(requestUrl.split('?')[0], { headers: init.headers, credentials: init.credentials || 'include' });
+      }
       const response = await originalFetch.apply(this, args);
-      try { remember(String(args[0]?.url || args[0]), await response.clone().text()); } catch {}
+      try { remember(requestUrl, await response.clone().text()); } catch {}
       return response;
     };
   } catch (error) { console.warn('[CEOBE] fetch 拦截失败', error); }
@@ -63,11 +70,14 @@
   // 页面自己只请求 num_turns=10（尾部 10 轮）；这里主动用更大的窗口再取一次。
   const fetchFull = async id => {
     const attempts = [200, 100];
+    const hint = requestHints.get(`/backend-api/conversations/${id}`) || {};
     for (const turns of attempts) {
       try {
         const response = await fetch(`/backend-api/conversations/${id}?num_turns=${turns}&include_has_versions=true`, {
-          credentials: 'include', headers: { accept: 'application/json' },
+          credentials: hint.credentials || 'include',
+          headers: hint.headers || { accept: 'application/json' },
         });
+        fetchResults.push({ turns, status: response.status });
         if (!response.ok) continue;
         const text = await response.text();
         const parsed = parse(text);
@@ -84,7 +94,7 @@
     const id = currentId();
     if (!id) { toast('当前页面不是会话页', 'error'); return; }
     const before = conversationsFor(id).reduce((sum, entry) => sum + (parse(entry.text)?.messages?.length || 0), 0);
-    toast('正在补齐会话…（已捕获 ' + before + ' 条）');
+    toast('正在补齐会话…（已捕获 ' + before + ' 条，复用页面请求头）');
     const fetched = await fetchFull(id);
     const found = conversationsFor(id);
     if (!found.length) {
@@ -101,7 +111,7 @@
     };
     const text = JSON.stringify(payload);
     download(text, 'ceobe-responses-' + id.slice(0, 8) + '-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json');
-    toast('已导出 ' + found.length + ' 个响应（消息 ' + counts.join('/') + ' 条，' + Math.round(text.length / 1024 / 1024 * 10) / 10 + ' MB）' + (fetched ? '，含主动补齐 ' + fetched + ' 条' : ''));
+    toast('已导出 ' + found.length + ' 个响应（消息 ' + counts.join('/') + ' 条，' + Math.round(text.length / 1024 / 1024 * 10) / 10 + ' MB）' + (fetched ? '，主动请求 ' + JSON.stringify(fetchResults.slice(-2)) : ''));
   };
 
   const mount = () => {
