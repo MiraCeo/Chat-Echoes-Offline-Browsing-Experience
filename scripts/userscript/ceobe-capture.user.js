@@ -4,9 +4,7 @@
 // @version      0.2.0
 // @description  从你自己的会话里取完整消息树，导出为 CEOBE 采集包；本地服务在跑时可直接投递。
 // @match        https://chatgpt.com/*
-// @grant        GM_xmlhttpRequest
-// @grant        GM_registerMenuCommand
-// @connect      127.0.0.1
+// @grant        none
 // @run-at       document-start
 // ==/UserScript==
 //
@@ -64,15 +62,17 @@
   };
 
   // --- helpers ------------------------------------------------------------------------------------
-  const request = (options) => new Promise((resolve, reject) => {
-    GM_xmlhttpRequest({
-      ...options,
-      timeout: options.timeout ?? 30000,
-      onload: resolve,
-      onerror: () => reject(new Error('网络请求失败')),
-      ontimeout: () => reject(new Error('请求超时')),
+  // 页面上下文没有 GM_xmlhttpRequest：同源请求自带 cookie。向 127.0.0.1 直推会被 PNA 拦，
+  // 因此 M1 只做导出；直推留给扩展形态或本地导入。
+  const request = async (options) => {
+    const response = await fetch(options.url, {
+      method: options.method || 'GET',
+      headers: options.headers || {},
+      body: options.data,
+      credentials: 'include',
     });
-  });
+    return { status: response.status, responseText: await response.text() };
+  };
 
   const conversationId = () => {
     const match = /\/(?:g\/[^/]+\/)?c\/([0-9a-f-]{36})/i.exec(location.pathname);
@@ -185,7 +185,20 @@
     console.log('[CEOBE] summary', summary);
   };
 
-  GM_registerMenuCommand('CEOBE：采集当前会话', capture);
+  const mount = () => {
+    const bar = document.createElement('div');
+    Object.assign(bar.style, { position: 'fixed', left: '12px', bottom: '12px', zIndex: 2147483647, display: 'flex', gap: '6px' });
+    const button = document.createElement('button');
+    button.textContent = 'CEOBE 采集';
+    Object.assign(button.style, {
+      padding: '6px 10px', borderRadius: '8px', border: '1px solid #d0d5dd', background: '#fff',
+      font: '12px/1.2 system-ui, sans-serif', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,.12)',
+    });
+    button.addEventListener('click', capture);
+    bar.append(button);
+    document.body.append(bar);
+  };
+  document.addEventListener('DOMContentLoaded', mount, { once: true });
   window.addEventListener('ceobe-capture', capture);
   console.info('[CEOBE] 采集器 v0.2 已就绪：刷新一次会话页让拦截器录到数据，再从菜单采集。');
 })();
