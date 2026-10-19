@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Freeze DIL component shells from an official DOM snapshot into the template package.
  *
  * This is migration step 3 of docs/development.md: the official page is captured (never a signed-in
@@ -32,8 +32,13 @@ const KEPT_ATTRIBUTES = [
 // Fixed SVG geometry that is part of the icon shell rather than of one icon.
 const KEPT_SVG_ATTRIBUTES = ['width', 'height', 'viewBox', 'fill', 'stroke', 'stroke-width', 'data-rtl-flip', 'aria-hidden'];
 
-/** One sanitized shell per component: tag, classes and kept attributes only. */
-export function shellOf(element, keepChildren = false, depth = 0) {
+/**
+ * Shell of one component: tag, classes, kept attributes, plus its fixed inner wrappers. Wrapper
+ * children are kept structurally (`table` sits inside a frame `div`, a list item inside a content
+ * `div`), while anything that carries text or is itself a component becomes a `{ slot: true }` marker
+ * the renderer fills from the parsed tree.
+ */
+export function shellOf(element, { slots = true, depth = 0 } = {}) {
   const attributes = {};
   for (const attribute of element.attributes) {
     const isSvg = element.tagName.toLowerCase() === 'svg';
@@ -45,10 +50,14 @@ export function shellOf(element, keepChildren = false, depth = 0) {
     class: (element.getAttribute('class') || '').split(/\s+/).filter(Boolean),
     attributes,
   };
-  if (keepChildren && depth < 3) {
-    const children = [...element.children].map(child => shellOf(child, true, depth + 1));
-    if (children.length) shell.children = children;
+  if (!slots || depth >= 4) return shell;
+  const hasOwnText = node => [...node.childNodes].some(child => child.nodeType === 3 && child.textContent.trim());
+  const children = [];
+  for (const child of element.children) {
+    if (child.hasAttribute('data-d-component') || hasOwnText(child)) children.push({ slot: true });
+    else children.push(shellOf(child, { slots: true, depth: depth + 1 }));
   }
+  if (children.length) shell.children = children;
   return shell;
 }
 
@@ -77,7 +86,7 @@ export function componentsFromSnapshot(html, { maxVariants = 6 } = {}) {
   const components = new Map();
   for (const node of document.querySelectorAll('[data-d-component]')) {
     const name = node.getAttribute('data-d-component');
-    const shell = shellOf(node, false);
+    const shell = shellOf(node);
     const signature = `${shell.tag}|${shell.class.join('.')}|${JSON.stringify(shell.attributes)}`;
     if (!components.has(name)) components.set(name, new Map());
     const variants = components.get(name);
