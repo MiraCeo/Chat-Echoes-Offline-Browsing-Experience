@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         CEOBE 采集器（DOM 版 v0.6）
+// @name         CEOBE 采集器（DOM 版 v0.7）
 // @namespace    ceobe.local
-// @version      0.6.0
+// @version      0.7.0
 // @description  读取当前会话已渲染的回合并导出为采集包；不调用私有接口、不挂钩子，沙箱内即可运行。
 // @match        https://chatgpt.com/*
 // @grant        GM_registerMenuCommand
@@ -50,6 +50,8 @@
     const turns = new Map();
     // 分享页用 section[data-testid^=conversation-turn-]，登录页结构不同，这里按候选列表自动探测。
     const candidates = [
+      '[data-turn-key]',
+      '[data-conversation-role]',
       'section[data-testid^="conversation-turn-"]',
       '[data-testid^="conversation-turn-"]',
       'article[data-message-author-role]',
@@ -63,14 +65,19 @@
     console.info('[CEOBE] 回合候选', counts, '→ 使用', turnSelector);
     const grab = () => {
       for (const turn of document.querySelectorAll(turnSelector)) {
-        const id = turn.getAttribute('data-turn-id') || turn.getAttribute('data-testid');
+        const id = turn.getAttribute('data-turn-key')
+          || turn.getAttribute('data-turn-id')
+          || turn.getAttribute('data-testid')
+          || ('idx-' + turns.size);
         if (!id || turns.has(id)) continue;
         const html = turn.outerHTML;
         if (html.length > MAX_TURN_BYTES) continue;
         turns.set(id, {
           testid: turn.getAttribute('data-testid'),
-          turn: turn.getAttribute('data-turn'),
+          turn: turn.getAttribute('data-turn') || turn.getAttribute('data-conversation-role'),
           turnId: id,
+          userBubble: turn.hasAttribute('data-user-message-bubble') || Boolean(turn.querySelector('[data-user-message-bubble]')),
+          dilComponents: turn.querySelectorAll('[data-d-component]').length,
           html,
         });
       }
@@ -173,5 +180,5 @@
   GM_registerMenuCommand('CEOBE：采集当前会话（DOM）', capture);
   window.addEventListener('ceobe-capture', capture);
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount, { once: true });
-  console.info('[CEOBE] DOM 采集器 v0.6 就绪');
+  console.info('[CEOBE] DOM 采集器 v0.7 就绪');
 })();
