@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  body { width: 320px; margin: 0; padding: 14px; font: 13px/1.6 system-ui, "Microsoft YaHei", sans-serif; }
+  h1 { font-size: 14px; margin: 0 0 10px; }
+  input { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 1px solid #d0d5dd; border-radius: 8px; font: 13px system-ui; }
+  button { margin-top: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: #1f2937; color: #fff; font: 13px system-ui; cursor: pointer; }
+  button:disabled { opacity: .55; cursor: default; }
+  p { margin: 10px 0 0; color: #475467; }
+  code { background: #f2f4f7; padding: 0 4px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>CEOBE 采集分享链接</h1>
+<input id="url" placeholder="https://chatgpt.com/share/…" autocomplete="off">
+<button id="go">抓取并导出 ZIP</button>
+<p id="status">ZIP 结构：<code>raw/share.html</code> + <code>capture.json</code>，与 <code>archive/</code> 对齐。</p>
+<script src="popup.js"></script>
+</body>
+</html>

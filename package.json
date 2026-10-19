@@ -21,7 +21,8 @@
     "test": "python -m unittest discover -s tests && node scripts/test-official-template-package.mjs && node scripts/test-official-citations.mjs && node scripts/test-genui-inline-components.mjs && node scripts/test-dil-document.mjs && node scripts/test-dil-templates.mjs && node scripts/test-render-dil.mjs && node scripts/test-official-dom-snapshot.mjs && node scripts/test-convert-web-capture.mjs && node scripts/test-archive-guard.mjs && node scripts/test-reader-rendering.mjs && node scripts/test-sources-panel.mjs && node scripts/test-copy-content.mjs && node scripts/test-code-block-markdown.mjs && node scripts/test-archive-resources.mjs && node scripts/test-conversation-input.mjs && npm run test:bookmarks && npm run test:reader-margins && node scripts/test-open-folder-api.mjs && node scripts/test-chat-index-markdown.mjs && node scripts/test-search-index.mjs && npm run replay:sample && npm run verify:replay && node scripts/test-file-previews.mjs && npm run library && node scripts/test-archived-file-previews.mjs",
     "dev": "vite replay --config vite.config.mjs",
     "build": "vite build replay --config vite.config.mjs --outDir ../dist --emptyOutDir",
-    "preview": "vite preview replay --config vite.config.mjs --outDir ../dist --host 127.0.0.1"
+    "preview": "vite preview replay --config vite.config.mjs --outDir ../dist --host 127.0.0.1",
+    "import:share-package": "node scripts/import-share-package.mjs"
   },
   "dependencies": {
     "dompurify": "^3.2.6",

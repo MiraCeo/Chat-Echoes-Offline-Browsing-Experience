@@ -1,26 +1,16 @@
 {
   "manifest_version": 3,
   "name": "CEOBE 采集器（扩展版）",
-  "version": "0.3.0",
-  "description": "从你自己的会话读取结构化消息树与 DIL 载荷，导出为 CEOBE 采集包。",
-  "permissions": [
-    "downloads",
-    "activeTab",
-    "scripting"
-  ],
-  "host_permissions": [
-    "https://chatgpt.com/*",
-    "http://127.0.0.1/*"
-  ],
+  "version": "0.4.0",
+  "description": "输入分享链接，抓取原始页面并导出与 archive/ 同结构的 ZIP。",
+  "permissions": ["downloads"],
+  "host_permissions": ["https://chatgpt.com/*"],
+  "action": { "default_popup": "popup.html", "default_title": "CEOBE 采集分享链接" },
   "content_scripts": [
     {
-      "matches": [
-        "https://chatgpt.com/*"
-      ],
-      "js": [
-        "content-main.js"
-      ],
-      "run_at": "document_start",
+      "matches": ["https://chatgpt.com/*"],
+      "js": ["content-main.js"],
+      "run_at": "document_idle",
       "world": "MAIN"
     }
   ]

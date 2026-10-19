@@ -1,24 +1,30 @@
-# CEOBE 采集扩展（暂停）
+# CEOBE 采集扩展
 
-状态：**未达成目标，暂停**。不要把它当成可用功能。
+当前形态：**分享链接 → ZIP**。不再尝试"无分享链接采集"（那条线已暂停，见文末）。
 
-## 结论
+## 用法
 
-目标是"不建分享链接也能结构化采集会话"。实际验证结果：
+1. `edge://extensions/` → 加载 `extension/` 目录（或重新加载）；
+2. 点工具栏图标，输入 `https://chatgpt.com/share/…`；
+3. 点「抓取并导出 ZIP」→ 得到 `ceobe-capture-<share-id>-<时间>.zip`；
+4. 本地导入：
 
-- 页面确实会请求 `GET /backend-api/conversations/<id>`，首屏是 `?num_turns=10`（16 条消息）；
-- 更早的消息由页面在**真实用户滚动**时请求：`?before=<游标>&num_turns=10`（实测 200 / 558 KB / 71 条）；
-- **程序化设置 `scrollTop` 不会触发该懒加载**，所以在扩展里自动滚动始终只能拿到首屏；
-- 若要求用户手动滚到顶再导出，体验与可靠性都不如**分享链接归档**（后者已稳定、有测试、可复现）。
+```powershell
+node scripts/import-share-package.mjs --input <下载的 zip>
+npm run library -- --only <share-id>
+```
 
-因此：无分享链接时的采集"顺手可得"这个前提不成立，本线暂停。
+ZIP 结构与 `archive/chatgpt-share/<id>/<时间戳>/` 对齐：`raw/share.html` + `capture.json`；
+本地导入会解包、过归档守卫、解码成 `conversation.ceobe.json`，再生成 `conversation.md`、`import-report.json`。
 
-## 仍然有价值的产出（已并入主项目）
+## 边界
 
-- `scripts/convert-web-capture.mjs`：把 `conversations` 接口响应（含分页并集、每页重叠）转成 CEOBE canonical JSON，标注 `usable_linear`。
-- `scripts/import-web-capture.mjs`：转换 → 归档守卫 → `archive/chatgpt-web/<id>/<时间戳>/`。
-- `scripts/convert-web-capture`/`import-web-capture` 可直接用于**官方 Export Data** 或其他来源的同类载荷。
+- 扩展只做**抓取**：匿名请求（不带 cookie），不下载附件、不解析载荷、不写 `archive/`。
+- 解码复用本地 Python importer，保证与 `npm run archive:share` 同一套逻辑。
+- 附件资源仍由本地管线按既有规则解析；扩展不承诺离线完整。
 
-## 若要重开这条线
+## 已暂停的部分
 
-唯一有希望的方向不是滚动，而是：从页面 React fiber 上读取消息对象（本目录 0.1 诊断版提供过 props 探针），或改用官方 Export Data 的整账号导出。两者都应在写采集逻辑前先证明"一条命令拿到全部消息"。
+"不建分享链接也能采集"（页面接口 / fiber props / 自动滚动）已验证不可行：页面只在**真实用户滚动**时才请求
+更早的页（`?before=<游标>`），程序化滚动不触发；手动滚再导出不如直接用分享链接。相关代码与结论保留在本目录，
+不再作为可用功能。
