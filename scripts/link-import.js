@@ -3,6 +3,25 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
   const input = document.querySelector('[data-ceobe-import-input]');
   const submit = document.querySelector('[data-ceobe-import-submit]');
   if (!form || !input || !submit) throw new Error('Official import composer is incomplete.');
+
+  // 采集包拖拽：把扩展导出的 .zip 拖到表单上即可导入。
+  form.addEventListener('dragover', event => { if (event.dataTransfer && event.dataTransfer.types.includes('Files')) { event.preventDefault(); form.style.outline = '2px dashed #1f2937'; } });
+  form.addEventListener('dragleave', () => { form.style.outline = ''; });
+  form.addEventListener('drop', async event => {
+    const file = event.dataTransfer && event.dataTransfer.files[0];
+    if (!file) return;
+    event.preventDefault();
+    form.style.outline = '';
+    if (!/\.zip$/i.test(file.name)) { showStatus('请拖入扩展导出的 .zip 采集包。', 'error'); return; }
+    showStatus('正在导入采集包…', 'working');
+    try {
+      const response = await fetch('/api/archive-package', { method: 'POST', headers: { 'Content-Type': 'application/zip' }, body: file });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.error || ('HTTP ' + response.status));
+      showStatus('已导入：' + (data.title || data.shareId) + '（' + data.turnCount + ' 轮），正在打开…', 'done');
+      location.assign(data.page);
+    } catch (error) { showStatus('导入失败：' + error.message, 'error'); }
+  });
   input.setAttribute('contenteditable', 'true');
   input.setAttribute('role', 'textbox');
   input.setAttribute('aria-multiline', 'false');

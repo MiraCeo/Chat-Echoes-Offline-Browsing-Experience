@@ -62,7 +62,17 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
     const snapshotRoot = resolve(values['archive-root'] || join(projectRoot, 'archive', 'chatgpt-share'));
     await mkdir(snapshotRoot, { recursive: true });
     const plan = planSnapshot({ shareId, capturedAt: capture.captured_at || new Date().toISOString(), snapshotRoot });
-    await assertSnapshotTarget(plan.dir, { snapshotRoot });
+    try {
+      await assertSnapshotTarget(plan.dir, { snapshotRoot });
+    } catch (error) {
+      // 同一个包重复导入：快照已存在，按幂等成功处理，绝不覆盖。
+      if (/拒绝覆盖/.test(error.message)) {
+        console.log(`已归档过：${plan.dir}（未覆盖，未改动）`);
+        console.log(`SHARE_ID=${shareId}`);
+        process.exit(0);
+      }
+      throw error;
+    }
     await mkdir(join(plan.dir, 'raw'), { recursive: true });
     await writeFile(join(plan.dir, 'raw', 'share.html'), html);
     await writeFile(join(plan.dir, 'capture.json'), `${JSON.stringify(capture, null, 2)}\n`);
@@ -103,6 +113,7 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
     const counts = { messages: Object.keys(conversation.messages).length, nodes: Object.keys(conversation.nodes).length };
     const resources = conversation.import_report.resource_counts || {};
     console.log(`已归档：${plan.dir}`);
+    console.log(`SHARE_ID=${shareId}`);
     console.log(`消息 ${counts.messages} 条 / 节点 ${counts.nodes} 个；资源 ${JSON.stringify(resources)}；离线完整：${conversation.import_report.complete_offline_archive}`);
     const entries = await readdir(plan.dir);
     console.log('文件：' + entries.join('、'));

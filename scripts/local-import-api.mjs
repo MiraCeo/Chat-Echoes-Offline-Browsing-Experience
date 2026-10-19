@@ -20,14 +20,31 @@ export async function publishProduction(root){
 export function localImportMiddleware(root,{mode='development',archive=url=>runLocal(root,['scripts/archive-share.mjs',url,'--skip-library']),rebuild=()=>runLocal(root,['scripts/build-library.mjs']),publish=()=>publishProduction(root)}={}){
  root=resolve(root);
  return async(req,res,next)=>{
-  const path=req.url.split('?')[0];if(!['/api/capabilities','/api/archive-share'].includes(path))return next();
+  const path=req.url.split('?')[0];if(!['/api/capabilities','/api/archive-share','/api/archive-package'].includes(path))return next();
   const send=(code,data)=>{res.statusCode=code;res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.end(JSON.stringify(data))};
   let release,record,file;
   try{
    if(req.headers['sec-fetch-site']==='cross-site'||req.headers.origin&&new URL(req.headers.origin).host!==req.headers.host)throw bad('不允许跨站操作',403);
    if(path==='/api/capabilities'){if(req.method!=='GET')throw bad('仅支持 GET',405);return send(200,{mode,importShare:true})}
    if(req.method!=='POST')throw bad('仅支持 POST',405);
-   if(!/^application\/json(?:;|$)/i.test(req.headers['content-type']||''))throw bad('需要 JSON 请求',415);
+   if(path==='/api/archive-package'){
+   if(!/^(application\/zip|application\/octet-stream)(?:;|$)/i.test(req.headers['content-type']||''))throw bad('需要 zip 文件',415);
+   release=await acquireMutation(root);
+   try{
+    const parts=[];let total=0;for await(const chunk of req){total+=chunk.length;if(total>200*1024*1024)throw bad('采集包超过 200 MB',413);parts.push(chunk)}
+    const dir=join(root,'data/private/import-packages');await mkdir(dir,{recursive:true});
+    const zip=join(dir,randomUUID()+'.zip');await writeFile(zip,Buffer.concat(parts));
+    const log=await new Promise((yes,no)=>{const child=spawn(process.execPath,['scripts/import-share-package.mjs','--input',zip],{cwd:root,windowsHide:true,stdio:['ignore','pipe','pipe']});let out='';for(const stream of [child.stdout,child.stderr])stream.on('data',b=>out=(out+b).slice(-20000));child.on('error',no);child.on('close',code=>code===0?yes(out):no(new Error(out||'采集包导入失败')))});
+    await rm(zip,{force:true});
+    const id=(/SHARE_ID=([a-f0-9-]{36})/i.exec(log)||[])[1];if(!id)throw Error('采集包已导入，但未能确定会话标识');
+    await runLocal(root,['scripts/build-library.mjs','--only',id]);
+    const library=JSON.parse(await readFile(join(root,'archive/library.ceobe.json'),'utf8')),entry=library.conversations?.find(c=>c.id===id);
+    if(!entry)throw Error('已归档，但索引中没有该会话');
+    return send(200,{ok:true,shareId:id,title:entry.title,messageCount:entry.message_count,turnCount:entry.turn_count,resourceCounts:entry.resource_counts,page:'/conversations/'+id+'.html'});
+   }catch(e){if(!e.status)e.status=422;throw e}
+   finally{await release();release=null}
+  }
+if(!/^application\/json(?:;|$)/i.test(req.headers['content-type']||''))throw bad('需要 JSON 请求',415);
    let size=0;const chunks=[];for await(const b of req){size+=b.length;if(size>4096)throw bad('请求内容过大',413);chunks.push(b)}
    let body;try{body=JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{throw bad('无效 JSON')}
    let url;try{url=new URL(body?.url)}catch{throw bad('请输入公开的 ChatGPT 分享链接')}
