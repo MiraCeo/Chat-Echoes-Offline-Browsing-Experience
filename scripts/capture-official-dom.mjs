@@ -304,9 +304,31 @@ async function browserPass({ url, outDir, viewport, deviceScaleFactor }) {
             || scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 8) break;
         }
       }
+      // Gap sweep: the virtualizer keeps only a window, so jumping to the estimated offset of a turn
+      // index we never saw usually mounts it. The report records coverage so a partial capture is visible.
+      const maxIndex = Math.max(0, ...[...seen.values()].map(turn => Number((turn.testid || '').split('-').pop()) || 0));
+      const hasTurn = index => [...seen.values()].some(turn => turn.testid === `conversation-turn-${index}`);
+      const scrollRange = Math.max(1, scroller.scrollHeight - scroller.clientHeight);
+      let sweeps = 0;
+      for (let index = 1; index <= maxIndex && sweeps < 240; index += 1) {
+        if (hasTurn(index)) continue;
+        const target = Math.round(((index - 1) / Math.max(1, maxIndex - 1)) * scrollRange);
+        for (const delta of [-1, 0, 1]) {
+          scroller.scrollTop = Math.max(0, Math.min(scrollRange, target + delta * Math.round(scroller.clientHeight * 0.7)));
+          await sleep(180);
+          grab();
+          sweeps += 1;
+          if (hasTurn(index)) break;
+        }
+      }
+      const missingTurnIndexes = [];
+      for (let index = 1; index <= maxIndex; index += 1) if (!hasTurn(index)) missingTurnIndexes.push(index);
       return {
         turns: [...seen.values()],
         scrollHeight: scroller.scrollHeight,
+        maxIndex,
+        coverage: Number((seen.size / Math.max(1, maxIndex)).toFixed(3)),
+        missingTurnIndexes,
         stylesheets: [...document.querySelectorAll('link[rel="stylesheet"]')].map(link => link.getAttribute('href')).filter(Boolean),
         html: document.body.outerHTML,
       };
@@ -581,6 +603,9 @@ export async function snapshot({ url, savedDir, outDir, label }) {
         preWrap: result.turns.filter(turn => turn.hasPreWrap).length,
         scrollHeight: result.scrollHeight,
         settledChars: result.settledChars,
+        maxTurnIndex: result.maxIndex,
+        coverage: result.coverage,
+        missingTurnIndexes: result.missingTurnIndexes.length,
       };
       await writeFile(join(target, 'turns.json'), `${JSON.stringify(result.turns, null, 2)}\n`);
     } else {

@@ -15,6 +15,7 @@
 
 ## 采集路线
 
+> 授权记录（2026-10-19）：用户已备份 rchive/，并授权 ① 插件 POC（只读、产物落 data/private）② 插件接入本地写入接口（写 rchive/，须走归档守卫）③ 官方 Export Data 导入 ④ 对公开分享页反复匿名抓取。
 ### 第二轨：浏览器插件／userscript
 
 - [ ] 以 userscript 形式做 POC，对比“读当前页面 DOM”与“复用已有登录态调用 conversation endpoint”两种来源的完整度与稳定性。
