@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         CEOBE 采集器（M1 探针 v0.2）
+// @name         CEOBE 采集器（M1 探针 v0.3.1）
 // @namespace    ceobe.local
-// @version      0.2.0
+// @version      0.3.1
 // @description  从你自己的会话里取完整消息树，导出为 CEOBE 采集包；本地服务在跑时可直接投递。
 // @match        https://chatgpt.com/*
 // @grant        none
@@ -148,7 +148,18 @@
       } catch { /* keep looking */ }
     }
     if (!conversation) {
-      toast('还没有录到会话数据：请刷新页面后再点一次（脚本要在页面加载前就开始监听）', 'error');
+      // Fallback: the conversation may arrive in the initial HTML stream rather than an XHR.
+      for (const script of document.querySelectorAll('script')) {
+        const text = script.textContent || '';
+        if (!text.includes('"mapping"')) continue;
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed && parsed.mapping) { conversation = parsed; source = 'script#' + (script.id || 'inline'); break; }
+        } catch { /* escaped payloads are reported by 诊断 */ }
+      }
+    }
+    if (!conversation) {
+      toast('v0.3.1：仍未找到会话数据。请点「诊断」并把控制台输出发我', 'error');
       console.warn('[CEOBE] 已捕获的响应：', source);
       return;
     }
@@ -195,10 +206,23 @@
       font: '12px/1.2 system-ui, sans-serif', cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,.12)',
     });
     button.addEventListener('click', capture);
-    bar.append(button);
+    const diagnose = document.createElement('button');
+    diagnose.textContent = '诊断';
+    Object.assign(diagnose.style, button.style);
+    diagnose.addEventListener('click', () => {
+      const scripts = [...document.querySelectorAll('script')]
+        .map(script => ({ id: script.id || '(inline)', type: script.type || '', kb: Math.round((script.textContent || '').length / 1024), hasMapping: (script.textContent || '').includes('"mapping"') }))
+        .filter(item => item.kb > 0)
+        .sort((left, right) => right.kb - left.kb)
+        .slice(0, 12);
+      const hookInstalled = !/native code/.test(String(window.fetch));
+      console.log('[CEOBE] v0.3.1 诊断', { hookInstalled, captured: captured.length, scripts });
+      toast(`v0.3.1：拦截 ${captured.length} 条，脚本命中 ${scripts.filter(item => item.hasMapping).length} 个；详见控制台`);
+    });
+    bar.append(button, diagnose);
     document.body.append(bar);
   };
   document.addEventListener('DOMContentLoaded', mount, { once: true });
   window.addEventListener('ceobe-capture', capture);
-  console.info('[CEOBE] 采集器 v0.2 已就绪：刷新一次会话页让拦截器录到数据，再从菜单采集。');
+  console.info('[CEOBE] 采集器 v0.3.1 已就绪：刷新一次会话页让拦截器录到数据，再从菜单采集。');
 })();
