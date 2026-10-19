@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CEOBE 采集器（扩展版）",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "从你自己的会话读取结构化消息树与 DIL 载荷，导出为 CEOBE 采集包。",
   "permissions": [
     "downloads",
@@ -20,7 +20,7 @@
       "js": [
         "content-main.js"
       ],
-      "run_at": "document_idle",
+      "run_at": "document_start",
       "world": "MAIN"
     }
   ]

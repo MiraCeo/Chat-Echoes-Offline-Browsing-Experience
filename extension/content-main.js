@@ -63,12 +63,15 @@
     if (!scroller) return { ok: false, reason: '找不到滚动容器', messages: uniqueMessages(id) };
     let previous = uniqueMessages(id);
     let stable = 0;
-    for (let round = 0; round < 60 && stable < 3; round += 1) {
+    for (let round = 0; round < 80; round += 1) {
+      const atTop = scroller.scrollTop <= 2;
+      if (atTop && stable >= 6) break;
       scroller.scrollTop = Math.max(0, scroller.scrollTop - Math.round(scroller.clientHeight * 1.5));
-      await sleep(1200);
+      await sleep(1400);
       const now = uniqueMessages(id);
       if (now > previous) { previous = now; stable = 0; console.info('[CEOBE] 累计', now, '条'); }
-      else if (scroller.scrollTop <= 2) stable += 1;
+      else stable += 1;
+      if (atTop && stable >= 3) await sleep(1500);
     }
     return { ok: true, messages: previous, pages: pages(id).length, atTop: scroller.scrollTop <= 2 };
   };
@@ -90,7 +93,12 @@
     toast('正在向上加载更早的消息…（约 10–30 秒，页面会自动滚动）');
     const result = await loadAll(id);
     const items = pages(id);
-    if (!items.length) { toast('没有录到会话页：刷新页面后再试', 'error'); return; }
+    if (!items.length) {
+      toast('没有录到会话页：钩子未在页面加载前就位。请刷新页面后等对话完全显示，再点采集。'
+        + '（日志：[CEOBE] 捕获页 …）', 'error');
+      console.warn('[CEOBE] 无会话页', { messages: result.messages, scroller: Boolean(threadScroller()) });
+      return;
+    }
     const payload = {
       kind: 'ceobe.response-capture',
       schema_version: '1.0.0',
