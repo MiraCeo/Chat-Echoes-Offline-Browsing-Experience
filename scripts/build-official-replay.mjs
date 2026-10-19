@@ -425,7 +425,6 @@ const buildAssistantSection = (turnNumber, message) => {
   const renderOptions = {
     officialChartTemplates,
     officialTableTemplate,
-    officialCodeBlockTemplate: officialTemplates.templates?.['code-block'],
     officialCitations,
     generatedFiles,
     contentReferences: assistantReferences(message.entries),

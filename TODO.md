@@ -10,7 +10,7 @@
 - [ ] **DIL 渲染的使用反馈**：解析、外壳冻结与组件树渲染均已实现（本抓取 138 轮页面里 17 类组件、3521 个 DIL 节点走冻结外壳；含 `visualization` 等无法忠实表示的组件时整条回复退回 Markdown）。待办是实际阅读反馈：结构类外壳的观感、装饰组件（`icon`／`favicon`）缺失是否可接受、以及是否需要为图表类组件单独补 DIL 渲染路径。
 - [ ] **外观漂移（已按差异报告定案：不做整体再冻结）**：`capture-official-dom.mjs` 对当前分享页的报告显示，本页加载的样式族里只有 2 个冻结组件类消失（`Rx43rG_codemirror`、`cm-editor`），选择器重合为 `conversation-small` 92.6%、`root` 96.3%、`react` 88.9%、`WidgetRenderer` 99.5%，属于局部演进而非改版，因此不发起完整模板再冻结。遗留定点项：
   - [x] ~~`WidgetRenderer` 的 11 项 token 变化~~：实测只有 2 个 token 变了，且都是新增 `var(--dil-text-xl-*, <冻结原值>)` 形式的**回退兜底**；冻结包没有定义 `--dil-text-xl-*`，渲染结果不变，无需同步。
-  - [x] ~~代码块~~：已用保存的官方页面完成迁移（CodeBlock-* 外壳 + 语言槽 + 复制按钮，正文保留我们的高亮 pre>code），36 个代码块全部切换，模板包与 MD／复制契约测试通过。
+  - [ ] 代码块：**已核实冻结包原本正确**。官方消息里的代码块仍是 CodeMirror 结构（`q9tKkq_viewer` > `cm-scroller` > `pre.cm-content.q9tKkq_readonly`），`code-evidence` 快照 2/2 回合中 `cm-editor` 出现 7 次、`CodeBlock-*` 为 0；先前「`cm-editor` 已消失」是懒加载样式表导致的误报。误迁移已回滚。若以后要支持 artifact 预览，那套 `CodeBlock-*` 外壳需单独冻结。
   - [x] ~~用户长消息的折叠/“显示更多”~~：已定案**不钳制用户消息**；`A_HxFq_*` 所在样式表（`conversation-small-iha453gv.css`）已随包冻结并在 manifest 的 `user_message_stylesheets` 登记，仅作基线保留，不启用钳制。
 
 ## 采集路线

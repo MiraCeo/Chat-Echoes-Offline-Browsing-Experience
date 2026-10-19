@@ -34,8 +34,7 @@
     "preview:xlsx",
     "sources:panel",
     "sources:toggle",
-    "widget:chart",
-    "code-block"
+    "widget:chart"
   ],
   "chart_stylesheets": [
     "react-ky4jdgh1.css",
@@ -103,10 +102,5 @@
   "user_message_stylesheets": [
     "conversation-small-iha453gv.css",
     "user-markdown-formatted-text-frzikmq2.css"
-  ],
-  "code_block_stylesheets": [
-    "408604.0f2f7e85fc.css",
-    "809995.db088ab34a.css",
-    "886701.b3a8fdb21c.css"
   ]
 }
