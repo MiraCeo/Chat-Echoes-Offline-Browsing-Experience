@@ -28,9 +28,13 @@ const posixRelative = path => relative(projectRoot, path).replaceAll('\\', '/');
 export async function buildLibraryIndex() {
   const conversations = [];
   await mkdir(archiveRoot, { recursive: true });
-  for (const share of await readdir(archiveRoot, { withFileTypes: true })) {
+  // 分享抓取与登录态采集分目录存放，索引把两者一起收进来。
+  const archiveRoots = [archiveRoot, join(projectRoot, "archive", "chatgpt-web")];
+  for (const root of archiveRoots) {
+  try { await mkdir(root, { recursive: true }); } catch {}
+  for (const share of await readdir(root, { withFileTypes: true })) {
     if (!share.isDirectory() || !/^[\w-]+$/.test(share.name)) continue;
-    const shareRoot = join(archiveRoot, share.name);
+    const shareRoot = join(root, share.name);
     const captures = (await readdir(shareRoot, { withFileTypes: true }))
       .filter(entry => entry.isDirectory()).map(entry => entry.name).sort().reverse();
     for (const captureName of captures) {
@@ -66,6 +70,7 @@ export async function buildLibraryIndex() {
         break;
       } catch { /* Failed or partial captures remain archived but do not replace the latest usable capture. */ }
     }
+  }
   }
   const meta=await readChatMetadata(projectRoot);
   for(const c of conversations)Object.assign(c,meta.items[c.id]||{});
