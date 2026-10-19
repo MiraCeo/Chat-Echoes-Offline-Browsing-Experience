@@ -56,6 +56,7 @@ node scripts/test-copy-content.mjs
 | 书签与个人备注 | `test-bookmarks-store.mjs`、`test-bookmarks-browser.mjs`；聊天删除整体验证另见 `test-chat-actions-store.mjs` |
 | 正文内联组件（引用／文件／链接） | `test-genui-inline-components.mjs`：解析 `metadata.genui_components` 的字符区间与无元数据时的标记扫描、官方引用模板渲染、无模板组件的降级，以及复制／导出文本不含原始标记 |
 | 官方 DOM 快照工具 | `test-official-dom-snapshot.mjs`：输出目录约束（拒绝 `archive/` 与 `data/private/` 之外）、结构签名不含正文、样式族配对、类漂移分类、离线 `--compare-only` 与无参数拒绝执行 |
+| 归档只增不改 | `test-archive-guard.mjs`：写入前 dry-run 计划、路径必须落在 `<归档根>/<会话 ID>/<时间戳>`、拒绝覆盖既有快照、符号链接不得把写入带出归档目录，以及采集入口确实调用了守卫 |
 | DIL 生成式 UI 文档 | `test-dil-document.mjs`：`model_dil_v2` 载荷的表达式提取、常量／映射／三元／模板字符串／hooks 求值、组件标识符，以及未知标识符只记录不执行 |
 | DIL 组件外壳冻结 | `test-dil-templates.mjs`：外壳只保留标签／类／枚举属性（丢弃正文、id、行内样式、资源 URL）、固定内层包装收成 slot、同组件多形态收集、样式表归属判定、`--report` 只读且无参数拒绝执行 |
 | DIL 组件树渲染 | `test-render-dil.mjs`：按 props 选外壳形态（`title` 尺寸、`table-cell` 表头、`box` 方向）、内联格式、引用解析与降级、装饰组件不产出、未知组件上报以触发 Markdown 回退、正文转义 |
@@ -125,6 +126,22 @@ Remove-Item Env:CEOBE_TEST_DIST
 5. 同时验证开发和生产构建，尤其注意嵌套页面路径、按需资源及脚本依赖链。
 
 模板提取入口 `npm run extract:templates` 用于校验和整理独立包，不应恢复对已删除参考目录的永久依赖。
+
+#### 迁移清单
+
+一次迁移按下列顺序走，每一步都能单独验证：
+
+1. **取证**：`node scripts/capture-official-dom.mjs --url <分享链接>`（或 `--saved <已保存页面目录>`）。只允许独立匿名浏览器，不使用登录态；产物只落 `data/private/official-dom/`。先读 `report.md`：哪些冻结组件类已不再被定义、各样式族选择器重合度与 token 变化、DIL／展开控件等探针结果。
+2. **定范围**：重合度高、只有个别类消失时按定点迁移，不发起整体再冻结。
+3. **脱敏**：去掉正文、个人名称、id、行内样式、资源地址与失效状态。DIL 组件外壳由 `scripts/freeze-dil-templates.mjs` 自动完成这一步，并复制定义类的样式表。
+4. **冻结**：模板写进 `official-templates/`（`templates.json`／`shell.html`／`dil.json` 与 `assets/`）并同步 manifest；禁止构建读取私人捕获目录。
+5. **验证**：先跑轻量回归（`test-official-template-package.mjs`、`test-render-dil.mjs`、`test-reader-rendering.mjs`），再用 `npm run library -- --only <id>` 只重建受影响的会话页做对照，最后跑生产预览回归。
+
+`capture-*` 系列脚本用于手工迁移：它们读取**已保存的官方页面及其同目录资源**，不会自行联网，也不接受 URL；需要新输入时先按第 1 步取证或自行保存页面。
+
+### 隔离夹具与端口
+
+浏览器测试必须使用隔离夹具（临时目录 + 临时或内存存储），不得读写使用者的归档。需要随机端口时用 `scripts/test-server-port.mjs` 的 `freePort()` 或 `isolatedServerOptions()`：Vite 把 `port: 0` 视为 falsy 并回退到默认 5173，直接写 `port: 0` 并没有隔离效果。
 
 ### 官方 DOM 快照与差异
 

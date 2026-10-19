@@ -205,6 +205,9 @@ npm run archive:share -- https://chatgpt.com/share/<share-id>
 # 重建档案库，并选择默认首页
 npm run library -- --select <share-id>
 
+# 只重建指定聊天的阅读页；首页与共享样式不动，多个 id 用逗号分隔
+npm run library -- --only <share-id>[,<share-id>…]
+
 # 从单个 CEOBE JSON 生成阅读页面，不等同于完整档案库入口
 npm run replay -- --input path/to/conversation.ceobe.json
 

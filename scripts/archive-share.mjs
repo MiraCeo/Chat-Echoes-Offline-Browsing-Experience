@@ -6,6 +6,7 @@ import { parseArgs } from 'node:util';
 import { downloadResources, resourceMatches } from './archive-resources.mjs';
 import { exportConversationMarkdown } from './export-conversation-markdown.mjs';
 import { resolveShareResources } from './resolve-share-resources.mjs';
+import { assertSnapshotTarget, formatSnapshotPlan, planSnapshot } from './archive-guard.mjs';
 
 const { values, positionals } = parseArgs({ allowPositionals: true, options: { 'archive-root': { type: 'string' }, 'skip-library': { type: 'boolean', default: false } } });
 if (positionals.length !== 1) throw new Error('Usage: npm run archive:share -- <https://chatgpt.com/share/id>');
@@ -14,7 +15,12 @@ if (url.protocol !== 'https:' || url.hostname !== 'chatgpt.com' || url.username 
 url.search = ''; url.hash = '';
 const shareId = url.pathname.split('/')[2];
 const capturedAt = new Date().toISOString();
-const folder = join(resolve(values['archive-root'] || 'archive/chatgpt-share'), shareId, capturedAt.replaceAll(':', '-'));
+// Dry run first: the plan is printed and the target must be a fresh snapshot inside the archive.
+const snapshotRoot = resolve(values['archive-root'] || 'archive/chatgpt-share');
+const plan = planSnapshot({ shareId, capturedAt, snapshotRoot });
+await assertSnapshotTarget(plan.dir, { snapshotRoot });
+console.log(formatSnapshotPlan(plan));
+const folder = plan.dir;
 await mkdir(folder, { recursive: true });
 await mkdir(join(folder, 'raw'));
 const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(30000) });

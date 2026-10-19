@@ -77,9 +77,8 @@ export async function buildLibraryIndex() {
   return library;
 }
 
-async function buildReader(library, selectedId) {
+async function buildReader(library, selectedId, onlyIds = null) {
 
-  const selected = library.conversations.find(item => item.id === selectedId) || library.conversations[0];
   const run = (entry, output, preserve) => {
     const args = ['scripts/build-official-replay.mjs', '--input', entry.conversation_path, '--output-page', output,
       '--library', posixRelative(indexPath), '--entry-id', entry.id];
@@ -88,6 +87,20 @@ async function buildReader(library, selectedId) {
     if (result.status !== 0) throw new Error(result.stderr || result.stdout || `Failed to build ${entry.title}`);
     process.stdout.write(result.stdout);
   };
+  // Single-page refresh: pages depend on the current library index, the shared bundles do not. Useful
+  // while iterating on the renderer or after editing one archive; every other page is left alone.
+  if (onlyIds?.length) {
+    const missing = onlyIds.filter(id => !library.conversations.some(entry => entry.id === id));
+    if (missing.length) throw new Error(`档案库中没有这些会话：${missing.join(', ')}`);
+    await mkdir(join(projectRoot, 'replay/conversations'), { recursive: true });
+    for (const id of onlyIds) {
+      const entry = library.conversations.find(item => item.id === id);
+      run(entry, join('replay', 'conversations', `${entry.id}.html`), true);
+    }
+    console.log(`Rebuilt ${onlyIds.length} conversation page(s); the home page and shared bundles were left untouched.`);
+    return;
+  }
+  const selected = library.conversations.find(item => item.id === selectedId) || library.conversations[0];
   if(selected)run(selected, join('replay', 'index.html'), false);
   else {
     const empty=JSON.parse(await readFile(join(projectRoot,'samples/empty-conversation.json'),'utf8'));empty.title='本地聊天';
@@ -115,8 +128,14 @@ async function buildReader(library, selectedId) {
 }
 
 if (pathToFileURL(process.argv[1]).href === import.meta.url) {
-  const { values } = parseArgs({ options: { 'index-only': { type: 'boolean', default: false }, select: { type: 'string' } } });
+  const { values } = parseArgs({ options: {
+    'index-only': { type: 'boolean', default: false },
+    select: { type: 'string' },
+    // `--only a,b` rebuilds just those conversation pages; see buildReader.
+    only: { type: 'string' },
+  } });
   const library = await buildLibraryIndex();
   console.log(`Library index: ${indexPath} (${library.conversations.length} conversations)`);
-  if (!values['index-only']) await buildReader(library, values.select);
+  const only = values.only ? values.only.split(',').map(value => value.trim()).filter(Boolean) : null;
+  if (!values['index-only']) await buildReader(library, values.select, only);
 }
