@@ -16,6 +16,8 @@ import { attachCopyControls } from './copy-controls.mjs';
 import { buildSourcesPanel } from './build-sources-panel.mjs';
 import { loadOfficialTemplatePackage } from './official-template-package.mjs';
 import { messageComponents } from './dil-inline-components.mjs';
+import { readDilDocument } from './dil-document.mjs';
+import { renderDilTree } from './render-dil.mjs';
 
 const projectRoot = resolve(import.meta.dirname, "..");
 const { values } = parseArgs({ options: {
@@ -171,6 +173,51 @@ const assistantInlineComponents = (entries, source) => {
 const assistantReferences = (entries) => entries
   .filter(entry => entry.kind === 'document')
   .flatMap(entry => entry.message.content_references || []);
+
+const dilTemplates = JSON.parse(await readFile(join(projectRoot, 'official-templates/dil.json'), 'utf8').catch(() => '{}'));
+
+/**
+ * Assistant body: entries that ship a generative-UI document are rendered from it, the rest keep the
+ * Markdown path. A document the reader cannot represent faithfully (unsupported components) falls back
+ * to Markdown wholesale, so nothing half-rendered ever reaches the reader.
+ */
+const assistantDocumentHtml = (entries, source, renderOptions) => {
+  const documents = entries.filter(entry => entry.kind === 'document');
+  const dilDocuments = new Map();
+  for (const entry of documents) {
+    const payload = entry.message.metadata?.model_dil_v2;
+    if (!payload) continue;
+    try {
+      const parsed = readDilDocument(payload);
+      if (parsed) dilDocuments.set(entry.message.id, parsed);
+    } catch {
+      // A payload we cannot parse simply keeps the Markdown rendering.
+    }
+  }
+  if (!dilDocuments.size) return renderAssistantMarkdown(baseDocument, source, renderOptions);
+  const rendered = [];
+  for (const entry of documents) {
+    const parsed = dilDocuments.get(entry.message.id);
+    if (!parsed) {
+      rendered.push(renderAssistantMarkdown(baseDocument, recordMarkdown(entry.message), {
+        ...renderOptions,
+        contentReferences: entry.message.content_references || [],
+        genuiComponents: messageComponents(entry.message),
+      }));
+      continue;
+    }
+    const { html, unsupported } = renderDilTree(parsed.tree, {
+      templates: dilTemplates,
+      document: baseDocument,
+      officialCitations,
+      message: entry.message,
+      genuiComponents: messageComponents(entry.message),
+    });
+    if (unsupported.length) return renderAssistantMarkdown(baseDocument, source, renderOptions);
+    rendered.push(html);
+  }
+  return rendered.join('');
+};
 
 // Copying is an output concern of the HTML page. This adapter is intentionally
 // local and does not become the input model used to construct the DOM.
@@ -375,18 +422,15 @@ const buildAssistantSection = (turnNumber, message) => {
   setTurnIdentity(section, turnNumber, "assistant");
   const markdownContainer = section.querySelector(".markdown.prose") || section.querySelector(".markdown");
   const assistantSource = assistantMarkdown(message.entries);
-  markdownContainer.innerHTML = renderAssistantMarkdown(
-    baseDocument,
-    assistantSource,
-    {
-      officialChartTemplates,
-      officialTableTemplate,
-      officialCitations,
-      generatedFiles,
-      contentReferences: assistantReferences(message.entries),
-      genuiComponents: assistantInlineComponents(message.entries, assistantSource),
-    },
-  );
+  const renderOptions = {
+    officialChartTemplates,
+    officialTableTemplate,
+    officialCitations,
+    generatedFiles,
+    contentReferences: assistantReferences(message.entries),
+    genuiComponents: assistantInlineComponents(message.entries, assistantSource),
+  };
+  markdownContainer.innerHTML = assistantDocumentHtml(message.entries, assistantSource, renderOptions);
   appendUnavailableContent(markdownContainer, message);
   appendBranchFooter(section, message.entries);
   return section;

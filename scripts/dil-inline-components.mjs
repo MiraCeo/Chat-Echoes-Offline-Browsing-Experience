@@ -120,6 +120,8 @@ export function messageComponents(message) {
       safeUrls: (component.safe_urls || []).map(item => item?.url).filter(Boolean),
       entities: component.entities || [],
       type: component.type,
+      // DIL documents reference the same resolution table by id instead of by text range.
+      resolutionId: component.component_resolution_id || null,
       message,
     }));
 }

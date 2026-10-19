@@ -3,7 +3,7 @@
   "format": "ceobe-dil-component-shells",
   "source": {
     "label": "share-6ad4e7d4",
-    "captured_at": "2026-10-18T17:57:00.970Z",
+    "captured_at": "2026-10-18T18:10:45.402Z",
     "note": "Anonymous share-page snapshot; shells carry no text, ids, inline styles or resource URLs."
   },
   "components": {
@@ -36,7 +36,15 @@
           "data-variant": "soft",
           "data-d-component": "badge",
           "data-d-weight": "normal"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          }
+        ]
       }
     ],
     "blockquote": [
@@ -47,7 +55,12 @@
         ],
         "attributes": {
           "data-d-component": "blockquote"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          }
+        ]
       }
     ],
     "box": [
@@ -60,7 +73,27 @@
           "data-d-component": "box",
           "data-d-direction": "col",
           "data-d-has-border": ""
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          }
+        ]
       },
       {
         "tag": "span",
@@ -72,7 +105,12 @@
           "data-d-component": "box",
           "data-d-direction": "col",
           "data-d-inline": ""
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          }
+        ]
       },
       {
         "tag": "div",
@@ -84,7 +122,12 @@
           "data-d-component": "box",
           "data-d-direction": "col",
           "data-d-has-height": ""
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          }
+        ]
       },
       {
         "tag": "div",
@@ -94,7 +137,24 @@
         "attributes": {
           "data-d-component": "box",
           "data-d-direction": "col"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          }
+        ]
       },
       {
         "tag": "div",
@@ -134,7 +194,18 @@
         "attributes": {
           "data-d-component": "col",
           "data-d-direction": "col"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          }
+        ]
       }
     ],
     "divider": [
@@ -162,7 +233,17 @@
           "data-d-has-width": "",
           "data-d-has-height": "",
           "role": "presentation"
-        }
+        },
+        "children": [
+          {
+            "tag": "img",
+            "class": [
+              "CrFGHG_Image",
+              "QGyuMa_Image"
+            ],
+            "attributes": {}
+          }
+        ]
       }
     ],
     "grid": [
@@ -173,7 +254,15 @@
         ],
         "attributes": {
           "data-d-component": "grid"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          }
+        ]
       }
     ],
     "grid-item": [
@@ -187,7 +276,12 @@
           "data-d-component": "grid-item",
           "data-d-direction": "col",
           "data-d-variant": "transparent"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          }
+        ]
       },
       {
         "tag": "div",
@@ -199,7 +293,18 @@
           "data-d-auto-spacing": "",
           "data-d-component": "grid-item",
           "data-d-direction": "col"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          }
+        ]
       }
     ],
     "icon": [
@@ -216,7 +321,14 @@
           "data-rtl-flip": "",
           "data-d-component": "icon",
           "data-d-inline": ""
-        }
+        },
+        "children": [
+          {
+            "tag": "path",
+            "class": [],
+            "attributes": {}
+          }
+        ]
       },
       {
         "tag": "svg",
@@ -227,7 +339,14 @@
           "viewBox": "0 0 24 24",
           "fill": "currentColor",
           "data-d-component": "icon"
-        }
+        },
+        "children": [
+          {
+            "tag": "path",
+            "class": [],
+            "attributes": {}
+          }
+        ]
       },
       {
         "tag": "svg",
@@ -238,7 +357,26 @@
           "height": "1em",
           "viewBox": "0 0 24 24",
           "data-d-component": "icon"
-        }
+        },
+        "children": [
+          {
+            "tag": "g",
+            "class": [],
+            "attributes": {},
+            "children": [
+              {
+                "tag": "path",
+                "class": [],
+                "attributes": {}
+              },
+              {
+                "tag": "path",
+                "class": [],
+                "attributes": {}
+              }
+            ]
+          }
+        ]
       }
     ],
     "link": [
@@ -250,7 +388,22 @@
         "attributes": {
           "data-d-component": "link",
           "role": "link"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          },
+          {
+            "tag": "span",
+            "class": [],
+            "attributes": {},
+            "children": [
+              {
+                "slot": true
+              }
+            ]
+          }
+        ]
       }
     ],
     "list": [
@@ -263,7 +416,18 @@
           "data-d-component": "list",
           "data-d-marker": "bullet",
           "data-d-marker-layout": "native"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          }
+        ]
       }
     ],
     "list-item": [
@@ -275,7 +439,30 @@
         "attributes": {
           "data-d-component": "list-item",
           "data-d-marker-layout": "native"
-        }
+        },
+        "children": [
+          {
+            "tag": "div",
+            "class": [
+              "PSWZZq_Content"
+            ],
+            "attributes": {},
+            "children": [
+              {
+                "tag": "div",
+                "class": [
+                  "PSWZZq_Label"
+                ],
+                "attributes": {},
+                "children": [
+                  {
+                    "slot": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       }
     ],
     "popover-trigger": [
@@ -290,7 +477,12 @@
           "data-d-inline-text": "",
           "role": "presentation",
           "type": "button"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          }
+        ]
       },
       {
         "tag": "span",
@@ -303,7 +495,12 @@
           "data-d-inline-text": "",
           "role": "button",
           "type": "button"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          }
+        ]
       }
     ],
     "pressable": [
@@ -318,7 +515,12 @@
           "data-d-direction": "col",
           "data-d-inline": "",
           "role": "button"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          }
+        ]
       }
     ],
     "row": [
@@ -331,7 +533,12 @@
           "data-d-auto-spacing": "",
           "data-d-component": "row",
           "data-d-direction": "row"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          }
+        ]
       },
       {
         "tag": "div",
@@ -341,7 +548,15 @@
         "attributes": {
           "data-d-component": "row",
           "data-d-direction": "row"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          }
+        ]
       }
     ],
     "table": [
@@ -352,7 +567,55 @@
         ],
         "attributes": {
           "data-d-component": "table"
-        }
+        },
+        "children": [
+          {
+            "tag": "table",
+            "class": [
+              "_6IUVGW_Table"
+            ],
+            "attributes": {},
+            "children": [
+              {
+                "tag": "tbody",
+                "class": [],
+                "attributes": {},
+                "children": [
+                  {
+                    "slot": true
+                  },
+                  {
+                    "slot": true
+                  },
+                  {
+                    "slot": true
+                  },
+                  {
+                    "slot": true
+                  },
+                  {
+                    "slot": true
+                  },
+                  {
+                    "slot": true
+                  },
+                  {
+                    "slot": true
+                  },
+                  {
+                    "slot": true
+                  },
+                  {
+                    "slot": true
+                  },
+                  {
+                    "slot": true
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       }
     ],
     "table-cell": [
@@ -361,14 +624,24 @@
         "class": [],
         "attributes": {
           "data-d-component": "table-cell"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          }
+        ]
       },
       {
         "tag": "td",
         "class": [],
         "attributes": {
           "data-d-component": "table-cell"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          }
+        ]
       }
     ],
     "table-row": [
@@ -377,7 +650,18 @@
         "class": [],
         "attributes": {
           "data-d-component": "table-row"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          },
+          {
+            "slot": true
+          }
+        ]
       }
     ],
     "text": [
@@ -390,7 +674,12 @@
         "attributes": {
           "data-d-text-flow": "",
           "data-d-component": "text"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          }
+        ]
       },
       {
         "tag": "span",
@@ -451,7 +740,12 @@
           "data-d-text-flow": "",
           "data-d-component": "text",
           "data-d-size": "xs"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          }
+        ]
       }
     ],
     "title": [
@@ -479,7 +773,12 @@
           "data-d-component": "title",
           "data-d-size": "2xl",
           "data-d-weight": "semibold"
-        }
+        },
+        "children": [
+          {
+            "slot": true
+          }
+        ]
       },
       {
         "tag": "h1",
@@ -503,7 +802,84 @@
         ],
         "attributes": {
           "data-d-component": "visualization"
-        }
+        },
+        "children": [
+          {
+            "tag": "div",
+            "class": [
+              "B-vWca_root",
+              "chart-widget-container",
+              "text-token-text-primary",
+              "w-full",
+              "[&_.recharts-wrapper_:focus:not(:focus-visible)]:outline-none",
+              "[&_.recharts-wrapper:focus:not(:focus-visible)]:outline-none",
+              "h-[27rem]",
+              "overflow-visible"
+            ],
+            "attributes": {},
+            "children": [
+              {
+                "tag": "div",
+                "class": [
+                  "h-full",
+                  "[&>section]:flex",
+                  "[&>section]:h-full",
+                  "[&>section]:flex-col"
+                ],
+                "attributes": {},
+                "children": [
+                  {
+                    "tag": "section",
+                    "class": [
+                      "text-token-text-primary",
+                      "group/app-block",
+                      "group/keyboard-or-hover",
+                      "w-full",
+                      "overflow-visible",
+                      "relative"
+                    ],
+                    "attributes": {},
+                    "children": [
+                      {
+                        "tag": "div",
+                        "class": [
+                          "absolute",
+                          "z-10",
+                          "end-2",
+                          "top-6"
+                        ],
+                        "attributes": {}
+                      },
+                      {
+                        "tag": "div",
+                        "class": [
+                          "min-h-[4.5rem]",
+                          "pt-5",
+                          "pe-12"
+                        ],
+                        "attributes": {}
+                      },
+                      {
+                        "tag": "div",
+                        "class": [
+                          "group/app-widget",
+                          "relative",
+                          "flex",
+                          "h-full",
+                          "min-h-0",
+                          "w-full",
+                          "flex-1",
+                          "flex-col"
+                        ],
+                        "attributes": {}
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
       }
     ]
   },

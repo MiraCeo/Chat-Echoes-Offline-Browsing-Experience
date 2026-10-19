@@ -81,7 +81,7 @@ ChatGPT 分享页面及公开资源
 - 尚无冻结模板的组件降级为可读文本（`MemoryCite` 标为“记忆”，`Entity` 取 `value`，`WritingBlock` 只保留正文），原始标记不会出现在阅读页、复制内容或 Markdown 导出中。
 - 缺少 `genui_components` 的抓取按已知标签做保守扫描；普通正文与代码里的同名字符串不受影响。
 
-抓取当前的助手回复同时携带 Markdown 回退文本和 `metadata.model_dil_v2` 生成式 UI 文档。`scripts/dil-document.mjs` 已能纯解析该文档：提取 `DIL.render(…)` 表达式，按载荷自带的 `constants` 求值 `__dil.jsx` 调用、数组映射、三元与模板字符串，产出组件树；没有 `eval`／`vm`，未知标识符、成员或调用一律降级为 `undefined` 并记录，不接触宿主环境。阅读器目前仍渲染 Markdown 回退文本，组件树到官方 DOM 的映射见 [TODO](../TODO.md)。
+抓取当前的助手回复同时携带 Markdown 回退文本和 `metadata.model_dil_v2` 生成式 UI 文档。`scripts/dil-document.mjs` 纯解析该文档（提取 `DIL.render(…)`、按载荷自带 `constants` 求值、无 `eval`／`vm`，未知标识符只记录不执行）；`scripts/freeze-dil-templates.mjs` 把匿名快照里官方 DIL 输出的组件外壳冻结进 `official-templates/dil.json`（含固定内层包装与多形态）；`scripts/render-dil.mjs` 用这些外壳把组件树渲染成 DOM。回退规则是分层的：结构类组件按冻结外壳渲染，装饰组件（`icon`／`favicon`）不产出，出现 `visualization` 等无法忠实表示的组件时整条回复退回 Markdown，因此阅读器不会出现半渲染结果。
 
 原始 `参考文件/` 已清理。正常构建只读取冻结模板，不依赖最初保存的参考网页。
 
