@@ -7,13 +7,14 @@ import {parseHTML} from 'linkedom';
 import {chromium} from 'playwright';
 import {preview} from 'vite';
 import {createProjectStore,projectsMiddleware} from './project-store.mjs';
+import { isolatedServerOptions } from './test-server-port.mjs';
 const root=await mkdtemp(join(tmpdir(),'ceobe-projects-'));
 let handler=projectsMiddleware(root);
 const server=createServer((req,res)=>handler(req,res,()=>{res.statusCode=404;res.end()}));
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const api=`http://127.0.0.1:${server.address().port}/api/projects`;
 const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
-const production=process.env.CEOBE_TEST_DIST==='1'?await preview({configFile:'vite.config.mjs',root:'replay',build:{outDir:'../dist'},preview:{host:'127.0.0.1',port:0,strictPort:true}}):null;
+const production=process.env.CEOBE_TEST_DIST==='1'?await preview({configFile:'vite.config.mjs',root:'replay',build:{outDir:'../dist'},preview: await isolatedServerOptions()}):null;
 const base=production?`http://127.0.0.1:${production.httpServer.address().port}/`:(process.env.CEOBE_TEST_URL||'http://127.0.0.1:5173/');
 try{
  const realApi=await fetch(base+'api/projects');assert.match(realApi.headers.get('content-type'),/application\/json/);assert.equal((await realApi.json()).writable,true);

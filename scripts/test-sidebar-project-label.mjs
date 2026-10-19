@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';import{readFile}from'node:fs/promises';import{parseHTML}from'linkedom';import{chromium}from'playwright';import{preview}from'vite';
-const prod=process.env.CEOBE_TEST_DIST==='1'?await preview({configFile:'vite.config.mjs',root:'replay',build:{outDir:'../dist'},preview:{host:'127.0.0.1',port:0}}):null,base=prod?`http://127.0.0.1:${prod.httpServer.address().port}/`:'http://127.0.0.1:5173/';const browser=await chromium.launch({channel:'msedge',headless:true});
+import { isolatedServerOptions } from './test-server-port.mjs';
+const prod=process.env.CEOBE_TEST_DIST==='1'?await preview({configFile:'vite.config.mjs',root:'replay',build:{outDir:'../dist'},preview: await isolatedServerOptions()}):null,base=prod?`http://127.0.0.1:${prod.httpServer.address().port}/`:'http://127.0.0.1:5173/';const browser=await chromium.launch({channel:'msedge',headless:true});
 try{
 const context=await browser.newContext({viewport:{width:1092,height:935},deviceScaleFactor:1.5}),page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
 const real=await(await page.request.get(base+'api/projects')).json(),p=real.projects.find(p=>p.name==='测试');assert.ok(p);const lib=await(await page.request.get(base+'api/chats')).json(),id=p.conversation_ids[0];const sidebar=()=>page.locator('[data-chat-recent-list], [data-chat-pinned-section]');

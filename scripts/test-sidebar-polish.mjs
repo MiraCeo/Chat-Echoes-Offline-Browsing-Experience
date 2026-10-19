@@ -1,5 +1,6 @@
 import assert from'node:assert/strict';import{readFile}from'node:fs/promises';import{chromium}from'playwright';import{preview}from'vite';
-const prod=process.env.CEOBE_TEST_DIST==='1'?await preview({configFile:'vite.config.mjs',root:'replay',build:{outDir:'../dist'},preview:{host:'127.0.0.1',port:0}}):null,base=prod?`http://127.0.0.1:${prod.httpServer.address().port}/`:'http://127.0.0.1:5173/';const browser=await chromium.launch({channel:'msedge',headless:true});
+import { isolatedServerOptions } from './test-server-port.mjs';
+const prod=process.env.CEOBE_TEST_DIST==='1'?await preview({configFile:'vite.config.mjs',root:'replay',build:{outDir:'../dist'},preview: await isolatedServerOptions()}):null,base=prod?`http://127.0.0.1:${prod.httpServer.address().port}/`:'http://127.0.0.1:5173/';const browser=await chromium.launch({channel:'msedge',headless:true});
 try{const context=await browser.newContext({viewport:{width:1028,height:908},deviceScaleFactor:1.5}),p=await context.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));
 const before=await(await p.request.get(base+'api/chats')).json();let catalog=before.conversations.map((c,i)=>({...c,title:i===2?'<img src=x onerror=alert(1)> 标题':'最近聊天 '+i,pinned_at:i<2?'2026-09-09T00:00:00Z':null,updated_at:new Date(Date.UTC(2026,8,9,12-i)).toISOString()}));const first=catalog[0].id;
 for(let i=catalog.length;i<14;i++)catalog.push({...catalog[0],id:'rail-fixture-'+i,title:'测试 '+i,pinned_at:null,updated_at:new Date(Date.UTC(2026,8,9,12-i)).toISOString()});let fail=false,posts=[];

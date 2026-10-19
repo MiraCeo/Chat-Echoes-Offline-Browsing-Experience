@@ -3,7 +3,8 @@ import {readFile} from 'node:fs/promises';
 import {chromium} from 'playwright';
 import {preview} from 'vite';
 import {parseHTML} from 'linkedom';
-const prod=process.env.CEOBE_TEST_DIST==='1'?await preview({configFile:'vite.config.mjs',root:'replay',build:{outDir:'../dist'},preview:{host:'127.0.0.1',port:0}}):null;
+import { isolatedServerOptions } from './test-server-port.mjs';
+const prod=process.env.CEOBE_TEST_DIST==='1'?await preview({configFile:'vite.config.mjs',root:'replay',build:{outDir:'../dist'},preview: await isolatedServerOptions()}):null;
 const base=prod?`http://127.0.0.1:${prod.httpServer.address().port}/`:'http://127.0.0.1:5173/';
 const browser=await chromium.launch({channel:'msedge',headless:true});
 try{

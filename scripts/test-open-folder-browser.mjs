@@ -1,7 +1,8 @@
 // “打开本地文件夹” in the sidebar chat menu and the reader More menu.
 // The open-folder POST is intercepted in the browser, so no file manager is launched and nothing is written.
 import assert from 'node:assert/strict';import {chromium} from 'playwright';import {preview} from 'vite';
-const prod=process.env.CEOBE_TEST_DIST==='1'?await preview({configFile:'vite.config.mjs',root:'replay',build:{outDir:'../dist'},preview:{host:'127.0.0.1',port:0}}):null,base=prod?'http://127.0.0.1:'+prod.httpServer.address().port+'/':'http://127.0.0.1:5173/',browser=await chromium.launch({channel:'msedge',headless:true});
+import { isolatedServerOptions } from './test-server-port.mjs';
+const prod=process.env.CEOBE_TEST_DIST==='1'?await preview({configFile:'vite.config.mjs',root:'replay',build:{outDir:'../dist'},preview: await isolatedServerOptions()}):null,base=prod?'http://127.0.0.1:'+prod.httpServer.address().port+'/':'http://127.0.0.1:5173/',browser=await chromium.launch({channel:'msedge',headless:true});
 try{const p=await browser.newPage({viewport:{width:1092,height:935},deviceScaleFactor:1.5}),errors=[],opens=[];p.on('pageerror',e=>errors.push(e.message));
 const projects=(await(await p.request.get(base+'api/projects')).json()).projects,chats=(await(await p.request.get(base+'api/chats')).json()).conversations.filter(c=>!c.pinned_at);assert.ok(chats.length>=2,'Need two unpinned chats');
 const orphan=chats.find(c=>!projects.some(x=>x.conversation_ids.includes(c.id)))||chats[0],other=chats.find(c=>c.id!==orphan.id);let reply={status:200,json:{opened:true,folder:'archive/chatgpt-share/'+orphan.id+'/capture'}};

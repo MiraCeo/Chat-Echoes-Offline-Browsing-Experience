@@ -2,13 +2,14 @@ import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { preview } from 'vite';
 import { parseHTML } from 'linkedom';
+import { isolatedServerOptions } from './test-server-port.mjs';
 const prod =
     process.env.CEOBE_TEST_DIST === '1'
       ? await preview({
           configFile: 'vite.config.mjs',
           root: 'replay',
           build: { outDir: '../dist' },
-          preview: { host: '127.0.0.1', port: 0 },
+          preview: await isolatedServerOptions(),
         })
       : null,
   base = prod
