@@ -16,7 +16,10 @@
 ## 采集路线
 
 > 授权记录（2026-10-19）：用户已备份 rchive/，并授权 ① 插件 POC（只读、产物落 data/private）② 插件接入本地写入接口（写 rchive/，须走归档守卫）③ 官方 Export Data 导入 ④ 对公开分享页反复匿名抓取。
-### 第二轨：浏览器插件／userscript
+### 第二轨：浏览器插件／userscript（**已暂停：结论不可行**）
+
+> 实测结论：页面仅在**真实用户滚动**时才请求更早的页（`?before=<游标>&num_turns=10`，200 / 558 KB / 71 条），程序化 `scrollTop` 不触发懒加载；要求用户手动滚再导出，体验不如分享链接归档。详见 `extension/README.md`。保留 `convert-web-capture.mjs` 与 `import-web-capture.mjs`，可供官方 Export Data 复用。
+
 
 - [ ] 以 userscript 形式做 POC，对比“读当前页面 DOM”与“复用已有登录态调用 conversation endpoint”两种来源的完整度与稳定性。
 - [ ] 固定数据契约：插件只产出与分享归档相同的快照布局或 `conversation.ceobe.json`，复用现有 importer 与 schema；插件不承担阅读器职责。
