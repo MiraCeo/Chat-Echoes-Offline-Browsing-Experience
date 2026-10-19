@@ -98,5 +98,9 @@
     "mapbox-gl-l6rc2zka.css",
     "Slider-kklwipbf.css",
     "user-markdown-formatted-text-frzikmq2.css"
+  ],
+  "user_message_stylesheets": [
+    "conversation-small-iha453gv.css",
+    "user-markdown-formatted-text-frzikmq2.css"
   ]
 }

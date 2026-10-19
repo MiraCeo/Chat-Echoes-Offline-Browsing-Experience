@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Official DOM snapshot and diff — an explicit, opt-in maintenance tool.
  *
  * It answers "did the official page change under our frozen template package?" without becoming part
@@ -234,7 +234,27 @@ async function browserPass({ url, outDir, viewport, deviceScaleFactor }) {
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForSelector('section[data-testid^="conversation-turn-"]', { timeout: 60000 });
-    await page.waitForTimeout(4000);
+    // Answers hydrate (and stream) after the first turn appears; a fixed sleep captured empty replies.
+    // Wait until the thread's text stops growing for several consecutive reads.
+    const settle = async () => {
+      let previous = -1;
+      let stable = 0;
+      for (let attempt = 0; attempt < 80; attempt += 1) {
+        const length = await page.evaluate(() => [...document.querySelectorAll('section[data-testid^="conversation-turn-"]')]
+          .reduce((sum, node) => sum + (node.textContent || '').length, 0));
+        if (length > 0 && length === previous) {
+          stable += 1;
+          if (stable >= 3) return length;
+        } else {
+          stable = 0;
+        }
+        previous = length;
+        await page.waitForTimeout(500);
+      }
+      return previous;
+    };
+    const settledChars = await settle();
+    await page.waitForTimeout(1000);
     const collected = await page.evaluate(async () => {
       const seen = new Map();
       const sleep = ms => new Promise(done => setTimeout(done, ms));
@@ -299,7 +319,7 @@ async function browserPass({ url, outDir, viewport, deviceScaleFactor }) {
     });
     await page.waitForTimeout(800);
     await page.screenshot({ path: join(outDir, 'screenshots', 'thread-top.png') });
-    return { ...collected, errors };
+    return { ...collected, errors, settledChars };
   } finally {
     await context.close();
     await browser.close();
@@ -560,6 +580,7 @@ export async function snapshot({ url, savedDir, outDir, label }) {
         markdownBody: result.turns.filter(turn => turn.hasMarkdownBody).length,
         preWrap: result.turns.filter(turn => turn.hasPreWrap).length,
         scrollHeight: result.scrollHeight,
+        settledChars: result.settledChars,
       };
       await writeFile(join(target, 'turns.json'), `${JSON.stringify(result.turns, null, 2)}\n`);
     } else {
