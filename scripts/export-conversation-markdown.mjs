@@ -7,7 +7,12 @@ export function exportConversationMarkdown(conversation, {textOnly=false} = {}) 
   const { document } = parseHTML('<html><body></body></html>');
   const output = [`# ${conversation.title.replace(/[\r\n]/g, ' ')}`, '',
     textOnly ? '> 纯文本 Markdown：仅包含当前阅读分支，不包含附件或外部资源。' : '> 本文件为当前阅读分支的 Markdown 副本；完整消息树、内部记录和原始字段保留在 conversation.ceobe.json。', ''];
-  for (const turn of conversationToMarkdownView(conversation)) {
+  const turns = conversationToMarkdownView(conversation);
+  // "第 N 段" markers: the outline stays the same, but a reader can search a turn number or see it
+  // while scrolling. Counted per assistant reply, so one Q&A is one 段.
+  const totalExchanges = turns.filter(turn => turn.role === 'assistant').length;
+  let exchange = 0;
+  for (const turn of turns) {
     const parts = turn.parts.filter(part => part.type === 'markdown');
     if (!parts.length) continue;
     output.push(`## ${turn.role === 'user' ? 'User' : 'Assistant'}`, '');
@@ -38,6 +43,11 @@ export function exportConversationMarkdown(conversation, {textOnly=false} = {}) 
           output.push(`${resource.mime_type?.startsWith('image/') ? '!' : ''}[${name}](${resource.local_path})`, '');
         } else output.push(`> 附件未保存：${name}（${resource.status}；详见 import-report.json）`, '');
       }
+    }
+    // Marker after each exchange (one user question + its answer), so a long file stays locatable.
+    if (turn.role === 'assistant') {
+      exchange += 1;
+      output.push('', `*（第 ${exchange} 段对话，共 ${totalExchanges} 段）*`, '');
     }
   }
   return textOnly ? markdownTextOnly(output.join('\n')) : output.join('\n');
