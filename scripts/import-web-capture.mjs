@@ -1,7 +1,7 @@
 ﻿import { mkdir, readFile, writeFile, cp } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { assertSnapshotTarget, formatSnapshotPlan, planSnapshot } from './archive-guard.mjs';
+import { assertSnapshotTarget, planSnapshot } from './archive-guard.mjs';
 import { convertWebCapture } from './convert-web-capture.mjs';
 
 const projectRoot = resolve(import.meta.dirname, '..');
@@ -18,7 +18,8 @@ if (!values.input) {
   await mkdir(snapshotRoot, { recursive: true });
   const plan = planSnapshot({ shareId: conversation.id, capturedAt, snapshotRoot });
   await assertSnapshotTarget(plan.dir, { snapshotRoot });
-  console.log(formatSnapshotPlan(plan));
+  console.log(`归档目标：${plan.dir}`);
+  console.log('将写入：raw-responses.json、conversation.ceobe.json、capture.json（既有快照不会被覆盖）');
   await mkdir(plan.dir, { recursive: true });
   await cp(input, join(plan.dir, 'raw-responses.json'));
   await writeFile(join(plan.dir, 'conversation.ceobe.json'), JSON.stringify(conversation, null, 2) + '\n', 'utf8');
