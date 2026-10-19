@@ -90,13 +90,13 @@
   const capture = async () => {
     const id = currentId();
     if (!id) { toast('当前页面不是会话页', 'error'); return; }
-    toast('正在向上加载更早的消息…（约 10–30 秒，页面会自动滚动）');
-    const result = await loadAll(id);
+    const start = uniqueMessages(id);
+    toast('开始在 12 秒内把会话向上滚到顶部（滚轮/触控板），我会边滚边录。当前 ' + start + ' 条');
+    await sleep(12000);
+    const result = { messages: uniqueMessages(id), atTop: (threadScroller()?.scrollTop || 0) <= 2 };
     const items = pages(id);
     if (!items.length) {
-      toast('没有录到会话页：钩子未在页面加载前就位。请刷新页面后等对话完全显示，再点采集。'
-        + '（日志：[CEOBE] 捕获页 …）', 'error');
-      console.warn('[CEOBE] 无会话页', { messages: result.messages, scroller: Boolean(threadScroller()) });
+      toast('没有录到会话页：钩子未在页面加载前就位，请关闭标签页重开后再试', 'error');
       return;
     }
     const payload = {
@@ -104,7 +104,7 @@
       schema_version: '1.0.0',
       captured_at: new Date().toISOString(),
       source: {
-        type: 'chatgpt_web_extension', url: location.href, method: 'scroll-paged',
+        type: 'chatgpt_web_extension', url: location.href, method: 'user-scroll',
         pages: items.length, messages: result.messages, atTop: result.atTop,
       },
       responses: items.map(item => ({ url: item.entry.url, text: item.entry.text })),
@@ -129,5 +129,5 @@
   };
 
   if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount, { once: true });
-  console.info('[CEOBE] 扩展版 0.2.2 就绪（滚动分页采集）');
+  console.info('[CEOBE] 扩展版 0.3.0 就绪（手动滚动采集）');
 })();
