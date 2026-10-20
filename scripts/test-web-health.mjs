@@ -52,7 +52,7 @@ for (const path of pages) {
   }
   const metrics = await page.evaluate(() => ({
     overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
-    brokenImages: [...document.images].filter(image => image.currentSrc && image.complete && image.naturalWidth === 0).length,
+    brokenImages: [...document.images].filter(image => (image.getAttribute('src') || '').trim() && image.complete && image.naturalWidth === 0).length,
     title: document.title,
     empty: (document.querySelector('main')?.textContent || '').trim().length < 40,
   }));
