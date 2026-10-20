@@ -4,15 +4,10 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
   const submit = document.querySelector('[data-ceobe-import-submit]');
   if (!form || !input || !submit) throw new Error('Official import composer is incomplete.');
 
-  // 采集包拖拽：把扩展导出的 .zip 拖到表单上即可导入。
-  form.addEventListener('dragover', event => { if (event.dataTransfer && event.dataTransfer.types.includes('Files')) { event.preventDefault(); highlight(true); } });
-  form.addEventListener('dragleave', () => { highlight(false); });
-  form.addEventListener('drop', async event => {
-    const file = event.dataTransfer && event.dataTransfer.files[0];
+  // 采集包：拖入表单、拖入上传区、或点选文件，都走同一个导入接口。
+  const uploadPackage = async file => {
     if (!file) return;
-    event.preventDefault();
-    highlight(false);
-    if (!/\.zip$/i.test(file.name)) { showStatus('请拖入扩展导出的 .zip 采集包。', 'error'); return; }
+    if (!/\.zip$/i.test(file.name)) { showStatus('请选择扩展导出的 .zip 采集包。', 'error'); return; }
     showStatus('正在导入采集包…', 'working');
     try {
       const response = await fetch('/api/archive-package', { method: 'POST', headers: { 'Content-Type': 'application/zip' }, body: file });
@@ -21,6 +16,20 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
       showStatus('已导入：' + (data.title || data.shareId) + '（' + data.turnCount + ' 轮），正在打开…', 'done');
       location.assign(data.page);
     } catch (error) { showStatus('导入失败：' + error.message, 'error'); }
+  };
+  const picker = document.createElement('input');
+  picker.type = 'file';
+  picker.accept = '.zip,application/zip';
+  picker.hidden = true;
+  picker.addEventListener('change', () => uploadPackage(picker.files && picker.files[0]));
+  form.insertAdjacentElement('beforebegin', picker);
+  form.addEventListener('dragover', event => { if (event.dataTransfer && event.dataTransfer.types.includes('Files')) { event.preventDefault(); highlight(true); } });
+  form.addEventListener('dragleave', () => { highlight(false); });
+  form.addEventListener('drop', async event => {
+    if (!event.dataTransfer || !event.dataTransfer.files[0]) return;
+    event.preventDefault();
+    highlight(false);
+    await uploadPackage(event.dataTransfer.files[0]);
   });
   input.setAttribute('contenteditable', 'true');
   input.setAttribute('role', 'textbox');
@@ -43,13 +52,34 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
     form.style.boxShadow = on ? '0 0 0 3px rgba(37, 99, 235, .30)' : '';
     form.style.backgroundColor = on ? 'rgba(37, 99, 235, .04)' : '';
   };
-  const packageHint = document.createElement('div');
-  packageHint.dataset.ceobePackageHint = '';
-  packageHint.textContent = '也可以把扩展导出的 .zip 采集包直接拖进来';
-  Object.assign(packageHint.style, {
-    marginTop: '10px', fontSize: '12px', lineHeight: '1.6', color: '#98a2b3', textAlign: 'center', letterSpacing: '.01em',
+  // 上方：采集包上传区（虚线框 + 图标 + 文案），中间一条"或"，下方保留原分享链接输入。
+  const zone = document.createElement('div');
+  zone.dataset.ceobePackageZone = '';
+  Object.assign(zone.style, {
+    boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+    gap: '10px', width: '100%', padding: '26px 20px', marginBottom: '14px',
+    border: '1.5px dashed #d0d5dd', borderRadius: '16px', background: '#fbfcfd',
+    color: '#475467', cursor: 'pointer', transition: 'border-color .16s ease, background-color .16s ease',
   });
-  status.insertAdjacentElement('beforebegin', packageHint);
+  zone.innerHTML = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#98a2b3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>'
+    + '<div style="text-align:center;line-height:1.7"><strong style="font-weight:600;color:#344054">把采集包拖到这里</strong><span style="color:#98a2b3">，或</span> <span data-ceobe-package-pick style="color:#344054;text-decoration:underline;text-underline-offset:3px">选择 .zip 文件</span></div>'
+    + '<div style="font-size:12px;color:#98a2b3">扩展导出的 ceobe-capture-*.zip</div>';
+  const setZone = on => { zone.style.borderColor = on ? '#1f2937' : '#d0d5dd'; zone.style.background = on ? '#f2f4f7' : '#fbfcfd'; };
+  zone.addEventListener('click', event => { event.preventDefault(); picker.click(); });
+  zone.addEventListener('dragover', event => { event.preventDefault(); setZone(true); });
+  zone.addEventListener('dragleave', () => setZone(false));
+  zone.addEventListener('drop', async event => {
+    if (!event.dataTransfer || !event.dataTransfer.files[0]) return;
+    event.preventDefault();
+    setZone(false);
+    await uploadPackage(event.dataTransfer.files[0]);
+  });
+  form.insertAdjacentElement('beforebegin', zone);
+  const divider = document.createElement('div');
+  divider.dataset.ceobePackageDivider = '';
+  Object.assign(divider.style, { display: 'flex', alignItems: 'center', gap: '12px', margin: '0 0 14px', color: '#98a2b3', fontSize: '12px' });
+  divider.innerHTML = '<span style="flex:1;height:1px;background:#eaecf0"></span><em style="font-style:normal">或</em><span style="flex:1;height:1px;background:#eaecf0"></span>';
+  form.insertAdjacentElement('beforebegin', divider);
   const actions = document.createElement('div');
   actions.className = 'ceobe-import-actions';
   status.insertAdjacentElement('afterend', actions);
