@@ -1,4 +1,4 @@
-﻿/* Print view (plan A): the reader downgraded from screen chrome to a document.
+/* Print view (plan A): the reader downgraded from screen chrome to a document.
    Linked from shell.html with media="print", so screen rendering is untouched. */
 
 @media print {
@@ -42,6 +42,19 @@
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   h1, h2, h3, h4 { break-after: avoid; }
   blockquote, ol, ul, [data-d-component="box"], [data-d-component="grid-item"] { break-inside: avoid; }
+
+  /* 9. 中文字体：系统默认可能回退到新宋体，显式指定黑体族，正文观感才接近屏幕。 */
+  body, p, li, td, th, h1, h2, h3, h4, h5, blockquote, figcaption {
+    font-family: "Segoe UI", "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif !important;
+  }
+
+  /* 10. 宽表格必须在文本盒内换行，而不是溢出后被裁掉。 */
+  table { width: 100% !important; max-width: 100% !important; table-layout: auto; }
+  td, th { word-break: break-word; overflow-wrap: anywhere; }
+
+  /* 11. 分享入口与页面级操作不应出现在纸上。 */
+  button[aria-label*="分享"], [data-testid="share-button"], [data-ceobe-share],
+  [data-testid="conversation-title"], [data-ceobe-thread-actions] { display: none !important; }
 
   /* 8. Screen-only adornments inside content. */
   [data-ceobe-jump], [data-toc-item-index] { text-decoration: none !important; }

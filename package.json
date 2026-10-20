@@ -23,7 +23,8 @@
     "build": "vite build replay --config vite.config.mjs --outDir ../dist --emptyOutDir",
     "preview": "vite preview replay --config vite.config.mjs --outDir ../dist --host 127.0.0.1",
     "import:share-package": "node scripts/import-share-package.mjs",
-    "test:web": "node scripts/test-web-health.mjs"
+    "test:web": "node scripts/test-web-health.mjs",
+    "export:pdf": "node scripts/export-conversation-pdf.mjs"
   },
   "dependencies": {
     "dompurify": "^3.2.6",
