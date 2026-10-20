@@ -25,7 +25,8 @@
     "import:share-package": "node scripts/import-share-package.mjs",
     "test:web": "node scripts/test-web-health.mjs",
     "export:pdf": "node scripts/export-conversation-pdf.mjs",
-    "audit:pdf": "python scripts/audit-pdf-exports.py"
+    "audit:pdf": "python scripts/audit-pdf-exports.py",
+    "check": "python scripts/audit-pdf-exports.py && node scripts/test-web-health.mjs"
   },
   "dependencies": {
     "dompurify": "^3.2.6",
