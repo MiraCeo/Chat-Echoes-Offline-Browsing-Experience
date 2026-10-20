@@ -54,10 +54,21 @@ const placeholderMissingImages = html => {
   const localFiles = existsSync(resourcesDir) ? readdirSync(resourcesDir) : [];
   const hasLocal = key => localFiles.some(name => name.startsWith(key));
   let replaced = 0;
+  let relinked = 0;
   for (const image of [...document.querySelectorAll('img')]) {
     const key = image.getAttribute('data-ceobe-local-resource');
     const src = image.getAttribute('src') || '';
     const missingLocal = key ? !hasLocal(key) : false;
+    if (key && !missingLocal) {
+      // 资源就在本地，页面却还指向原机器的相对路径：直接指到归档文件，别让它 404。
+      const match = localFiles.find(name => name.startsWith(key));
+      if (match) {
+        image.setAttribute('src', (nestedPage ? '../' : './') + 'archive-resources/' + match);
+        image.removeAttribute('srcset');
+        relinked += 1;
+        continue;
+      }
+    }
     let missingRelative = false;
     if (!key && src && !/^[a-z][a-z0-9+.-]*:/i.test(src) && !src.startsWith('/')) {
       try { missingRelative = !existsSync(resolve(dirname(outputPage), decodeURIComponent(src.split('?')[0]))); } catch { missingRelative = false; }
@@ -82,7 +93,7 @@ const placeholderMissingImages = html => {
   if (process.env.CEOBE_DEBUG_IMAGES) {
     const imgs = [...document.querySelectorAll('img')];
     console.error('[debug] imgs', imgs.length, 'withKey', imgs.filter(i => i.getAttribute('data-ceobe-local-resource')).length,
-      'replaced', replaced, 'localFiles', localFiles.length);
+      'replaced', replaced, 'relinked', relinked, 'localFiles', localFiles.length);
   }
   return replaced ? document.toString() : html;
 };
