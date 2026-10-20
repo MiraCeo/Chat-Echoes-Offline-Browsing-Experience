@@ -57,13 +57,12 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
   zone.dataset.ceobePackageZone = '';
   Object.assign(zone.style, {
     boxSizing: 'border-box', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-    gap: '10px', width: '100%', padding: '26px 20px', marginBottom: '14px',
-    border: '1.5px dashed #d0d5dd', borderRadius: '16px', background: '#fbfcfd',
-    color: '#475467', cursor: 'pointer', transition: 'border-color .16s ease, background-color .16s ease',
+    gap: '10px', width: '100%', borderStyle: 'dashed', borderWidth: '1.5px', borderRadius: '16px',
+    color: '#475467', cursor: 'pointer',
   });
   zone.innerHTML = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#98a2b3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>'
     + '<div style="text-align:center;line-height:1.7"><strong style="font-weight:600;color:#344054">把采集包拖到这里</strong><span style="color:#98a2b3">，或</span> <span data-ceobe-package-pick style="color:#344054;text-decoration:underline;text-underline-offset:3px">选择 .zip 文件</span></div>'
-    + '<div style="font-size:12px;color:#98a2b3">扩展导出的 ceobe-capture-*.zip</div>';
+    + '<small>扩展导出的 ceobe-capture-*.zip</small>';
   const setZone = on => { zone.style.borderColor = on ? '#1f2937' : '#d0d5dd'; zone.style.background = on ? '#f2f4f7' : '#fbfcfd'; };
   zone.addEventListener('click', event => { event.preventDefault(); picker.click(); });
   zone.addEventListener('dragover', event => { event.preventDefault(); setZone(true); });
@@ -76,8 +75,31 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
   });
   const divider = document.createElement('div');
   divider.dataset.ceobePackageDivider = '';
-  Object.assign(divider.style, { display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0 14px', color: '#98a2b3', fontSize: '12px' });
+  Object.assign(divider.style, { display: 'flex', alignItems: 'center', gap: '12px', color: '#98a2b3', fontSize: '12px' });
   divider.innerHTML = '<span style="flex:1;height:1px;background:#eaecf0"></span><em style="font-style:normal">或</em><span style="flex:1;height:1px;background:#eaecf0"></span>';
+
+  // 样式集中注入一次，避免散落在各处内联样式里，也便于以后统一调。
+  if (!document.getElementById('ceobe-package-styles')) {
+    const style = document.createElement('style');
+    style.id = 'ceobe-package-styles';
+    style.textContent = `
+      [data-ceobe-import-help] summary { display:flex; align-items:center; gap:6px; cursor:pointer;
+        font-size:12px; line-height:20px; color:#98a2b3; list-style:none; width:max-content;
+        border-radius:6px; transition:color .16s ease; }
+      [data-ceobe-import-help] summary::-webkit-details-marker { display:none; }
+      [data-ceobe-import-help] summary:hover { color:#475467; }
+      [data-ceobe-import-help] summary:focus-visible { outline:2px solid rgba(37,99,235,.45); outline-offset:3px; }
+      [data-ceobe-import-help] summary::before { content:''; width:5px; height:5px; border-right:1.5px solid currentColor;
+        border-bottom:1.5px solid currentColor; transform:rotate(-45deg); transition:transform .16s ease; margin-right:2px; }
+      [data-ceobe-import-help][open] summary::before { transform:rotate(45deg); }
+      [data-ceobe-package-divider] { max-width:360px; margin:14px auto 12px; }
+      [data-ceobe-package-zone] { padding:20px 16px; gap:8px; border-color:#d8dee4; background-color:#fcfcfd;
+        transition:border-color .16s ease, background-color .16s ease; }
+      [data-ceobe-package-zone]:hover { border-color:#b9c0c8; background-color:#f8f9fb; }
+      [data-ceobe-package-zone] small { font-size:11px; color:#a4acb6; letter-spacing:.01em; }
+    `;
+    document.head.append(style);
+  }
 
   // 顺序：分享链接输入 → 折叠说明 → 或 → 采集包上传区。
   zone.style.marginBottom = '0';
@@ -99,7 +121,6 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
     Object.assign(details.style, { marginTop: '10px' });
     const summary = document.createElement('summary');
     summary.textContent = '导入说明';
-    Object.assign(summary.style, { cursor: 'pointer', fontSize: '12px', color: '#98a2b3', listStyle: 'none' });
     const body = document.createElement('div');
     Object.assign(body.style, { marginTop: '6px', fontSize: '12px', lineHeight: '1.7', color: '#98a2b3' });
     for (const node of explainers) body.append(node);
