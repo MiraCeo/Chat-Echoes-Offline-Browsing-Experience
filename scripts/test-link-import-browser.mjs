@@ -16,7 +16,8 @@ try {
   assert.equal(await page.locator('img[alt="个人资料图片"]').count(), 0);
   assert.ok(await page.locator('.ceobe-local-avatar').count());
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-  assert.ok((await page.locator('.ceobe-import-description').innerText()).includes('附件将尽可能保存'));
+  // 说明现在默认折叠，innerText 取不到隐藏内容，改用 textContent 断言文案仍在。
+  assert.ok((await page.locator('.ceobe-import-description').textContent()).includes('附件将尽可能保存'));
   await input.fill('https://example.com/share/not-chatgpt');
   await submit.click();
   assert.match(await status.innerText(), /链接格式不正确/);
