@@ -56,6 +56,15 @@
   button[aria-label*="分享"], [data-testid="share-button"], [data-ceobe-share],
   [data-testid="conversation-title"], [data-ceobe-thread-actions] { display: none !important; }
 
+  /* 12. 代码块：长行必须在框内折行，而不是被容器裁掉。 */
+  pre, pre code, code, .markdown code, [data-ceobe-code-body], [data-ceobe-code-body] * {
+    white-space: pre-wrap !important; overflow-wrap: anywhere !important; word-break: break-all !important;
+  }
+  [data-ceobe-code-body], [class*="cm-scroller"], [class*="cm-content"], [class*="viewLine"] {
+    overflow: visible !important; max-width: 100% !important;
+  }
+  .ceobe-code-block, [data-ceobe-code-body] { break-inside: avoid; }
+
   /* 8. Screen-only adornments inside content. */
   [data-ceobe-jump], [data-toc-item-index] { text-decoration: none !important; }
 }
