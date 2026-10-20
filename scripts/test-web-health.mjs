@@ -51,6 +51,24 @@ for (const path of pages) {
     await page.close();
     continue;
   }
+  // 站内链接是否可达：只检查同源链接，避免把外部引用算进来。
+  const links = await page.evaluate(() => [...document.querySelectorAll('a[href]')]
+    .map(anchor => anchor.getAttribute('href') || '')
+    .filter(href => href && !/^[a-z][a-z0-9+.-]*:/i.test(href) && !href.startsWith('#'))
+    .map(href => href.split('#')[0])
+    .filter((href, index, list) => href && list.indexOf(href) === index)
+    .slice(0, 80));
+  const brokenLinks = [];
+  for (const href of links) {
+    try {
+      const response = await page.context().request.get(new URL(href, base + path).href, { timeout: 15000 });
+      if (response.status() >= 400) brokenLinks.push(response.status() + ' ' + href);
+    } catch (error) {
+      brokenLinks.push('ERR ' + href);
+    }
+  }
+  if (brokenLinks.length) problems.push({ path, kind: 'broken-links', detail: brokenLinks.slice(0, 10) });
+
   const metrics = await page.evaluate(() => ({
     overflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
     brokenImages: [...document.images].filter(image => (image.getAttribute('src') || '').trim() && image.complete && image.naturalWidth === 0).length,
