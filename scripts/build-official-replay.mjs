@@ -186,7 +186,10 @@ const plainUserText = (entries) => entries
 
 // 用户消息在归档里做过 Markdown 转义（\#、\*、\| 等），直接当纯文本渲染会露出源码。
 // 渲染成 HTML 之前先还原这些转义，.md 导出保持转义不变。
-const unescapeUserMarkdown = source => source.replace(/\\([\\`*_{}\[\]()#+\-.!|>~])/g, '$1');
+const unescapeUserMarkdown = source => source
+  // 归档把换行写成了行尾的反斜杠，GFM 会把它当成硬换行，表格和列表因此解析不出来。
+  .replace(/\\[ \t]*\r?\n/g, '\n')
+  .replace(/\\([\\`*_{}\[\]()#+\-.!|>~])/g, '$1');
 
 const renderUserText = (source) => {
   const renderer = new Renderer();
