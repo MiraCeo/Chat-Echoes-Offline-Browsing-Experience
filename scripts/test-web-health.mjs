@@ -74,6 +74,14 @@ for (const path of pages) {
     brokenImages: [...document.images].filter(image => (image.getAttribute('src') || '').trim() && image.complete && image.naturalWidth === 0).length,
     title: document.title,
     empty: (document.querySelector('main')?.textContent || '').trim().length < 40,
+    duplicateIds: (() => {
+      const counts = new Map();
+      for (const node of document.querySelectorAll('[id]')) counts.set(node.id, (counts.get(node.id) || 0) + 1);
+      // radix-* 是官方模板里 Radix 自动生成的 id，克隆分片时会重复，属上游产物。
+      return [...counts].filter(([id, count]) => count > 1 && !id.startsWith('radix-')).map(([id]) => id).slice(0, 8);
+    })(),
+    // alt="" 是装饰图的正确写法（旁边已有文件名），只有完全缺省才算问题。
+    imagesWithoutAlt: [...document.images].filter(image => image.getAttribute('alt') === null && !image.getAttribute('aria-label')).length,
   }));
   const real = failed.filter(entry => !entry.endsWith('/favicon.ico'));
   // “Failed to load resource” 没有对应的失败响应时，通常是页面关闭时被取消的请求（blob 解码等），
@@ -83,6 +91,8 @@ for (const path of pages) {
   if (metrics.overflow > 2) problems.push({ path, kind: 'overflow', detail: metrics.overflow + 'px' });
   if (metrics.brokenImages) problems.push({ path, kind: 'broken-images', detail: metrics.brokenImages });
   if (metrics.empty) problems.push({ path, kind: 'empty-main', detail: metrics.title });
+  if (metrics.duplicateIds.length) problems.push({ path, kind: 'duplicate-ids', detail: metrics.duplicateIds });
+  if (metrics.imagesWithoutAlt) problems.push({ path, kind: 'images-without-alt', detail: metrics.imagesWithoutAlt });
   await page.close();
 }
 await browser.close();
