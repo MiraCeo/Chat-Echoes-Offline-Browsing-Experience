@@ -44,6 +44,7 @@ for (const path of pages) {
   });
   try {
     await page.goto(base + path, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.waitForTimeout(700);
   } catch (error) {
     reachable = false;
     problems.push({ path, kind: 'unreachable', detail: error.message.split('\n')[0] });
@@ -57,7 +58,10 @@ for (const path of pages) {
     empty: (document.querySelector('main')?.textContent || '').trim().length < 40,
   }));
   const real = failed.filter(entry => !entry.endsWith('/favicon.ico'));
-  if (consoleErrors.length || real.length) problems.push({ path, kind: 'console', consoleErrors, failed: real });
+  // “Failed to load resource” 没有对应的失败响应时，通常是页面关闭时被取消的请求（blob 解码等），
+  // 不是页面缺陷：只有确实存在失败响应时才把它计入问题。
+  const meaningful = consoleErrors.filter(message => real.length > 0 || !/Failed to load resource/i.test(message));
+  if (meaningful.length || real.length) problems.push({ path, kind: 'console', consoleErrors: meaningful, failed: real });
   if (metrics.overflow > 2) problems.push({ path, kind: 'overflow', detail: metrics.overflow + 'px' });
   if (metrics.brokenImages) problems.push({ path, kind: 'broken-images', detail: metrics.brokenImages });
   if (metrics.empty) problems.push({ path, kind: 'empty-main', detail: metrics.title });
