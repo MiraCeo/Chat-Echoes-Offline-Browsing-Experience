@@ -40,6 +40,39 @@ for (const resource of archivedResources.filter(r => r.status === 'downloaded'))
   resourceBytes.set(resource.local_path, await readArchivedResource(dirname(canonicalConversationPath), resource));
 }
 const outputRoot = join(projectRoot, "replay");
+
+// 正文里的图片可能是 Markdown 带来的相对路径（图片/…、汇总配图/…），
+// 这些文件若从未归档，浏览器只会显示破损图标。改成可读的占位块，保留 alt 文本。
+const placeholderMissingImages = html => {
+  if (!/图片|汇总配图|!\[/.test(html) && !html.includes('<img')) return html;
+  let document;
+  try { ({ document } = parseHTML(html)); } catch { return html; }
+  let replaced = 0;
+  for (const image of document.querySelectorAll('img[src]')) {
+    const src = image.getAttribute('src') || '';
+    if (!src || /^[a-z][a-z0-9+.-]*:/i.test(src) || src.startsWith('/') || src.startsWith('#')) continue;
+    let candidate;
+    try { candidate = resolve(dirname(outputPage), decodeURIComponent(src.split('?')[0])); } catch { continue; }
+    if (existsSync(candidate)) continue;
+    const alt = image.getAttribute('alt') || '';
+    const replacement = document.createElement('div');
+    replacement.className = 'ceobe-missing-image';
+    replacement.setAttribute('role', 'img');
+    replacement.setAttribute('aria-label', alt || '图片未归档');
+    replacement.setAttribute('style', 'margin:12px 0;padding:14px 16px;border:1px dashed #d0d5dd;border-radius:12px;background:#fafbfc;color:#667085;font-size:13px;line-height:1.6');
+    const label = document.createElement('div');
+    label.setAttribute('style', 'font-weight:600;color:#475467');
+    label.textContent = '图片未归档';
+    const detail = document.createElement('div');
+    detail.setAttribute('style', 'margin-top:2px;color:#98a2b3');
+    detail.textContent = alt || src;
+    replacement.append(label, detail);
+    image.replaceWith(replacement);
+    replaced += 1;
+  }
+  return replaced ? document.toString() : html;
+};
+
 const outputPage = values["output-page"] ? resolve(values["output-page"]) : join(outputRoot, 'index.html');
 const relativeOutputPage = relative(outputRoot, outputPage);
 if (relativeOutputPage.startsWith('..') || isAbsolute(relativeOutputPage) || !outputPage.endsWith('.html')) {
@@ -686,7 +719,7 @@ assertHtmlSerializable(output, `Reader page ${relative(projectRoot, outputPage)}
 
 await localizeGeneratedFonts(outputRoot);
 await mkdir(dirname(outputPage), { recursive: true });
-await writeFile(outputPage, output, "utf8");
+await writeFile(outputPage, placeholderMissingImages(output), "utf8");
 
 console.log([
   `Built official replay from CEOBE JSON and official template package v${officialTemplates.manifest.version}.`,
