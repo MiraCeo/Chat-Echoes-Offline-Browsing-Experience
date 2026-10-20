@@ -184,12 +184,16 @@ const plainUserText = (entries) => entries
   .replace(/^\*Image '[^']+' not included in export \([^\n]+\)\.\*\s*/gm, "")
   .trim();
 
+// 用户消息在归档里做过 Markdown 转义（\#、\*、\| 等），直接当纯文本渲染会露出源码。
+// 渲染成 HTML 之前先还原这些转义，.md 导出保持转义不变。
+const unescapeUserMarkdown = source => source.replace(/\\([\\`*_{}\[\]()#+\-.!|>~])/g, '$1');
+
 const renderUserText = (source) => {
   const renderer = new Renderer();
   renderer.html = token => String(token.text)
     .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
   const holder = baseDocument.createElement('div');
-  holder.innerHTML = htmlSafeSvg(marked.parse(source, { renderer, gfm: true, breaks: true }));
+  holder.innerHTML = htmlSafeSvg(marked.parse(unescapeUserMarkdown(source), { renderer, gfm: true, breaks: true }));
   for (const link of holder.querySelectorAll('a[href]')) {
     const href = (link.getAttribute('href') || '').replace(/[\u0000-\u0020]/g, '');
     if (!/^(https?:|mailto:)/i.test(href)) link.removeAttribute('href');
