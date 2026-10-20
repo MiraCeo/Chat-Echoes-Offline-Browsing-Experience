@@ -108,7 +108,7 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
   const packageSummary = document.createElement('summary');
   packageSummary.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg><span>上传采集包 <em>.zip</em></span>';
   zone.style.marginBottom = '0';
-  packageDetails.append(zone);
+  packageDetails.append(packageSummary, zone);
   const block = document.createElement('div');
   block.dataset.ceobePackageBlock = '';
   block.append(packageDetails);
