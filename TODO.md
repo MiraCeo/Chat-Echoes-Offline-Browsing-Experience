@@ -4,13 +4,21 @@
 
 这里只记录尚未完成或待确认的工作。已完成的功能以 README、使用文档和 Git 历史为准，不再在此累计验收流水账。
 
+
+## 当前真实待办（核对于 2026-10-20）
+
+- **手机版 PDF 方向**：需用户决策 —— A 不做 / B 单栏紧凑版（目标 300 页内）/ C 改用单文件 HTML。
+- **登录态采集路线**：已暂停（页面只在真实用户滚动时才请求更早分页）。其附件下载子项随之暂停；若重启再做。
+- **官方 Export Data 导入**：等用户提供导出包后按真实结构写 importer（可复用 `convert-web-capture.mjs` 与归档守卫）。
+- 下方历史分区里，多数条目已决策或放弃，保留仅为追溯；不要再按它们排期。
+
 ## 官方界面适配（A）
 
 - [ ] **补齐降级组件的冻结模板**：`MemoryCite` 与 `writing_block` 卡片目前在匿名分享页上根本不渲染（已用 `capture-official-dom.mjs` 快照核实：渲染后的回合里 `data-memory`、`data-writing-block` 均为 0 次），因此**维持纯文本降级**，不为此开放登录态采集。`charts_widget_v2` 等客户端自定义组件在匿名页可用官方图表 DOM（`data-client-defined-widget="visualization"`），已由既有图表模板覆盖，无需新增冻结。
 - [ ] **DIL 渲染的使用反馈**：解析、外壳冻结与组件树渲染均已实现（本抓取 138 轮页面里 17 类组件、3521 个 DIL 节点走冻结外壳；含 `visualization` 等无法忠实表示的组件时整条回复退回 Markdown）。待办是实际阅读反馈：结构类外壳的观感、装饰组件（`icon`／`favicon`）缺失是否可接受、以及是否需要为图表类组件单独补 DIL 渲染路径。
 - [ ] **外观漂移（已按差异报告定案：不做整体再冻结）**：`capture-official-dom.mjs` 对当前分享页的报告显示，本页加载的样式族里只有 2 个冻结组件类消失（`Rx43rG_codemirror`、`cm-editor`），选择器重合为 `conversation-small` 92.6%、`root` 96.3%、`react` 88.9%、`WidgetRenderer` 99.5%，属于局部演进而非改版，因此不发起完整模板再冻结。遗留定点项：
   - [x] ~~`WidgetRenderer` 的 11 项 token 变化~~：实测只有 2 个 token 变了，且都是新增 `var(--dil-text-xl-*, <冻结原值>)` 形式的**回退兜底**；冻结包没有定义 `--dil-text-xl-*`，渲染结果不变，无需同步。
-  - [ ] 代码块：**已核实冻结包原本正确**。官方消息里的代码块仍是 CodeMirror 结构（`q9tKkq_viewer` > `cm-scroller` > `pre.cm-content.q9tKkq_readonly`），`code-evidence` 快照 2/2 回合中 `cm-editor` 出现 7 次、`CodeBlock-*` 为 0；先前「`cm-editor` 已消失」是懒加载样式表导致的误报。误迁移已回滚。若以后要支持 artifact 预览，那套 `CodeBlock-*` 外壳需单独冻结。
+  - [x] 代码块：**已核实冻结包原本正确**。官方消息里的代码块仍是 CodeMirror 结构（`q9tKkq_viewer` > `cm-scroller` > `pre.cm-content.q9tKkq_readonly`），`code-evidence` 快照 2/2 回合中 `cm-editor` 出现 7 次、`CodeBlock-*` 为 0；先前「`cm-editor` 已消失」是懒加载样式表导致的误报。误迁移已回滚。若以后要支持 artifact 预览，那套 `CodeBlock-*` 外壳需单独冻结。
   - [x] ~~用户长消息的折叠/“显示更多”~~：已定案**不钳制用户消息**；`A_HxFq_*` 所在样式表（`conversation-small-iha453gv.css`）已随包冻结并在 manifest 的 `user_message_stylesheets` 登记，仅作基线保留，不启用钳制。
 
 ## 采集路线
