@@ -77,13 +77,22 @@ def audit(directory: Path, short_threshold: int) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dir", default="data/private/pdf")
+    parser.add_argument("--dir", action="append",
+                        help="可重复；默认同时检查 data/private/pdf 与 data/private/pdf-mobile")
     parser.add_argument("--short", type=int, default=120)
     parser.add_argument("--strict", action="store_true", help="有短页也返回非零")
     values = parser.parse_args()
-    code = audit(Path(values.dir), values.short)
+    directories = [Path(item) for item in (values.dir or ["data/private/pdf", "data/private/pdf-mobile"])]
+    directories = [item for item in directories if item.exists()]
+    if not directories:
+        print("没有可审计的目录")
+        return 0
+    code = 0
+    for directory in directories:
+        print(f"== {directory}")
+        code = max(code, audit(directory, values.short))
     if values.strict and code == 0:
-        pdfs = sorted(Path(values.dir).glob("*.pdf"))
+        pdfs = sorted(pdf for directory in directories for pdf in directory.glob("*.pdf"))
         for pdf in pdfs:
             document = pymupdf.open(pdf)
             if any(len(page.get_text().strip()) < values.short for page in document):
