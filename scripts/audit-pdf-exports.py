@@ -25,7 +25,7 @@ except ImportError:  # pragma: no cover - dependency check
 EDGE_TOLERANCE = 20
 
 
-def audit(directory: Path, short_threshold: int) -> int:
+def audit(directory: Path, short_threshold: int, verbose: bool = False) -> int:
     pdfs = sorted(directory.glob("*.pdf"))
     if not pdfs:
         print(f"没有可审计的 PDF：{directory}")
@@ -59,14 +59,15 @@ def audit(directory: Path, short_threshold: int) -> int:
         document.close()
 
     size_mb = sum(pdf.stat().st_size for pdf in pdfs) / 1048576
-    print(f"PDF {len(pdfs)} 个 / {total_pages} 页 / {size_mb:.1f} MB")
-    print("字体 Top5：" + "、".join(f"{name} {count}" for name, count in
-                                    sorted(fonts.items(), key=lambda item: -item[1])[:5]))
-    print(f"越界页：{len(overflows)}" + (f"（前 5：{overflows[:5]}）" if overflows else ""))
-    if trailing_blanks:
-        print(f"末页空白：{len(trailing_blanks)} 个（{trailing_blanks[:5]}），属收尾元素溢出，不影响内容")
-    print(f"短页（<{short_threshold} 字符）：{len(short_pages)}"
-          + (f"（前 5：{short_pages[:5]}）" if short_pages else ""))
+    if verbose:
+        print("字体 Top5：" + "、".join(f"{name} {count}" for name, count in
+                                        sorted(fonts.items(), key=lambda item: -item[1])[:5]))
+        if trailing_blanks:
+            print(f"末页空白：{len(trailing_blanks)} 个（{trailing_blanks[:5]}），属收尾元素溢出，不影响内容")
+        if short_pages:
+            print(f"短页（<{short_threshold} 字符）：{len(short_pages)}，前 5：{short_pages[:5]}")
+    print(f"{directory}：PDF {len(pdfs)} 个 / {total_pages} 页 / {size_mb:.1f} MB / "
+          f"越界 {len(overflows)} / 短页 {len(short_pages)} / 末页空白 {len(trailing_blanks)}")
 
     if overflows:
         print("结论：存在越界，需检查 print.css")
@@ -81,6 +82,7 @@ def main() -> int:
                         help="可重复；默认同时检查 data/private/pdf 与 data/private/pdf-mobile")
     parser.add_argument("--short", type=int, default=120)
     parser.add_argument("--strict", action="store_true", help="有短页也返回非零")
+    parser.add_argument("--verbose", action="store_true", help="打印字体与样本页")
     values = parser.parse_args()
     directories = [Path(item) for item in (values.dir or ["data/private/pdf", "data/private/pdf-mobile"])]
     directories = [item for item in directories if item.exists()]
@@ -89,8 +91,7 @@ def main() -> int:
         return 0
     code = 0
     for directory in directories:
-        print(f"== {directory}")
-        code = max(code, audit(directory, values.short))
+        code = max(code, audit(directory, values.short, verbose=values.verbose))
     if values.strict and code == 0:
         pdfs = sorted(pdf for directory in directories for pdf in directory.glob("*.pdf"))
         for pdf in pdfs:
