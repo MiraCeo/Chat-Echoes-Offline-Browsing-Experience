@@ -151,6 +151,7 @@ Windows 快捷键：`Ctrl+K` 搜索（标题和正文），`Ctrl+Shift+S` 开关
 ```powershell
 npm run dev                                    # 另开一个窗口，保持运行
 npm run export:pdf -- --id <会话 ID>
+npm run export:pdf -- --id <会话 ID> --mobile   # 手机尺寸（100×178mm，紧凑排版）
 npm run export:pdf -- --all            # 批量导出整个档案库
 # → data/private/pdf/<会话 ID>.pdf
 ```
@@ -158,6 +159,7 @@ npm run export:pdf -- --all            # 批量导出整个档案库
 - A4、上下 16mm / 左右 14mm 页边距，导出的是**只有正文**的版本：不带浏览器页眉页脚（`127.0.0.1` 地址就是这么来的）、不带分享按钮；
 - 中文使用微软雅黑等黑体族，不会退回新宋体；表格在版心内换行，长代码行在代码框内折行；
 - 如果直接按 `Ctrl+P` 打印，页眉页脚由浏览器对话框控制，需要在弹窗里**手动取消勾选**"页眉和页脚"；
+- `--mobile` 输出到 `data/private/pdf-mobile/`：100×178mm、12px/1.55 紧凑排版，实测一条 342 页的 A4 文档在手机尺寸下为 337 页（同样可读）；
 - 导出后可以运行 `npm run audit:pdf` 自检：会报告总页数、字体、越界页与短页；越界会返回非零。
 - 导出依赖本地服务（`npm run dev`），因为要读取 `/conversations/<id>.html`。批量模式默认跳过已存在的文件（加 `--force` 重导），结束时会汇总页数与体积。
 

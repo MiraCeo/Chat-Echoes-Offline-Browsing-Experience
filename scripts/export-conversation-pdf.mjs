@@ -23,6 +23,7 @@ const { values } = parseArgs({
     base: { type: 'string' },
     out: { type: 'string' },
     force: { type: 'boolean', default: false },
+    mobile: { type: 'boolean', default: false },
   },
 });
 
@@ -33,8 +34,8 @@ const countPages = bytes => {
   return (text.match(/\/Type\s*\/Page[^s]/g) || []).length;
 };
 
-const renderOne = async (page, id, out, { force }) => {
-  if (!force) {
+const renderOne = async (page, id, out, options) => {
+  if (!options.force) {
     try {
       const existing = await stat(out);
       if (existing.size > 0) {
@@ -46,14 +47,20 @@ const renderOne = async (page, id, out, { force }) => {
   const response = await page.goto(`${base}/conversations/${id}.html`, { waitUntil: 'networkidle', timeout: 60000 });
   if (!response || !response.ok()) throw new Error(`页面不可用（HTTP ${response ? response.status() : 'no response'}）：请先运行 npm run dev`);
   await page.emulateMedia({ media: 'print' });
+  if (options.mobile) {
+    await page.addStyleTag({ content: 'body{font-size:12px !important;line-height:1.55 !important}'
+      + 'h1,h2,h3{font-size:15px !important}h4,h5{font-size:13px !important}pre,code{font-size:11px !important}' });
+  }
   await page.waitForTimeout(200);
-  await page.pdf({
-    path: out,
-    format: 'A4',
-    printBackground: true,
-    displayHeaderFooter: false,
-    margin: { top: '16mm', bottom: '16mm', left: '14mm', right: '14mm' },
-  });
+  await page.pdf(options.mobile
+    ? {
+        path: out, width: '100mm', height: '178mm', printBackground: true, displayHeaderFooter: false,
+        margin: { top: '6mm', bottom: '6mm', left: '6mm', right: '6mm' },
+      }
+    : {
+        path: out, format: 'A4', printBackground: true, displayHeaderFooter: false,
+        margin: { top: '16mm', bottom: '16mm', left: '14mm', right: '14mm' },
+      });
   const bytes = await readFile(out);
   return { id, skipped: false, pages: countPages(bytes), kb: Math.round(bytes.length / 1024) };
 };
@@ -81,10 +88,10 @@ try {
   for (const target of targets) {
     const out = resolve(targets.length === 1 && values.out
       ? values.out
-      : join(projectRoot, 'data', 'private', 'pdf', `${target.id}.pdf`));
+      : join(projectRoot, 'data', 'private', values.mobile ? 'pdf-mobile' : 'pdf', `${target.id}.pdf`));
     await mkdir(dirname(out), { recursive: true });
     try {
-      const result = await renderOne(page, target.id, out, { force: values.force });
+      const result = await renderOne(page, target.id, out, { force: values.force, mobile: values.mobile });
       results.push({ ...result, title: target.title });
       console.log(`${result.skipped ? 'skip' : 'pdf '} ${target.id.slice(0, 8)}  ${String(result.pages).padStart(4)} 页  ${String(result.kb).padStart(6)} KB  ${target.title || ''}`);
     } catch (error) {
