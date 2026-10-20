@@ -15,6 +15,13 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 不要与导入、删除等写入任务并发手动构建。服务使用 `scripts/workspace-mutation.mjs` 协调写入；维护脚本若修改派生工作区，也应遵守同一约定。
 
+## 打印（PDF）样式约束
+
+- 打印规则写在 `official-templates/assets/print.css`（`media="print"`），屏幕渲染不受影响；
+- **改规则要对着真实 DOM 改**：代码块是官方 CodeMirror 结构，内容宽度来自 `min-content`，只改 `width` 无效，必须放开 `min-width` 并让 `.cm-line` 折行；
+- 页眉页脚（`127.0.0.1` 地址）由**浏览器打印对话框**控制，CSS 无法去除；需要干净 PDF 就用 `npm run export:pdf`（Playwright，`displayHeaderFooter: false`）；
+- 宽表格在版心内换行、图片限高 210mm、代码块 `break-inside: avoid`，这些都已在 print.css 中；新增规则时优先复用这些选择器，避免再写一套。
+
 ## 代码与数据边界
 
 - `src/`：导入解析等核心逻辑。
