@@ -77,7 +77,7 @@ node scripts/test-copy-content.mjs
 | 导入页 UI | `test-import-ui-browser.mjs`：采集包入口默认收起、展开出现上传区且尺寸合理、拖入高亮可撤销、导入说明可折叠、分享链接入口仍在、无横向溢出与 `pageerror`；需要本地服务（`CEOBE_TEST_URL` 可覆盖地址） |
 | 全站巡检 | `npm run test:web`（`test-web-health.mjs`）：逐页检查控制台错误、HTTP 失败、破图与横向溢出；需要本地服务，输出 JSON 问题清单，发现问题时退出码为 1 |
 | 档案完整性 | `npm run verify:archive`：逐个快照检查原始载荷是否在、canonical 是否可解析、必需字段是否齐全、每个消息是否都有节点、是否只有一个根节点；有问题退出码为 1 |
-| 一次跑完 | `npm run check`：先审计已导出的 PDF（越界即失败），再巡检全站页面；巡检查询本地服务，所以需要先 `npm run dev` |
+| 一次跑完 | `npm run check`：先校验档案完整性，再审计已导出的 PDF（越界即失败），最后巡检全站页面；巡检查询本地服务，所以需要先 `npm run dev` |
 | 登录态采集转换 | `test-convert-web-capture.mjs`：会话响应挑选（优先会话载荷）、按 `create_time` 排序、线性节点链、隐藏记录保留但不可见、DIL 与附件指针保留、`usable_linear` 明确标注、导入目标仍过归档守卫 |
 | 聊天操作 | `test-chat-actions-store.mjs`、`test-chat-actions-browser.mjs` |
 | 阅读更多 | `test-reader-actions-browser.mjs` |
