@@ -1,10 +1,12 @@
 import { restoreKatexFonts, localizeGeneratedFonts } from './local-katex-fonts.mjs';
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { existsSync, readdirSync } from "node:fs";
 import { createHash } from 'node:crypto';
 import { prepareLocalSidebar } from './local-sidebar.mjs';
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { readArchivedResource, assetKey, resourceMatches } from './archive-resources.mjs';
 import { marked, Renderer } from "marked";
+import { parseHTML } from 'linkedom';
 import { renderAssistantMarkdown } from "./render-markdown.mjs";
 import { createOfficialCitations } from "./official-citations.mjs";
 import { buildFilePreviews } from "./build-file-previews.mjs";
@@ -44,16 +46,23 @@ const outputRoot = join(projectRoot, "replay");
 // 正文里的图片可能是 Markdown 带来的相对路径（图片/…、汇总配图/…），
 // 这些文件若从未归档，浏览器只会显示破损图标。改成可读的占位块，保留 alt 文本。
 const placeholderMissingImages = html => {
-  if (!/图片|汇总配图|!\[/.test(html) && !html.includes('<img')) return html;
+  if (!html.includes('<img')) return html;
   let document;
   try { ({ document } = parseHTML(html)); } catch { return html; }
+  // 已归档资源的文件名以 file_ 开头，先扫一遍；缺失的图片不可能有真实字节。
+  const resourcesDir = join(outputRoot, 'archive-resources');
+  const localFiles = existsSync(resourcesDir) ? readdirSync(resourcesDir) : [];
+  const hasLocal = key => localFiles.some(name => name.startsWith(key));
   let replaced = 0;
-  for (const image of document.querySelectorAll('img[src]')) {
+  for (const image of [...document.querySelectorAll('img')]) {
+    const key = image.getAttribute('data-ceobe-local-resource');
     const src = image.getAttribute('src') || '';
-    if (!src || /^[a-z][a-z0-9+.-]*:/i.test(src) || src.startsWith('/') || src.startsWith('#')) continue;
-    let candidate;
-    try { candidate = resolve(dirname(outputPage), decodeURIComponent(src.split('?')[0])); } catch { continue; }
-    if (existsSync(candidate)) continue;
+    const missingLocal = key ? !hasLocal(key) : false;
+    let missingRelative = false;
+    if (!key && src && !/^[a-z][a-z0-9+.-]*:/i.test(src) && !src.startsWith('/')) {
+      try { missingRelative = !existsSync(resolve(dirname(outputPage), decodeURIComponent(src.split('?')[0]))); } catch { missingRelative = false; }
+    }
+    if (!missingLocal && !missingRelative) continue;
     const alt = image.getAttribute('alt') || '';
     const replacement = document.createElement('div');
     replacement.className = 'ceobe-missing-image';
@@ -64,11 +73,16 @@ const placeholderMissingImages = html => {
     label.setAttribute('style', 'font-weight:600;color:#475467');
     label.textContent = '图片未归档';
     const detail = document.createElement('div');
-    detail.setAttribute('style', 'margin-top:2px;color:#98a2b3');
-    detail.textContent = alt || src;
+    detail.setAttribute('style', 'margin-top:2px;color:#98a2b3;word-break:break-all');
+    detail.textContent = alt || src || key || '该图片在原始分享页中不可获取';
     replacement.append(label, detail);
     image.replaceWith(replacement);
     replaced += 1;
+  }
+  if (process.env.CEOBE_DEBUG_IMAGES) {
+    const imgs = [...document.querySelectorAll('img')];
+    console.error('[debug] imgs', imgs.length, 'withKey', imgs.filter(i => i.getAttribute('data-ceobe-local-resource')).length,
+      'replaced', replaced, 'localFiles', localFiles.length);
   }
   return replaced ? document.toString() : html;
 };
