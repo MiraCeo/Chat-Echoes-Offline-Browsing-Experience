@@ -15,6 +15,13 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 不要与导入、删除等写入任务并发手动构建。服务使用 `scripts/workspace-mutation.mjs` 协调写入；维护脚本若修改派生工作区，也应遵守同一约定。
 
+## 构建与预览
+
+- `npm run build` 输出到 `dist/`（`--emptyOutDir`，会重建整个目录）；
+- 构建后 HTML 引用的是**带哈希的**资源（`/assets/print-<hash>.css`、`/assets/link-import-<hash>.js`），
+  直接请求不带哈希的旧路径会命中 SPA 回退、返回 `index.html`——这是预期行为，不是资源缺失；
+- `npm run preview` 默认端口是 **4173**（`npm run dev` 才是 5173），检查生产产物时别打错端口。
+
 ## 打印（PDF）样式约束
 
 - 打印规则写在 `official-templates/assets/print.css`（`media="print"`），屏幕渲染不受影响；
