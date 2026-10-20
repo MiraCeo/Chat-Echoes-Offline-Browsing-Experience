@@ -27,6 +27,7 @@ const { values } = parseArgs({ options: {
   "sample-assets": { type: "boolean", default: false },
   "output-page": { type: "string" },
   "preserve-output": { type: "boolean", default: false },
+  "allow-wipe": { type: "boolean", default: false },
   library: { type: "string" },
   "entry-id": { type: "string" },
 } });
@@ -656,7 +657,16 @@ for (const stylesheetName of chartStylesheetNames) {
   existingStylesheets.add(stylesheetName);
 }
 
-if (!values['preserve-output']) await rm(outputRoot, { recursive: true, force: true });
+if (!values['preserve-output']) {
+  // 单页构建（--input）却清空整个输出目录，是能一次删掉所有页面的操作：默认拒绝。
+  const wouldWipe = existsSync(outputRoot) && readdirSync(outputRoot).length > 0;
+  if (wouldWipe && values.input && !values['allow-wipe'] && relativeOutputPage !== 'index.html') {
+    console.error('拒绝执行：这是一次单页构建，但会清空整个输出目录 ' + relative(projectRoot, outputRoot) + '。'
+      + '请加 --preserve-output 只重建这一页；确实要全量重建时加 --allow-wipe。');
+    process.exit(2);
+  }
+  await rm(outputRoot, { recursive: true, force: true });
+}
 await mkdir(outputAssets, { recursive: true });
 await mkdir(join(outputRoot, 'archive-resources'), { recursive: true });
 for (const [path, bytes] of resourceBytes) await writeFile(join(outputRoot, 'archive-resources', basename(path)), bytes);
