@@ -22,7 +22,8 @@
     "dev": "vite replay --config vite.config.mjs",
     "build": "vite build replay --config vite.config.mjs --outDir ../dist --emptyOutDir",
     "preview": "vite preview replay --config vite.config.mjs --outDir ../dist --host 127.0.0.1",
-    "import:share-package": "node scripts/import-share-package.mjs"
+    "import:share-package": "node scripts/import-share-package.mjs",
+    "test:web": "node scripts/test-web-health.mjs"
   },
   "dependencies": {
     "dompurify": "^3.2.6",
