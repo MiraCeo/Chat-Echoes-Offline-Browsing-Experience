@@ -193,8 +193,14 @@ const unescapeUserMarkdown = source => source
 
 const renderUserText = (source) => {
   const renderer = new Renderer();
-  renderer.html = token => String(token.text)
-    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+  renderer.html = token => {
+    const text = String(token.text);
+    // 用户消息里偶尔出现 <p align="center"> 这类排版标签：白名单放行，其余仍然转义。
+    const allowed = /<\/?(p|br|em|strong|b|i|u|sub|sup)(\s+align=("[^"]*"|'[^']*'))?\s*\/?>/gi;
+    const leftover = text.replace(allowed, '');
+    if (!leftover.includes('<') && !leftover.includes('>')) return text;
+    return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+  };
   const holder = baseDocument.createElement('div');
   holder.innerHTML = htmlSafeSvg(marked.parse(unescapeUserMarkdown(source), { renderer, gfm: true, breaks: true }));
   for (const link of holder.querySelectorAll('a[href]')) {
