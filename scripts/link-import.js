@@ -36,6 +36,15 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
   status.setAttribute('aria-live', 'polite');
   status.setAttribute('aria-atomic', 'true');
   form.insertAdjacentElement('afterend', status);
+
+  // 采集包拖拽的可见引导：先标出"这里可以拖"，再补一行说明。
+  form.style.borderStyle = 'dashed';
+  form.title = '粘贴分享链接，或把扩展导出的 .zip 采集包拖到这里';
+  const packageHint = document.createElement('div');
+  packageHint.dataset.ceobePackageHint = '';
+  packageHint.textContent = '也可以直接把扩展导出的 .zip 采集包拖到输入框里导入';
+  Object.assign(packageHint.style, { marginTop: '6px', fontSize: '12px', lineHeight: '1.6', color: '#667085' });
+  status.insertAdjacentElement('beforebegin', packageHint);
   const actions = document.createElement('div');
   actions.className = 'ceobe-import-actions';
   status.insertAdjacentElement('afterend', actions);
