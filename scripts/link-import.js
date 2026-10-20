@@ -5,13 +5,13 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
   if (!form || !input || !submit) throw new Error('Official import composer is incomplete.');
 
   // 采集包拖拽：把扩展导出的 .zip 拖到表单上即可导入。
-  form.addEventListener('dragover', event => { if (event.dataTransfer && event.dataTransfer.types.includes('Files')) { event.preventDefault(); form.style.outline = '2px dashed #1f2937'; } });
-  form.addEventListener('dragleave', () => { form.style.outline = ''; });
+  form.addEventListener('dragover', event => { if (event.dataTransfer && event.dataTransfer.types.includes('Files')) { event.preventDefault(); highlight(true); } });
+  form.addEventListener('dragleave', () => { highlight(false); });
   form.addEventListener('drop', async event => {
     const file = event.dataTransfer && event.dataTransfer.files[0];
     if (!file) return;
     event.preventDefault();
-    form.style.outline = '';
+    highlight(false);
     if (!/\.zip$/i.test(file.name)) { showStatus('请拖入扩展导出的 .zip 采集包。', 'error'); return; }
     showStatus('正在导入采集包…', 'working');
     try {
@@ -37,13 +37,18 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
   status.setAttribute('aria-atomic', 'true');
   form.insertAdjacentElement('afterend', status);
 
-  // 采集包拖拽的可见引导：先标出"这里可以拖"，再补一行说明。
-  form.style.borderStyle = 'dashed';
-  form.title = '粘贴分享链接，或把扩展导出的 .zip 采集包拖到这里';
+  // 拖拽反馈只在拖入时出现：常驻虚线边框会和圆角输入框的质感冲突。
+  const highlight = on => {
+    form.style.transition = 'box-shadow .16s ease, background-color .16s ease';
+    form.style.boxShadow = on ? '0 0 0 3px rgba(37, 99, 235, .30)' : '';
+    form.style.backgroundColor = on ? 'rgba(37, 99, 235, .04)' : '';
+  };
   const packageHint = document.createElement('div');
   packageHint.dataset.ceobePackageHint = '';
-  packageHint.textContent = '也可以直接把扩展导出的 .zip 采集包拖到输入框里导入';
-  Object.assign(packageHint.style, { marginTop: '6px', fontSize: '12px', lineHeight: '1.6', color: '#667085' });
+  packageHint.textContent = '也可以把扩展导出的 .zip 采集包直接拖进来';
+  Object.assign(packageHint.style, {
+    marginTop: '10px', fontSize: '12px', lineHeight: '1.6', color: '#98a2b3', textAlign: 'center', letterSpacing: '.01em',
+  });
   status.insertAdjacentElement('beforebegin', packageHint);
   const actions = document.createElement('div');
   actions.className = 'ceobe-import-actions';
