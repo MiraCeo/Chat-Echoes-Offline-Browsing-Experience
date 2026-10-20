@@ -74,12 +74,40 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
     setZone(false);
     await uploadPackage(event.dataTransfer.files[0]);
   });
-  form.insertAdjacentElement('beforebegin', zone);
   const divider = document.createElement('div');
   divider.dataset.ceobePackageDivider = '';
-  Object.assign(divider.style, { display: 'flex', alignItems: 'center', gap: '12px', margin: '0 0 14px', color: '#98a2b3', fontSize: '12px' });
+  Object.assign(divider.style, { display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0 14px', color: '#98a2b3', fontSize: '12px' });
   divider.innerHTML = '<span style="flex:1;height:1px;background:#eaecf0"></span><em style="font-style:normal">或</em><span style="flex:1;height:1px;background:#eaecf0"></span>';
-  form.insertAdjacentElement('beforebegin', divider);
+
+  // 顺序：分享链接输入 → 折叠说明 → 或 → 采集包上传区。
+  zone.style.marginBottom = '0';
+  const block = document.createElement('div');
+  block.dataset.ceobePackageBlock = '';
+  block.append(divider, zone);
+
+  const parent = form.parentElement;
+  // 页面把两行说明包在 .ceobe-import-description 里（生成器产出），整体折叠比拆散更稳。
+  const description = parent.querySelector('.ceobe-import-description')
+    || [...parent.querySelectorAll('div, p')].find(node => node.children.length > 0
+      && !node.closest('[data-ceobe-package-block]')
+      && /导入公开分享链接/.test(node.textContent || ''));
+  const explainers = description ? [description] : [];
+  let tail = form;
+  if (explainers.length) {
+    const details = document.createElement('details');
+    details.dataset.ceobeImportHelp = '';
+    Object.assign(details.style, { marginTop: '10px' });
+    const summary = document.createElement('summary');
+    summary.textContent = '导入说明';
+    Object.assign(summary.style, { cursor: 'pointer', fontSize: '12px', color: '#98a2b3', listStyle: 'none' });
+    const body = document.createElement('div');
+    Object.assign(body.style, { marginTop: '6px', fontSize: '12px', lineHeight: '1.7', color: '#98a2b3' });
+    for (const node of explainers) body.append(node);
+    details.append(summary, body);
+    form.insertAdjacentElement('afterend', details);
+    tail = details;
+  }
+  tail.insertAdjacentElement('afterend', block);
   const actions = document.createElement('div');
   actions.className = 'ceobe-import-actions';
   status.insertAdjacentElement('afterend', actions);
