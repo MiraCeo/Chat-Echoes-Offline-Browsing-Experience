@@ -65,6 +65,27 @@
   }
   .ceobe-code-block, [data-ceobe-code-body] { break-inside: avoid; }
 
+  /* 13. 官方代码块是固定高度的 CodeMirror 容器，超出部分被裁掉；打印时放开高度。 */
+  .q9tKkq_viewer, [class*="cm-editor"], [class*="cm-scroller"], [class*="cm-content"], [data-ceobe-code-body] {
+    height: auto !important; max-height: none !important; overflow: visible !important;
+  }
+
+  /* 14. CodeMirror 的宽度和高度是构建时按官方尺寸写死的（838×52），打印时必须放回自适应，
+         否则内容既超宽又被裁高。 */
+  .q9tKkq_viewer, .q9tKkq_viewer *, [class*="cm-"], [data-ceobe-code-body], [data-ceobe-code-body] * {
+    width: auto !important; max-width: 100% !important;
+    height: auto !important; max-height: none !important;
+    white-space: pre-wrap !important; overflow: visible !important;
+  }
+
+  /* 15. CodeMirror 的内容宽度来自 min-content（构建时按官方 838px 定死），只改 width 没用，
+         必须放开 min-width 并让每一行自己折行。 */
+  [class*="cm-content"], [class*="cm-line"], .q9tKkq_readonly {
+    min-width: 0 !important; width: auto !important; max-width: 100% !important;
+    white-space: pre-wrap !important; overflow-wrap: anywhere !important; word-break: break-word !important;
+  }
+  [class*="cm-content"] { display: block !important; }
+
   /* 8. Screen-only adornments inside content. */
   [data-ceobe-jump], [data-toc-item-index] { text-decoration: none !important; }
 }
