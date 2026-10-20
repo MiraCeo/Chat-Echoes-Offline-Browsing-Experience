@@ -4,6 +4,36 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
   const submit = document.querySelector('[data-ceobe-import-submit]');
   if (!form || !input || !submit) throw new Error('Official import composer is incomplete.');
 
+  // 统一在这里定义导入页的附加样式（折叠标题、上传入口、上传区）。
+  if (!document.getElementById('ceobe-package-styles')) {
+    const style = document.createElement('style');
+    style.id = 'ceobe-package-styles';
+    style.textContent = `
+      [data-ceobe-import-help] summary { display:flex; align-items:center; gap:6px; width:max-content;
+        font-size:12px; line-height:20px; color:#98a2b3; cursor:pointer; list-style:none; border-radius:6px;
+        transition:color .16s ease; }
+      [data-ceobe-import-help] summary::-webkit-details-marker { display:none; }
+      [data-ceobe-import-help] summary:hover { color:#475467; }
+      [data-ceobe-import-help] summary:focus-visible { outline:2px solid rgba(37,99,235,.45); outline-offset:3px; }
+      [data-ceobe-import-help] summary::before { content:''; width:5px; height:5px; border-right:1.5px solid currentColor;
+        border-bottom:1.5px solid currentColor; transform:rotate(-45deg); transition:transform .16s ease; }
+      [data-ceobe-import-help][open] summary::before { transform:rotate(45deg); }
+      [data-ceobe-package-details] summary { display:flex; align-items:center; gap:8px; width:max-content;
+        margin-top:14px; font-size:13px; line-height:20px; color:#667085; cursor:pointer; list-style:none;
+        border-radius:6px; transition:color .16s ease; }
+      [data-ceobe-package-details] summary::-webkit-details-marker { display:none; }
+      [data-ceobe-package-details] summary:hover { color:#344054; }
+      [data-ceobe-package-details] summary:focus-visible { outline:2px solid rgba(37,99,235,.45); outline-offset:3px; }
+      [data-ceobe-package-details] summary em { font-style:normal; color:#98a2b3; }
+      [data-ceobe-package-details][open] summary { margin-bottom:10px; }
+      [data-ceobe-package-zone] { padding:22px 16px; gap:8px; border-color:#d8dee4; background-color:#fcfcfd;
+        transition:border-color .16s ease, background-color .16s ease; }
+      [data-ceobe-package-zone]:hover { border-color:#b9c0c8; background-color:#f8f9fb; }
+    `;
+    document.head.append(style);
+  }
+
+
   // 采集包：拖入表单、拖入上传区、或点选文件，都走同一个导入接口。
   const uploadPackage = async file => {
     if (!file) return;
