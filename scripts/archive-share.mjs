@@ -1,5 +1,5 @@
-import { mkdir, writeFile, readFile } from 'node:fs/promises';
-import { resolve, join } from 'node:path';
+import { mkdir, writeFile, readFile, rm, rmdir } from 'node:fs/promises';
+import { resolve, join, dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
@@ -8,7 +8,7 @@ import { exportConversationMarkdown } from './export-conversation-markdown.mjs';
 import { resolveShareResources } from './resolve-share-resources.mjs';
 import { assertSnapshotTarget, formatSnapshotPlan, planSnapshot } from './archive-guard.mjs';
 
-const { values, positionals } = parseArgs({ allowPositionals: true, options: { 'archive-root': { type: 'string' }, 'skip-library': { type: 'boolean', default: false } } });
+const { values, positionals } = parseArgs({ allowPositionals: true, options: { 'archive-root': { type: 'string' }, 'skip-library': { type: 'boolean', default: false }, 'keep-failed': { type: 'boolean', default: false } } });
 if (positionals.length !== 1) throw new Error('Usage: npm run archive:share -- <https://chatgpt.com/share/id>');
 const url = new URL(positionals[0]);
 if (url.protocol !== 'https:' || url.hostname !== 'chatgpt.com' || url.username || url.password || !/^\/share\/[\w-]+\/?$/.test(url.pathname)) throw new Error('Expected a public ChatGPT share URL');
@@ -21,22 +21,39 @@ const plan = planSnapshot({ shareId, capturedAt, snapshotRoot });
 await assertSnapshotTarget(plan.dir, { snapshotRoot });
 console.log(formatSnapshotPlan(plan));
 const folder = plan.dir;
-await mkdir(folder, { recursive: true });
-await mkdir(join(folder, 'raw'));
+// 先取回页面再落盘：取不到就不该在 archive/ 里留下空快照。
 const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(30000) });
 const bytes = Buffer.from(await response.arrayBuffer());
+await mkdir(folder, { recursive: true });
+await mkdir(join(folder, 'raw'));
 await writeFile(join(folder, 'raw', 'share.html'), bytes, { flag: 'wx' });
 const capture = { source_url: url.href, captured_at: capturedAt, status: response.status,
   content_type: response.headers.get('content-type'), bytes: bytes.length,
   sha256: createHash('sha256').update(bytes).digest('hex'),
   scope: 'Original HTTP HTML response. Conversation assets are tracked separately in import-report.json; citation websites and application runtime are not mirrored.' };
 await writeFile(join(folder, 'capture.json'), JSON.stringify(capture, null, 2), { flag: 'wx' });
-if (!response.ok) throw new Error(`HTTP ${response.status}; response preserved in ${folder}`);
+// 失败时默认不留快照：假链接或失效链接不该在档案里占位。需要排查时加 --keep-failed。
+const keepFailed = values['keep-failed'] === true;
+const discard = async error => {
+  if (keepFailed) return null;
+  await rm(folder, { recursive: true, force: true });
+  // 连空的 <会话 id> 目录一起收掉，别在 archive/ 里留下无快照的壳。
+  try { await rmdir(dirname(folder)); } catch { /* 非空或被占用则保留 */ }
+  return new Error(`${error.message}（未保留快照；加 --keep-failed 可保留原始页面便于排查）`);
+};
+if (!response.ok) {
+  const error = await discard(new Error(`HTTP ${response.status}`));
+  if (error) throw error;
+  throw new Error(`HTTP ${response.status}; response preserved in ${folder}`);
+}
 const run = spawnSync(process.env.CEOBE_PYTHON || 'python', ['scripts/import-chatgpt-share.py', join(folder, 'raw', 'share.html'),
   '--output', join(folder, 'conversation.ceobe.json'), '--source-url', url.href], { encoding: 'utf8', windowsHide: true });
 if (run.status !== 0) {
-  await writeFile(join(folder, 'import-error.txt'), run.stderr || String(run.error || 'Import failed'), { flag: 'wx' });
-  throw new Error(`Import failed; original response retained in ${folder}: ${run.stderr || run.error}`);
+  const failure = new Error(run.stderr || String(run.error || 'Import failed'));
+  const error = await discard(failure);
+  if (error) throw error;
+  await writeFile(join(folder, 'import-error.txt'), failure.message, { flag: 'wx' });
+  throw new Error(`Import failed; original response retained in ${folder}: ${failure.message}`);
 }
 const conversation = JSON.parse(await readFile(join(folder, 'conversation.ceobe.json'), 'utf8'));
 console.log('Resolving public share attachment URLs in an anonymous browser…');
