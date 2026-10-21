@@ -2,6 +2,8 @@
 
 [返回 README](../README.md) · [使用指南](usage.md) · [架构说明](architecture.md)
 
+本页依次：本地开发（含端口被占用时的处理）→ 构建与预览 → 打印（PDF）样式约束 → 数据边界 → 测试 → 维护与提交。
+
 ## 本地开发
 
 运行环境和首次安装步骤见[使用指南](usage.md)。使用真实档案开发时，先完成备份。
@@ -15,7 +17,7 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 不要与导入、删除等写入任务并发手动构建。服务使用 `scripts/workspace-mutation.mjs` 协调写入；维护脚本若修改派生工作区，也应遵守同一约定。
 
-## 端口被系统占用时
+### 端口被系统占用时
 
 Windows 有时会把一段端口列为保留区（`netsh interface ipv4 show excludedportrange protocol=tcp` 可查）。
 本会话中 **5150–5249** 被整段保留，导致 `npm run dev` 报 `listen EACCES 127.0.0.1:5173`。临时办法：
@@ -40,6 +42,7 @@ node scripts/test-web-health.mjs --base http://127.0.0.1:5300
 - **改规则要对着真实 DOM 改**：代码块是官方 CodeMirror 结构，内容宽度来自 `min-content`，只改 `width` 无效，必须放开 `min-width` 并让 `.cm-line` 折行；
 - 页眉页脚（`127.0.0.1` 地址）由**浏览器打印对话框**控制，CSS 无法去除；需要干净 PDF 就用 `npm run export:pdf`（Playwright，`displayHeaderFooter: false`）；
 - 宽表格在版心内换行、图片限高 210mm、代码块 `break-inside: avoid`，这些都已在 print.css 中；新增规则时优先复用这些选择器，避免再写一套。
+- 导出脚本是 `scripts/export-conversation-pdf.mjs`（`--id` / `--all` / `--mobile` / `--document`）；`--document` 的首页页眉与每页页码由 `scripts/pdf-stamp.py`（PyMuPDF）在**导出后盖章**——版式留白落在页面边距之外，DOM 里画不进去，负边距也会被外壳夹住。
 
 ## 代码与数据边界
 
