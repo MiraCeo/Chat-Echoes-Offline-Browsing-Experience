@@ -15,6 +15,18 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 不要与导入、删除等写入任务并发手动构建。服务使用 `scripts/workspace-mutation.mjs` 协调写入；维护脚本若修改派生工作区，也应遵守同一约定。
 
+## 端口被系统占用时
+
+Windows 有时会把一段端口列为保留区（`netsh interface ipv4 show excludedportrange protocol=tcp` 可查）。
+本会话中 **5150–5249** 被整段保留，导致 `npm run dev` 报 `listen EACCES 127.0.0.1:5173`。临时办法：
+
+```powershell
+npx vite replay --config vite.config.mjs --port 5300 --strictPort
+# 然后所有命令带上新端口
+npm run export:pdf -- --id <id> --base http://127.0.0.1:5300
+node scripts/test-web-health.mjs --base http://127.0.0.1:5300
+```
+
 ## 构建与预览
 
 - `npm run build` 输出到 `dist/`（`--emptyOutDir`，会重建整个目录）；
