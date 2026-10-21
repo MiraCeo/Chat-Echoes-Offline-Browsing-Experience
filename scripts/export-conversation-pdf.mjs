@@ -48,8 +48,12 @@ const renderOne = async (page, id, out, options) => {
   if (!response || !response.ok()) throw new Error(`页面不可用（HTTP ${response ? response.status() : 'no response'}）：请先运行 npm run dev`);
   await page.emulateMedia({ media: 'print' });
   if (options.mobile) {
-    await page.addStyleTag({ content: 'body{font-size:12px !important;line-height:1.55 !important}'
-      + 'h1,h2,h3{font-size:15px !important}h4,h5{font-size:13px !important}pre,code{font-size:11px !important}' });
+    // print.css 自带 @page 16mm/14mm 边距，在 100mm 宽的纸上会吃掉大半版心；
+    // 手机配置里用更小的页边距覆盖它，同时略微收紧行高。
+    await page.addStyleTag({ content: '@page{margin:5mm 5mm !important}'
+      + 'body{font-size:12px !important;line-height:1.5 !important}'
+      + 'h1,h2,h3{font-size:15px !important}h4,h5{font-size:13px !important}pre,code{font-size:11px !important}'
+      + 'p,li,blockquote{margin-top:.35em !important;margin-bottom:.35em !important}' });
   }
   await page.waitForTimeout(200);
   await page.pdf(options.mobile
