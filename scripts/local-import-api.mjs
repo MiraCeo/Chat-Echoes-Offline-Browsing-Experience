@@ -5,6 +5,12 @@ import {spawn} from 'node:child_process';
 import {acquireMutation} from './workspace-mutation.mjs';
 import {assertSafeTree} from './chat-store.mjs';
 const bad=(message,status=400)=>Object.assign(new Error(message),{status});
+const summarize=log=>{
+ const lines=String(log||'').split('\n').map(l=>l.trim()).filter(Boolean);
+ const key=lines.filter(l=>/fetch failed|ECONNRESET|ETIMEDOUT|EAI_AGAIN|Error|Traceback|失败/i.test(l)).at(-1);
+ return (key||lines.at(-1)||'未知错误').replace(/\s+/g,' ').slice(0,180);
+};
+
 export const runLocal=(root,args)=>new Promise((yes,no)=>{const child=spawn(process.execPath,args,{cwd:root,windowsHide:true,stdio:['ignore','pipe','pipe']});let log='';for(const s of [child.stdout,child.stderr])s.on('data',b=>log=(log+b).slice(-16000));child.on('error',no);child.on('close',code=>code===0?yes():no(new Error(log||'本地生成进程失败')))});
 async function exists(p){try{await lstat(p);return true}catch(e){if(e.code==='ENOENT')return false;throw e}}
 async function atomic(file,data){const tmp=file+'.'+randomUUID()+'.tmp';try{await writeFile(tmp,JSON.stringify(data,null,2));await rename(tmp,file)}finally{await rm(tmp,{force:true})}}
@@ -59,7 +65,8 @@ if(!/^application\/json(?:;|$)/i.test(req.headers['content-type']||''))throw bad
    if(mode==='production')await publish();
    const result={ok:true,shareId:id,title:entry.title,messageCount:entry.message_count,turnCount:entry.turn_count,userTurnCount:entry.user_turn_count,assistantTurnCount:entry.assistant_turn_count,resourceCounts:entry.resource_counts,page:'/conversations/'+id+'.html'};
    record.state='complete';record.result=result;await atomic(file,record);return send(200,result);
-  }catch(e){console.error('Local import:',e.message);return send(e.status||500,{error:e.status?e.message:record?.captured?'归档已保存，但页面更新失败。重试只更新页面，不重复抓取。':'导入未完成，请检查分享链接、网络和本地服务日志。',archived:!!record?.captured,retryPublish:!!record?.captured})}
+  }catch(e){console.error('Local import:',e.message);return send(e.status||500,{error:e.status?e.message:record?.captured?'归档已保存，但页面更新失败。重试只更新页面，不重复抓取。':
+    '导入未完成：' + summarize(e.message),archived:!!record?.captured,retryPublish:!!record?.captured})}
   finally{if(release)await release()}
  };
 }

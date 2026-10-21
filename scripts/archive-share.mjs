@@ -22,7 +22,24 @@ await assertSnapshotTarget(plan.dir, { snapshotRoot });
 console.log(formatSnapshotPlan(plan));
 const folder = plan.dir;
 // 先取回页面再落盘：取不到就不该在 archive/ 里留下空快照。
-const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(30000) });
+// chatgpt.com 偶尔在 TLS 握手阶段被重置（ECONNRESET），重试几次比直接失败合理。
+const fetchWithRetry = async (target, attempts = 3) => {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await fetch(target, { redirect: 'error', signal: AbortSignal.timeout(30000) });
+    } catch (error) {
+      lastError = error;
+      const transient = /ECONNRESET|ETIMEDOUT|EAI_AGAIN|socket disconnected|fetch failed/i
+        .test(`${error.message} ${error.cause?.code || ''} ${error.cause?.message || ''}`);
+      if (!transient || attempt === attempts) break;
+      console.warn(`抓取失败（第 ${attempt}/${attempts} 次）：${error.cause?.code || error.message}，${attempt}s 后重试…`);
+      await new Promise(done => setTimeout(done, attempt * 1000));
+    }
+  }
+  throw lastError;
+};
+const response = await fetchWithRetry(url);
 const bytes = Buffer.from(await response.arrayBuffer());
 await mkdir(folder, { recursive: true });
 await mkdir(join(folder, 'raw'));

@@ -67,6 +67,6 @@
 | 命令 | 当前结果 |
 |---|---|
 | `npm test` | exit 0（含 22 个浏览器测试） |
-| `npm run check` | exit 0：27 个分享 / 34 个快照 / 11354 条消息、PDF 两个目录零越界、33 页巡检零问题 |
+| `npm run check` | exit 0：28 个分享 / 35 个快照 / 11505 条消息、PDF 两个目录零越界、33 页巡检零问题 |
 | `npm run build` | exit 0，`dist/` 约 1020 个文件 |
 | `npm run preview` + 巡检 | 33 页 / 0 问题 |

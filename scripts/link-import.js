@@ -233,7 +233,10 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
               body: JSON.stringify({ url: link, requestId: requestId(link) }),
             });
             const result = await response.json().catch(() => null);
-            if (!response.ok || !result?.ok) throw new Error(result?.error || `HTTP ${response.status}`);
+            if (!response.ok || !result?.ok) {
+              const detail = String(result?.error || '').replace(/\s+/g, ' ').trim();
+              throw new Error(detail ? `${detail}（HTTP ${response.status}）` : `HTTP ${response.status}`);
+            }
             requests.delete(link);
             try { sessionStorage.removeItem('ceobe.import-request:' + link); } catch {}
             results.push({ link, ok: true, result });
