@@ -220,6 +220,20 @@ npm run export:pdf -- --all            # 批量导出整个档案库
 
 检查归档的 `import-report.json` 与资源状态。“结构检查通过”不代表所有附件都已下载。分享页面未提供的消息、受限附件及外部应用内容无法保证恢复；引用网站不会被递归保存。
 
+### 导入失败后没有留下快照
+
+分享链接抓取失败（链接失效、被作者删除、网络中断、页面无法解码）时，默认**不会**在 `archive/` 里留下快照，
+连空的会话目录也会一并删除——避免档案里出现打不开的假条目。
+
+需要排查原始页面时，用命令行加 `--keep-failed` 保留：
+
+```powershell
+npm run archive:share -- https://chatgpt.com/share/<share-id> --keep-failed
+```
+
+保留的快照里会有 `capture.json`、原始 `raw/share.html`，解码失败时还有 `import-error.txt`。
+确认问题解决后，这属于诊断快照，可以按需清理；正常导入不会进入这条路径。
+
 ### 只读提示、导入或导出不可用
 
 确认正在使用本地开发或生产服务，而不只是打开静态 HTML。还应检查终端错误、网络连接、Python 和归档浏览器是否可用。
@@ -239,6 +253,9 @@ npm run export:pdf -- --all            # 批量导出整个档案库
 ```powershell
 # 直接归档分享链接，成功后更新档案库
 npm run archive:share -- https://chatgpt.com/share/<share-id>
+
+# 排查导入失败：保留原始页面与错误信息（默认失败不落盘）
+npm run archive:share -- https://chatgpt.com/share/<share-id> --keep-failed
 
 # 重建档案库，并选择默认首页
 npm run library -- --select <share-id>
