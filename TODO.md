@@ -7,8 +7,8 @@
 
 ## 当前真实待办（核对于 2026-10-20）
 
-- **手机版 PDF 方向**：需用户决策 —— A 不做 / B 单栏紧凑版（目标 300 页内）/ C 改用单文件 HTML。
-- **登录态采集路线**：已暂停（页面只在真实用户滚动时才请求更早分页）。其附件下载子项随之暂停；若重启再做。
+- **手机版 PDF**：已定 **A（保留 `--mobile` 可选，不做应用内入口）**；页边距已从 `print.css` 的 16/14mm 收紧到 5mm，页数 337 → **278 页 / 4.6 MB**（100×178mm）。
+- **登录态采集路线**：**已决定删除**。扩展只保留"分享链接 → ZIP"；滚动采集代码、userscript 与相关 TODO 已移除。`convert-web-capture.mjs` / `import-web-capture.mjs` 与 `archive/chatgpt-web` 快照保留。
 - **官方 Export Data 导入**：等用户提供导出包后按真实结构写 importer（可复用 `convert-web-capture.mjs` 与归档守卫）。
 - 下方历史分区里，多数条目已决策或放弃，保留仅为追溯；不要再按它们排期。
 
@@ -23,27 +23,12 @@
 
 ## 采集路线
 
-> 授权记录（2026-10-19）：用户已备份 rchive/，并授权 ① 插件 POC（只读、产物落 data/private）② 插件接入本地写入接口（写 rchive/，须走归档守卫）③ 官方 Export Data 导入 ④ 对公开分享页反复匿名抓取。
-### 第二轨：浏览器插件／userscript（**已暂停：结论不可行**）
+> 授权记录（2026-10-19）：用户已备份 `archive/`，并授权官方 Export Data 导入与对公开分享页反复匿名抓取。
+### 第二轨：浏览器插件（已结束）
 
-> 实测结论：页面仅在**真实用户滚动**时才请求更早的页（`?before=<游标>&num_turns=10`，200 / 558 KB / 71 条），程序化 `scrollTop` 不触发懒加载；要求用户手动滚再导出，体验不如分享链接归档。详见 `extension/README.md`。保留 `convert-web-capture.mjs` 与 `import-web-capture.mjs`，可供官方 Export Data 复用。
+结论：不建分享链接的采集**不可行**——页面只在真实用户滚动时才请求更早的分页，程序化滚动不触发，手动滚再导出的体验不如分享链接。扩展只保留一种用法：**分享链接 → `raw/share.html` + `capture.json` 的 ZIP → 本地导入**。
+相关证据与实现细节见 `extension/README.md`；转换器与导入器保留，可复用于官方 Export Data。
 
-
-- [ ] 以 userscript 形式做 POC，对比“读当前页面 DOM”与“复用已有登录态调用 conversation endpoint”两种来源的完整度与稳定性。
-- [ ] 固定数据契约：插件只产出与分享归档相同的快照布局或 `conversation.ceobe.json`，复用现有 importer 与 schema；插件不承担阅读器职责。
-- [ ] 明确权限与隐私口径：插件运行在已登录会话中，与“独立匿名浏览器、不读个人浏览器配置”的现状不同，需在 README 与使用指南单独说明授权范围、最小权限与本地落盘行为。
-- [ ] 与本地服务联调所需的新增写入接口须先 dry-run 输出目标路径并拒绝覆盖已有快照。
-- [ ] 验收重点：无分享链接的场景、长对话虚拟化完整性、附件指针、推理与工具记录、取消与半途失败、重复导入不覆盖旧快照。
-
-
-### 第二轨·独立形态（已定）
-
-- 采集器**独立可用**：本地服务在跑 → 直推 /api/intake；没跑 → 下载自包含采集包（M1 为原始会话 JSON，M2 起为 .ceobe.zip）。
-- 边界：插件只产出数据，不写 rchive/、不做阅读器；写入、重建与阅读永远在本地项目侧（经归档守卫）。
-- [ ] M1（已交付未实测）：scripts/userscript/ceobe-capture.user.js，菜单命令取 /backend-api/conversation/<id>、汇总消息树并下载 JSON；服务可达时尝试投递（令牌未配置则回退下载）。
-- [ ] M2：同构转换器（端点 JSON → CEOBE schema）＋打包 .ceobe.zip（raw/、conversation.ceobe.json、assets/、capture.json），并用同一条会话的分享版做结构对账。
-- [ ] M3：POST /api/intake（本机＋一次性令牌）＋ 
-pm run import:bundle（走守卫、拒绝覆盖）＋ 附件字节分块下载。
 
 ### 第三轨：官方 Export Data
 

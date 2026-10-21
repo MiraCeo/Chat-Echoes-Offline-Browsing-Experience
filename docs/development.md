@@ -80,7 +80,7 @@ node scripts/test-copy-content.mjs
 | 一次跑完 | `npm run check`：先校验档案完整性，再审计已导出的 PDF（越界即失败），最后巡检全站页面；巡检查询本地服务，所以需要先 `npm run dev` |
 | 交互冒烟 | `test-app-smoke.mjs`：快捷键与鼠标切换侧栏、资料库搜索命中、资料库筛选（全部/图片/文件）计数一致、项目新建对话框可开可关；官方外壳会拦截指针，测试对折叠控件改用 DOM click |
 | 打印样式 | `test-print-styles.mjs`：`@page` A4、懒加载占位图隐藏（在构建器里注入）、CodeMirror `min-width`、代码折行、分享按钮隐藏、中文字体栈、`media="print"` 链接 |
-| 登录态采集转换 | `test-convert-web-capture.mjs`：会话响应挑选（优先会话载荷）、按 `create_time` 排序、线性节点链、隐藏记录保留但不可见、DIL 与附件指针保留、`usable_linear` 明确标注、导入目标仍过归档守卫 |
+| Web 采集转换（路线已结束，转换器保留） | `test-convert-web-capture.mjs`：会话响应挑选（优先会话载荷）、按 `create_time` 排序、线性节点链、隐藏记录保留但不可见、DIL 与附件指针保留、`usable_linear` 明确标注、导入目标仍过归档守卫 |
 | 聊天操作 | `test-chat-actions-store.mjs`、`test-chat-actions-browser.mjs` |
 | 阅读更多 | `test-reader-actions-browser.mjs` |
 | 从聊天打开本地文件夹 | `test-open-folder-api.mjs`（服务端：POST／同源／ID／路径包含检查，打开动作为注入桩，不会启动资源管理器）、`test-open-folder-browser.mjs`（两处菜单；浏览器内拦截 POST，不打开任何窗口、不写入数据） |
