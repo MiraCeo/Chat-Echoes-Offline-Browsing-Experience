@@ -285,7 +285,11 @@ const assistantDocumentHtml = (entries, source, renderOptions) => {
       message: entry.message,
       genuiComponents: messageComponents(entry.message),
     });
-    if (unsupported.length) return renderAssistantMarkdown(baseDocument, source, renderOptions);
+    // 少量不认识的组件不该让整条回答退回 Markdown：只要渲染出了实质内容就保留，
+    // 仅当几乎是空壳（例如根节点就是不支持的组件）才整体退回。
+    if (unsupported.length && html.replace(/<[^>]+>/g, '').trim().length < 120) {
+      return renderAssistantMarkdown(baseDocument, source, renderOptions);
+    }
     rendered.push(html);
   }
   return rendered.join('');
