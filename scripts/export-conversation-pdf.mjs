@@ -111,11 +111,11 @@ const renderOne = async (page, id, out, options) => {
     console.log(`目标被占用（可能在阅读器里打开），已改写到 ${finalPath}`);
   }
   const bytes = await readFile(finalPath);
-  if (options.document) {
-    // 版式留白在页面边距之外，DOM 里画不进去：导出后用 PyMuPDF 盖章（页眉 + 页码）。
-    const stamped = spawnSync(process.env.CEOBE_PYTHON || 'python',
-      ['scripts/pdf-stamp.py', '--pdf', finalPath, '--title', documentTitle,
-       '--date', new Date().toISOString().slice(0, 10)],
+  if (options.document || options.mobile) {
+    // 手机版只加页码；文档版式再加首页页眉。版式留白在页面边距之外，DOM 里画不进去，所以导出后盖章。
+    const args = ['scripts/pdf-stamp.py', '--pdf', finalPath];
+    if (options.document) args.push('--title', documentTitle, '--date', new Date().toISOString().slice(0, 10));
+    const stamped = spawnSync(process.env.CEOBE_PYTHON || 'python', args,
       { cwd: projectRoot, encoding: 'utf8', windowsHide: true });
     if (stamped.status !== 0) console.log('盖章失败：' + (stamped.stderr || '').slice(0, 200));
   }
