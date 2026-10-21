@@ -76,6 +76,13 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
   status.setAttribute('aria-atomic', 'true');
   form.insertAdjacentElement('afterend', status);
 
+  // 批量导入的提示：导入页说明可以一次粘贴多条链接。
+  const batchHint = document.createElement('div');
+  batchHint.dataset.ceobeBatchHint = '';
+  batchHint.textContent = '也可以一次粘贴多条分享链接（每行一条）：会逐条导入，结束后汇总成功与失败。';
+  Object.assign(batchHint.style, { marginTop: '8px', fontSize: '12px', lineHeight: '1.6', color: '#98a2b3' });
+  status.insertAdjacentElement('beforebegin', batchHint);
+
   // 拖拽反馈只在拖入时出现：常驻虚线边框会和圆角输入框的质感冲突。
   const highlight = on => {
     form.style.transition = 'box-shadow .16s ease, background-color .16s ease';
@@ -166,6 +173,15 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
       return url.href;
     } catch { return null; }
   };
+  const extractLinks = text => {
+    const matches = String(text).match(/https?:\/\/chatgpt\.com\/share\/[a-f0-9-]{36}\/?/gi) || [];
+    const unique = [];
+    for (const raw of matches) {
+      const url = normalizeLink(raw);
+      if (url && !unique.includes(url)) unique.push(url);
+    }
+    return unique;
+  };
   input.addEventListener('input', () => {
     input.removeAttribute('aria-invalid');
     if (!busy) { showStatus('', 'idle'); actions.replaceChildren(); }
@@ -175,7 +191,7 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
   input.addEventListener('paste', event => {
     event.preventDefault();
     if (busy || !available) return;
-    const text = (event.clipboardData?.getData('text/plain') || '').trim().replace(/[\r\n]+/g, ' ');
+    const text = (event.clipboardData?.getData('text/plain') || '').replace(/[\r\n]+/g, '\n').trim();
     const selection = window.getSelection();
     if (selection?.rangeCount && input.contains(selection.getRangeAt(0).commonAncestorContainer)) {
       const range = selection.getRangeAt(0);
@@ -199,8 +215,58 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
   form.addEventListener('submit', async event => {
     event.preventDefault();
     if (busy || !available) return;
-    const url = normalizeLink(value());
+    const links = extractLinks(value());
     actions.replaceChildren();
+    if (links.length > 1) {
+      if (document.body.hasAttribute('data-ceobe-project-detail')) {
+        showStatus('批量导入只在「导入会话」页可用；项目页请逐条导入。', 'error');
+        return;
+      }
+      setBusy(true);
+      const results = [];
+      try {
+        for (const [index, link] of links.entries()) {
+          showStatus(`正在导入第 ${index + 1} / ${links.length} 条…`, 'busy');
+          try {
+            const response = await fetch('/api/archive-share', {
+              method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' },
+              body: JSON.stringify({ url: link, requestId: requestId(link) }),
+            });
+            const result = await response.json().catch(() => null);
+            if (!response.ok || !result?.ok) throw new Error(result?.error || `HTTP ${response.status}`);
+            requests.delete(link);
+            try { sessionStorage.removeItem('ceobe.import-request:' + link); } catch {}
+            results.push({ link, ok: true, result });
+          } catch (error) {
+            results.push({ link, ok: false, error: error.message });
+          }
+        }
+      } finally {
+        clearTimeout(noticeTimer);
+        setBusy(false);
+      }
+      const done = results.filter(item => item.ok);
+      const failed = results.filter(item => !item.ok);
+      const total = done.reduce((sum, item) => sum + (Number(item.result.messageCount) || 0), 0);
+      showStatus(`批量导入完成：成功 ${done.length} 条${failed.length ? `，失败 ${failed.length} 条` : ''}${done.length ? `，共归档 ${total} 条记录` : ''}。`,
+        failed.length ? 'error' : 'success');
+      for (const item of failed.slice(0, 5)) {
+        const line = document.createElement('div');
+        line.className = 'ceobe-import-failure';
+        line.textContent = `失败：${item.link}（${item.error}）`;
+        actions.append(line);
+      }
+      const last = done.at(-1);
+      if (last) {
+        const open = document.createElement('a');
+        open.href = new URL(last.result.page, location.origin).href;
+        open.className = 'ceobe-import-open';
+        open.textContent = '打开最后一条';
+        actions.append(open);
+      }
+      return;
+    }
+    const url = links[0] || normalizeLink(value());
     if (!url) {
       showStatus(value() ? '链接格式不正确，请粘贴 https://chatgpt.com/share/… 形式的公开分享链接。' : '请先粘贴 ChatGPT 分享链接。', 'error');
       input.setAttribute('aria-invalid', 'true'); input.focus(); return;
