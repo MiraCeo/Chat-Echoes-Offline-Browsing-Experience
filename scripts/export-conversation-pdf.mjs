@@ -10,6 +10,7 @@
  *   node scripts/export-conversation-pdf.mjs --all [--limit N] [--force]
  */
 import { chromium } from 'playwright';
+import { spawnSync } from 'node:child_process';
 import { mkdir, readFile, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -47,6 +48,7 @@ const renderOne = async (page, id, out, options) => {
   }
   const response = await page.goto(`${base}/conversations/${id}.html`, { waitUntil: 'networkidle', timeout: 60000 });
   if (!response || !response.ok()) throw new Error(`页面不可用（HTTP ${response ? response.status() : 'no response'}）：请先运行 npm run dev`);
+  const documentTitle = options.document ? await page.title() : '';
   await page.emulateMedia({ media: 'print' });
   if (options.mobile) {
     // print.css 自带 @page 16mm/14mm 边距，在 100mm 宽的纸上会吃掉大半版心；
@@ -109,6 +111,14 @@ const renderOne = async (page, id, out, options) => {
     console.log(`目标被占用（可能在阅读器里打开），已改写到 ${finalPath}`);
   }
   const bytes = await readFile(finalPath);
+  if (options.document) {
+    // 版式留白在页面边距之外，DOM 里画不进去：导出后用 PyMuPDF 盖章（页眉 + 页码）。
+    const stamped = spawnSync(process.env.CEOBE_PYTHON || 'python',
+      ['scripts/pdf-stamp.py', '--pdf', finalPath, '--title', documentTitle,
+       '--date', new Date().toISOString().slice(0, 10)],
+      { cwd: projectRoot, encoding: 'utf8', windowsHide: true });
+    if (stamped.status !== 0) console.log('盖章失败：' + (stamped.stderr || '').slice(0, 200));
+  }
   return { id, path: finalPath, skipped: false, pages: countPages(bytes), kb: Math.round(bytes.length / 1024) };
 };
 
