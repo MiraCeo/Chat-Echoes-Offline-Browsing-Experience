@@ -178,3 +178,20 @@ document.addEventListener('click', event => {
 });
 dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
 if(grid)render();
+
+// 选中表格区域后复制，按 TSV 输出，粘到 Excel / Sheets 能直接分列。
+document.addEventListener('copy', event => {
+  const selection = document.getSelection();
+  if (!selection || selection.isCollapsed || !selection.rangeCount) return;
+  const range = selection.getRangeAt(0);
+  const start = range.startContainer.nodeType === 1 ? range.startContainer : range.startContainer.parentElement;
+  const table = start?.closest?.('table.ceobe-sheet-grid');
+  if (!table || !dialog.contains(table)) return;
+  const rows = [...table.querySelectorAll('tr')].filter(row => range.intersectsNode(row));
+  if (!rows.length) return;
+  const tsv = rows.map(row => [...row.children]
+    .map(cell => (cell.textContent || '').replace(/[\t\r\n]+/g, ' ').trim())
+    .join('\t')).join('\n');
+  event.clipboardData.setData('text/plain', tsv);
+  event.preventDefault();
+});

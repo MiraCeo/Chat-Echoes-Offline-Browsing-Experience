@@ -1,4 +1,5 @@
 import { readFile, writeFile, cp, mkdir } from 'node:fs/promises';
+import { sheetTableHtml } from './sheet-table.mjs';
 import { join, basename, extname } from 'node:path';
 import { homedir } from 'node:os';
 import { spawnSync } from 'node:child_process';
@@ -197,11 +198,7 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
     if (kind === 'xlsx') {
       const viewport = pane.querySelector('[data-testid="popcorn-viewport-host"]');
       viewport.classList.add('ceobe-sheet-viewport');
-      viewport.innerHTML = data.sheets.map((sheet, index) => {
-        const columns = sheet.widths.map((width, c) => `<th style="min-width:${width}px;width:${width}px">${String.fromCharCode(65 + c)}</th>`).join('');
-        const rows = sheet.rows.map((row, r) => `<tr style="height:${sheet.heights[r]}px"><th>${r + 1}</th>${row.map(cell => `<td style="color:${cell.color};background:${cell.fill};font-size:${cell.size}px;font-weight:${cell.bold ? 700 : 400};font-style:${cell.italic ? 'italic' : 'normal'};text-align:${['left','right','center'].includes(cell.align) ? cell.align : 'left'};white-space:${cell.wrap ? 'pre-wrap' : 'pre'}">${escape(cell.value)}</td>`).join('')}</tr>`).join('');
-        return `<table class="ceobe-sheet-grid" data-ceobe-sheet="${index}" aria-label="${escape(sheet.name)}" ${index ? 'hidden' : ''}><thead><tr><th></th>${columns}</tr></thead><tbody>${rows}</tbody></table>`;
-      }).join('');
+      viewport.innerHTML = data.sheets.map((sheet, index) => sheetTableHtml(sheet, index)).join('');
       for (const [index, button] of [...pane.querySelectorAll('[data-testid^="popcorn-sheet-tab-"]')].entries()) {
         button.setAttribute('data-ceobe-sheet-tab', String(index));
         button.setAttribute('tabindex', '0');

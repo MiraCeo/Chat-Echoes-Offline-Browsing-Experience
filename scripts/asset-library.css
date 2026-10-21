@@ -28,3 +28,9 @@
 [data-ceobe-asset-main] [hidden],.ceobe-assets-dialog [hidden] {display:none!important}
 @media(max-width:1100px){[data-ceobe-asset-main] [data-page-table-list-header],.ceobe-asset-row{grid-template-columns:minmax(130px,1fr) 84px 64px 140px!important;gap:8px!important}}
 @media(max-width:700px){[data-ceobe-asset-main] [data-page-table-list-header],.ceobe-asset-row{grid-template-columns:minmax(120px,1fr) 110px!important}.ceobe-asset-row>[role=gridcell]:nth-child(2),.ceobe-asset-row>[role=gridcell]:nth-child(3),[data-asset-sort=date],[data-asset-sort=size]{display:none!important}}
+
+/* 电子表格预览：冻结表头行与行号列，长表滚动时仍能定位。 */
+.ceobe-sheet-grid thead th { position: sticky; top: 0; z-index: 2; background: #f9fafb; }
+.ceobe-sheet-grid tbody th { position: sticky; left: 0; z-index: 1; background: #f9fafb; }
+.ceobe-sheet-grid thead th:first-child { z-index: 3; }
+.ceobe-sheet-grid td[rowspan], .ceobe-sheet-grid td[colspan] { white-space: pre-wrap; vertical-align: top; }

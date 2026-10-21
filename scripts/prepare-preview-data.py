@@ -28,6 +28,31 @@ if kind == 'pdf':
 def rgb(color, default):
     return '#' + color.rgb[-6:] if color is not None and color.type == 'rgb' else default
 
+def display_value(cell):
+    """按 Excel 的数字格式把值渲染成文本（只读预览用）。"""
+    import datetime
+    value = cell.value
+    if value is None:
+        return ''
+    if isinstance(value, (datetime.datetime, datetime.date)):
+        return value.strftime('%Y-%m-%d')
+    if isinstance(value, bool):
+        return 'TRUE' if value else 'FALSE'
+    if isinstance(value, (int, float)):
+        fmt = (cell.number_format or 'General').lower()
+        if '%' in fmt:
+            decimals = fmt.count('0', fmt.find('.') + 1, fmt.find('%')) if '.' in fmt else 0
+            return f'{value * 100:.{decimals}f}%'
+        if ',' in fmt.split('.')[0]:
+            decimals = fmt.count('0', fmt.find('.') + 1) if '.' in fmt else 0
+            return f'{value:,.{decimals}f}'
+        if '.' in fmt:
+            decimals = sum(1 for ch in fmt.split('.')[1] if ch in '0#')
+            if decimals:
+                return f'{value:.{decimals}f}'
+        return str(value)
+    return str(value)
+
 if kind == 'xlsx':
     from openpyxl import load_workbook
     from openpyxl.utils import get_column_letter
@@ -36,7 +61,7 @@ if kind == 'xlsx':
         rows = []
         for row in sheet:
             rows.append([{
-                'value': '' if cell.value is None else str(cell.value),
+                'value': display_value(cell),
                 'bold': bool(cell.font.b), 'italic': bool(cell.font.i),
                 'color': rgb(cell.font.color, '#111111'),
                 'fill': rgb(cell.fill.fgColor, '#ffffff') if cell.fill.patternType == 'solid' else '#ffffff',
@@ -48,6 +73,7 @@ if kind == 'xlsx':
             'name': sheet.title, 'rows': rows,
             'widths': [round((sheet.column_dimensions[get_column_letter(c)].width or 13) * 7 + 5) for c in range(1, sheet.max_column + 1)],
             'heights': [round((sheet.row_dimensions[r].height or sheet.sheet_format.defaultRowHeight or 15) * 4 / 3) for r in range(1, sheet.max_row + 1)],
+            'merges': [[r.min_row, r.min_col, r.max_row, r.max_col] for r in sheet.merged_cells.ranges],
         })
     book.close()
 
