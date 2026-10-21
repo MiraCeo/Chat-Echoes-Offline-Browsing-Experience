@@ -19,15 +19,16 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 ### 端口被系统占用时
 
-Windows 有时会把一段端口列为保留区（`netsh interface ipv4 show excludedportrange protocol=tcp` 可查）。
-本会话中 **5150–5249** 被整段保留，导致 `npm run dev` 报 `listen EACCES 127.0.0.1:5173`。临时办法：
+`npm run dev` 现在会自己找端口：从 **5173** 开始向上探测，跳过被占用或被系统保留的端口，打印实际地址，例如：
 
-```powershell
-npx vite replay --config vite.config.mjs --port 5300 --strictPort
-# 然后所有命令带上新端口
-npm run export:pdf -- --id <id> --base http://127.0.0.1:5300
-node scripts/test-web-health.mjs --base http://127.0.0.1:5300
 ```
+端口 5173 不可用（被占用或被系统保留），改用 5250。
+本地服务：http://127.0.0.1:5250/
+```
+
+- 想固定端口：`CEOBE_PORT=5400 npm run dev`（PowerShell 用 `$env:CEOBE_PORT=5400`）；
+- 原因通常是 Windows 把一段端口列进了保留区，可用 `netsh interface ipv4 show excludedportrange protocol=tcp` 查看；
+- 探针会真的尝试 bind 一次，因此 EACCES（保留端口）也能被跳过，而不只是 EADDRINUSE。
 
 ## 构建与预览
 
