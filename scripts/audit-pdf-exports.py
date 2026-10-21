@@ -22,7 +22,8 @@ except ImportError:  # pragma: no cover - dependency check
     print("需要 pymupdf：python -m pip install pymupdf", file=sys.stderr)
     raise SystemExit(2)
 
-EDGE_TOLERANCE = 20
+# 只判定真正压到纸边的内容；页边距由 print.css 决定（A4 14/16mm，手机版 5mm）。
+EDGE_TOLERANCE = 2
 
 
 def audit(directory: Path, short_threshold: int, verbose: bool = False) -> int:
