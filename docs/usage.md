@@ -151,6 +151,7 @@ Windows 快捷键：`Ctrl+K` 搜索（标题和正文），`Ctrl+Shift+S` 开关
 ```powershell
 npm run dev                                    # 另开一个窗口，保持运行
 npm run export:pdf -- --id <会话 ID>
+npm run export:pdf -- --id <会话 ID> --mobile --document   # 手机尺寸 + 文档版式（实验）
 npm run export:pdf -- --id <会话 ID> --mobile   # 手机尺寸（100×178mm，紧凑排版）
 npm run export:pdf -- --all            # 批量导出整个档案库
 # → data/private/pdf/<会话 ID>.pdf
@@ -160,6 +161,7 @@ npm run export:pdf -- --all            # 批量导出整个档案库
 - 中文使用微软雅黑等黑体族，不会退回新宋体；表格在版心内换行，长代码行在代码框内折行；
 - 如果直接按 `Ctrl+P` 打印，页眉页脚由浏览器对话框控制，需要在弹窗里**手动取消勾选**"页眉和页脚"；
 - `--mobile` 输出到 `data/private/pdf-mobile/`：100×178mm、12px/1.55 紧凑排版，实测一条 342 页的 A4 文档在手机尺寸下为 **278 页 / 4.6 MB**（页边距 5mm，同样可读）；
+- `--document` 是实验性的文档版式：用户消息左对齐、去掉气泡底色、隐藏书签与复制等聊天装饰，输出到 `data/private/pdf-document/`；实测同一条会话 270 页（聊天版式 272 页）；
 - 导出后可以运行 `npm run audit:pdf` 自检：会报告总页数、字体、越界页与短页；越界会返回非零。
 - 导出依赖本地服务（`npm run dev`），因为要读取 `/conversations/<id>.html`。批量模式默认跳过已存在的文件（加 `--force` 重导），结束时会汇总页数与体积。
 
