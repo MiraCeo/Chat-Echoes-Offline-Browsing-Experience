@@ -39,7 +39,7 @@ export function conversationToMarkdownView(conversation) {  if (!conversation ||
     };
     const last = messages.at(-1);
     if (displayRole === 'assistant' && last?.role === 'assistant') last.parts.push(part);
-    else messages.push({ role: displayRole, parts: [part] });
+    else messages.push({ role: displayRole, parts: [part], createdAt: source.created_at });
   }
   return messages;
 }

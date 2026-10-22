@@ -6,7 +6,7 @@ export async function readMarkdownEntry(root,entry){
  const project=await realpath(root),archive=await realpath(join(root,'archive/chatgpt-share')),folder=await realpath(join(archive,id)),file=await realpath(resolve(root,entry.conversation_path));
  if(!inside(project,archive)||!inside(archive,folder)||!inside(folder,file))throw Object.assign(Error('归档路径异常，已拒绝导出'),{status:409});
  const conversation=JSON.parse(await readFile(file,'utf8'));conversation.title=entry.title;
- return {title:entry.title,filename:markdownFilename(entry.title),markdown:exportConversationMarkdown(conversation,{textOnly:true})};
+ return {title:entry.title,filename:markdownFilename(entry.title),markdown:exportConversationMarkdown(conversation,{textOnly:true,timestamps:true})};
 }
 export function markdownExportMiddleware(root){const store=createChatStore(root);return async(req,res,next)=>{
  const url=new URL(req.url,'http://localhost');if(url.pathname!=='/api/chats/export-md')return next();
