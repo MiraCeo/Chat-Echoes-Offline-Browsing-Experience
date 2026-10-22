@@ -1,0 +1,49 @@
+/* 冻结自官方分享页的 Box / Row 组件样式（chart-hxo96mku.css 同名规则）。
+   只取 .oIb9lq_Box 与 --w-box-flex-in-row 相关部分：DIL 的 box/row 依赖它们布局。 */
+.oIb9lq_Box{box-sizing:border-box;min-width:0;display:flex}
+.oIb9lq_Box[data-d-inline]{display:inline-flex}
+.oIb9lq_Box[data-d-component=box][data-d-inline]:has(>:is([data-d-component=pressable],[data-d-component=popover-trigger])[data-d-inline][role=link]:only-child>[data-d-component=text][data-d-inline]:only-child),.oIb9lq_Box[data-d-component=box][data-d-inline]:has(>[data-d-component=popover-trigger][data-d-inline][role=presentation]:only-child>a:only-child),.oIb9lq_Box[data-d-component=box][data-d-inline]:has(>a:only-child){display:inline}
+.oIb9lq_Box[data-theme]{color:var(--color-text-prose)}
+.oIb9lq_Box[data-d-direction=col]{flex-direction:column}
+.oIb9lq_Box[data-d-flex-in-row]{--w-box-flex-in-row:initial}
+.oIb9lq_Box[data-d-direction=row]{flex-direction:row}
+.oIb9lq_Box[data-d-direction=row]>.oIb9lq_Box[data-d-has-width]{flex-shrink:0}
+.oIb9lq_Box[data-d-direction=row]>.oIb9lq_Box[data-d-flex-in-row]{--w-box-flex-in-row:1 1 0%}
+.oIb9lq_Box[data-d-align=start]{align-items:flex-start}
+.oIb9lq_Box[data-d-align=center]{align-items:center}
+.oIb9lq_Box[data-d-align=end]{align-items:flex-end}
+.oIb9lq_Box[data-d-align=baseline]{align-items:baseline}
+.oIb9lq_Box[data-d-align=stretch]{align-items:stretch}
+.oIb9lq_Box[data-d-justify=start]{justify-content:flex-start}
+.oIb9lq_Box[data-d-justify=center]{justify-content:center}
+.oIb9lq_Box[data-d-justify=end]{justify-content:flex-end}
+.oIb9lq_Box[data-d-justify=between]{justify-content:space-between}
+.oIb9lq_Box[data-d-justify=around]{justify-content:space-around}
+.oIb9lq_Box[data-d-justify=evenly]{justify-content:space-evenly}
+.oIb9lq_Box[data-d-wrap=nowrap]{flex-wrap:nowrap}
+.oIb9lq_Box[data-d-wrap=wrap]{flex-wrap:wrap}
+.oIb9lq_Box[data-d-wrap=wrap-reverse]{flex-wrap:wrap-reverse}
+.oIb9lq_Box[data-d-scrollable=true]{overflow:auto}
+.oIb9lq_Box[data-d-scrollable=true]:not([data-d-scrollable-has-inline-padding]):has(>[data-d-component=table][data-d-column-sizing=auto]){--scrollable-table-thread-content-width:min(calc(100cqw - 2 * var(--thread-content-margin,0px)), var(--thread-content-max-width,100cqw));--scrollable-table-thread-gutter:calc((100cqw - var(--scrollable-table-thread-content-width)) / 2);--scrollable-table-inline-gutter-start:var(--w-box-gutter-inline-start,var(--scrollable-table-thread-gutter));--scrollable-table-inline-gutter-end:var(--w-box-gutter-inline-end,var(--scrollable-table-thread-gutter));--scrollable-table-inline-content-end:var(--w-box-gutter-inline-end,var(--thread-content-margin,0px));box-sizing:content-box;margin-inline:calc(-1 * var(--scrollable-table-inline-gutter-start)) calc(-1 * var(--scrollable-table-inline-gutter-end));padding-inline:var(--scrollable-table-inline-gutter-start) var(--scrollable-table-inline-gutter-end);scroll-padding-inline:var(--scrollable-table-inline-gutter-start) var(--scrollable-table-inline-content-end)}
+.oIb9lq_Box[data-d-clip=true]{overflow:hidden}
+.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing]>:where([data-d-component],[data-d-container]){margin-block-start:calc(var(--spacing)*2)}
+.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing]>[data-d-component=title]+[data-d-component]{margin-block-start:calc(var(--spacing)*4)}
+.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing]>[data-d-component=text],.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing]>[data-d-component=list]{margin-block-start:calc(var(--spacing)*3)}
+.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing]>[data-d-component=title]+:where([data-d-component=text],[data-d-component=list]),.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing]>[data-d-component=title]+[data-d-component=text][data-d-size=sm]{margin-block-start:calc(var(--spacing)*2)}
+.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing]>[data-d-component=text]+[data-d-component=text],.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing]>[data-d-component=caption]+[data-d-component=text]{margin-block-start:0}
+.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing][data-d-align=center]>[data-d-component=caption]+[data-d-component=text],.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing]>[data-d-component=caption]{margin-block-start:calc(var(--spacing)*1)}
+.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing]>[data-d-component]+[data-d-component=button]{margin-block-start:calc(var(--spacing)*3)}
+.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing]>[data-d-component=button]+[data-d-component=button]{margin-block-start:calc(var(--spacing)*2)}
+.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing]>:where([data-d-component=image]+[data-d-component],[data-d-component=iframe]+[data-d-component],[data-d-component=map]+[data-d-component]){margin-block-start:calc(var(--spacing)*4)}
+.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing]>[data-d-component=label]+:is([data-d-component],:has(>[data-d-component=input]),:has(>[data-d-component=textarea])){margin-block-start:calc(var(--spacing)*.5)}
+.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing]>:where([data-d-component],[data-d-container]):first-child{margin-block-start:0}
+.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing]>:where([data-d-component],[data-d-container]):last-child{margin-block-end:0}
+.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing]>[data-d-component=divider],.oIb9lq_Box[data-d-direction=col][data-d-auto-spacing]>[data-d-component=divider]+[data-d-component]{margin-block-start:calc(var(--spacing)*4)}
+.oIb9lq_Box[data-d-direction=row][data-d-auto-spacing]>[data-d-component]{margin-inline-start:calc(var(--spacing)*2)}
+.oIb9lq_Box[data-d-direction=row][data-d-auto-spacing]>[data-d-component=button]+[data-d-component=button],.oIb9lq_Box[data-d-direction=row][data-d-auto-spacing]>:where([data-d-component=select],[data-d-component=input],[data-d-component=chip-input],[data-d-component=date-picker],[data-d-component=radio-group],[data-d-component=slider],[data-d-component=textarea])+[data-d-component]{margin-inline-start:calc(var(--spacing)*1.5)}
+.oIb9lq_Box[data-d-direction=row][data-d-auto-spacing]>[data-d-component=button][data-variant=ghost]+[data-d-component=button][data-variant=ghost],.oIb9lq_Box[data-d-direction=row][data-d-auto-spacing]>[data-d-component=icon]+[data-d-component=icon]{margin-inline-start:calc(var(--spacing)*.5)}
+.oIb9lq_Box[data-d-direction=row][data-d-auto-spacing]>[data-d-component=favicon]+[data-d-component=text]{margin-inline-start:calc(var(--spacing)*1)}
+.oIb9lq_Box[data-d-direction=row][data-d-auto-spacing]>[data-d-component=label]+:is([data-d-component],:has(>[data-d-component=input]),:has(>[data-d-component=textarea])){margin-inline-start:calc(var(--spacing)*3)}
+.oIb9lq_Box[data-d-direction=row][data-d-auto-spacing]>[data-d-component]:first-child{margin-inline-start:0}
+.oIb9lq_Box[data-d-direction=row][data-d-auto-spacing]>[data-d-component]:last-child{margin-inline-end:0}
+.oIb9lq_Box[data-d-direction=row][data-d-auto-spacing]>[data-d-component=divider],.oIb9lq_Box[data-d-direction=row][data-d-auto-spacing]>[data-d-component=divider]+[data-d-component]{margin-inline-start:calc(var(--spacing)*3)}

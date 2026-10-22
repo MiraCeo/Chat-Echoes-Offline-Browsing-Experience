@@ -50,6 +50,14 @@ export function chooseShell(variants, props = {}) {
   return [...variants].sort((left, right) => score(right) - score(left))[0];
 }
 
+const dilInlineStyle = (type, props = {}) => {
+  if (!['box', 'row', 'col'].includes(type)) return '';
+  const styles = [];
+  if (props.flex !== undefined && Number.isFinite(Number(props.flex))) styles.push(`flex:${Number(props.flex)} 1 0%`);
+  if (props.gap !== undefined && Number.isFinite(Number(props.gap))) styles.push(`gap:calc(var(--spacing, 0.25rem) * ${Number(props.gap)})`);
+  return styles.join(';');
+};
+
 const attributeOverrides = (type, props) => {
   const overrides = {};
   if (type === 'title' && props.size) overrides['data-d-size'] = props.size;
@@ -62,6 +70,8 @@ const attributeOverrides = (type, props) => {
   if (['box', 'row', 'col', 'grid', 'grid-item', 'pressable'].includes(type)) {
     if (props.direction) overrides['data-d-direction'] = props.direction;
     if (props.inline) overrides['data-d-inline'] = '';
+    if (props.align) overrides['data-d-align'] = props.align;
+    if (props.justify) overrides['data-d-justify'] = props.justify;
   }
   return overrides;
 };
@@ -100,12 +110,15 @@ export function renderDilTree(tree, { templates, document, officialCitations, me
       return children() || '';
     }
     if (SHELL_COMPONENTS.has(type)) {
-      const shell = chooseShell(shells[type], node.props);
+      const props = { ...node.props };
+      if (!props.direction) props.direction = type === 'row' ? 'row' : 'col';
+      const shell = chooseShell(shells[type], props);
       if (!shell) { unsupported.add(type); return children(); }
       // Fixed wrappers come from the frozen shell; the parsed children fill its first slot.
       let slotUsed = false;
       const renderShell = (current, overrides) => {
-        const attributes = attributesFrom(current, overrides);
+        const extraStyle = dilInlineStyle(type, props);
+        const attributes = attributesFrom(current, extraStyle ? { ...overrides, style: extraStyle } : overrides);
         const inner = (current.children || []).length
           ? current.children.map(child => {
             if (!child.slot) return renderShell(child, {});
@@ -116,7 +129,7 @@ export function renderDilTree(tree, { templates, document, officialCitations, me
           : (slotUsed ? '' : (slotUsed = true, children()));
         return `<${current.tag} class="${escapeHtml(current.class.join(' '))}"${attributes}>${inner}</${current.tag}>`;
       };
-      return renderShell(shell, attributeOverrides(type, node.props));
+      return renderShell(shell, attributeOverrides(type, props));
     }
     // Unknown or non-representable: report it so the caller can prefer the Markdown fallback.
     unsupported.add(type);
