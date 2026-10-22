@@ -58,3 +58,14 @@
 .ceobe-dil-button:empty {
   display: none;
 }
+
+
+/* 单选标记：官方用的是装饰性 icon，我们按规则丢弃后只剩文字；这里用伪元素补一个空心圆。 */
+.ceobe-dil-radio::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  border: 1.5px solid color-mix(in srgb, currentColor 45%, transparent);
+}
