@@ -4,6 +4,8 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { createHash } from 'node:crypto';
+import { stat } from 'node:fs/promises';
 import { buildImportPage } from './build-import-page.mjs';
 import { buildAssetLibrary } from './build-asset-library.mjs';
 import { buildBookmarks } from './build-bookmarks.mjs';
@@ -82,6 +84,31 @@ export async function buildLibraryIndex() {
   return library;
 }
 
+// 增量构建：页面没变就不重新渲染。渲染输入 = canonical 文件内容 + 渲染器/模板的文件清单指纹。
+// 指纹包含文件名、大小与修改时间，任何脚本或模板改动都会让全部页面重建一次。
+const hashBytes = bytes => createHash('sha256').update(bytes).digest('hex').slice(0, 16);
+const stampFile = join(projectRoot, 'data/private/library-stamps.json');
+async function rendererStamp() {
+  const roots = [join(projectRoot, 'scripts'), join(projectRoot, 'official-templates')];
+  const parts = [];
+  for (const root of roots) {
+    for await (const entry of await import('node:fs/promises').then(fs => fs.readdir(root, { recursive: true, withFileTypes: true }))) {
+      if (!entry.isFile()) continue;
+      const full = join(entry.parentPath || entry.path, entry.name);
+      if (!/\.(mjs|js|json|html|css)$/.test(entry.name)) continue;
+      const info = await stat(full).catch(() => null);
+      if (info) parts.push(`${entry.name}:${info.size}:${Math.round(info.mtimeMs)}`);
+    }
+  }
+  parts.sort();
+  return hashBytes(parts.join('|'));
+}
+const exists = async path => { try { await stat(path); return true; } catch { return false; } };
+
+// 索引类步骤的耗时（用于判断增量构建剩下的时间花在哪）。
+const stepTiming = [];
+const step = async (name, fn) => { const started = Date.now(); const value = await fn(); stepTiming.push([name, Date.now() - started]); return value; };
+
 async function buildReader(library, selectedId, onlyIds = null) {
 
   const run = (entry, output, preserve) => {
@@ -106,29 +133,52 @@ async function buildReader(library, selectedId, onlyIds = null) {
     return;
   }
   const selected = library.conversations.find(item => item.id === selectedId) || library.conversations[0];
-  if(selected)run(selected, join('replay', 'index.html'), false);
+  if(selected)run(selected, join('replay', 'index.html'), true);
   else {
     const empty=JSON.parse(await readFile(join(projectRoot,'samples/empty-conversation.json'),'utf8'));empty.title='本地聊天';
     await mkdir(join(projectRoot,'data/private'),{recursive:true});await writeFile(join(projectRoot,'data/private/empty-reader.ceobe.json'),JSON.stringify(empty));
     run({id:'empty',title:empty.title,conversation_path:'data/private/empty-reader.ceobe.json'},join('replay','index.html'),false);
   }
   await mkdir(join(projectRoot,'replay/conversations'),{recursive:true});
-  for (const entry of library.conversations) run(entry, join('replay', 'conversations', `${entry.id}.html`), true);
+  const renderer = await rendererStamp();
+  let previous = {};
+  try { previous = JSON.parse(await readFile(stampFile, 'utf8')); } catch { /* 首次构建 */ }
+  const next = {};
+  const keep = new Set(library.conversations.map(entry => `${entry.id}.html`));
+  for (const name of await readdir(join(projectRoot, 'replay', 'conversations')).catch(() => [])) {
+    if (name.endsWith('.html') && !keep.has(name)) await rm(join(projectRoot, 'replay', 'conversations', name), { force: true });
+  }
+  let rebuilt = 0;
+  for (const entry of library.conversations) {
+    const page = join(projectRoot, 'replay', 'conversations', `${entry.id}.html`);
+    const source = hashBytes(await readFile(entry.conversation_path));
+    const stamp = `${source}:${renderer}`;
+    next[entry.id] = stamp;
+    if (previous[entry.id] === stamp && await exists(page)) continue;
+    run(entry, join('replay', 'conversations', `${entry.id}.html`), true);
+    rebuilt += 1;
+  }
+  await mkdir(join(projectRoot, 'data/private'), { recursive: true });
+  await writeFile(stampFile, JSON.stringify(next));
+  if (rebuilt < library.conversations.length) {
+    console.log(`Incremental: rebuilt ${rebuilt} of ${library.conversations.length} conversation pages.`);
+  }
   await cp(indexPath, join(projectRoot, 'replay', 'library.ceobe.json'));
   await mkdir(join(projectRoot, 'replay', 'public'), { recursive: true });
   await cp(indexPath, join(projectRoot, 'replay', 'public', 'library.ceobe.json'));
-  await buildImportPage(projectRoot);
-  await buildAssetLibrary(projectRoot, library);
-  await buildProjectsPage(projectRoot);
-  await buildProjectDetail(projectRoot, library);
-  await buildChatMenu(projectRoot, library);
-  await buildChatActions(projectRoot, library);
-  await buildChatOrganizer(projectRoot);
-  await buildSidebarControls(projectRoot);
-  await writeSearchIndex(projectRoot, library);
-  await buildReaderUI(projectRoot, library);
-  await buildBookmarks(projectRoot, library);
-  await localizeGeneratedFonts(join(projectRoot,'replay'));
+  await step('import-page', async () => buildImportPage(projectRoot));
+  await step('asset-library', async () => buildAssetLibrary(projectRoot, library));
+  await step('projects-page', async () => buildProjectsPage(projectRoot));
+  await step('project-detail', async () => buildProjectDetail(projectRoot, library));
+  await step('chat-menu', async () => buildChatMenu(projectRoot, library));
+  await step('chat-actions', async () => buildChatActions(projectRoot, library));
+  await step('chat-organizer', async () => buildChatOrganizer(projectRoot));
+  await step('sidebar-controls', async () => buildSidebarControls(projectRoot));
+  await step('search-index', async () => writeSearchIndex(projectRoot, library));
+  await step('reader-ui', async () => buildReaderUI(projectRoot, library));
+  await step('bookmarks', async () => buildBookmarks(projectRoot, library));
+  await step('fonts', async () => localizeGeneratedFonts(join(projectRoot,'replay')));
+  console.log('Steps: ' + stepTiming.map(([n, ms]) => `${n}=${(ms / 1000).toFixed(1)}s`).join(' '));
   console.log(`Library reader built: ${library.conversations.length} conversations; home is “${selected?.title || "本地聊天"}”.`);
 }
 

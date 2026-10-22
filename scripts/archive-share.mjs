@@ -15,6 +15,9 @@ if (url.protocol !== 'https:' || url.hostname !== 'chatgpt.com' || url.username 
 url.search = ''; url.hash = '';
 const shareId = url.pathname.split('/')[2];
 const capturedAt = new Date().toISOString();
+// 导入耗时分解：每步记一次，结束时打印，便于回答"几分钟花在哪"。
+const timing = { started: Date.now(), marks: [] };
+const mark = name => { timing.marks.push([name, Date.now() - timing.started]); };
 // Dry run first: the plan is printed and the target must be a fresh snapshot inside the archive.
 const snapshotRoot = resolve(values['archive-root'] || 'archive/chatgpt-share');
 const plan = planSnapshot({ shareId, capturedAt, snapshotRoot });
@@ -41,6 +44,7 @@ const fetchWithRetry = async (target, attempts = 3) => {
 };
 const response = await fetchWithRetry(url);
 const bytes = Buffer.from(await response.arrayBuffer());
+mark('fetched');
 await mkdir(folder, { recursive: true });
 await mkdir(join(folder, 'raw'));
 await writeFile(join(folder, 'raw', 'share.html'), bytes, { flag: 'wx' });
@@ -72,11 +76,15 @@ if (run.status !== 0) {
   await writeFile(join(folder, 'import-error.txt'), failure.message, { flag: 'wx' });
   throw new Error(`Import failed; original response retained in ${folder}: ${failure.message}`);
 }
+mark('decoded');
 const conversation = JSON.parse(await readFile(join(folder, 'conversation.ceobe.json'), 'utf8'));
 console.log('Resolving public share attachment URLs in an anonymous browser…');
+mark('canonical-written');
 const resolutions = await resolveShareResources(conversation, url.href);
+mark('resources-resolved');
 await writeFile(join(folder, 'raw', 'resource-responses.json'), JSON.stringify(resolutions, null, 2), { flag: 'wx' });
 conversation.resources = await downloadResources(conversation, folder, { resolutions });
+mark('resources-downloaded');
 conversation.import_report.resource_resolution = { responses_file: 'raw/resource-responses.json', errors: resolutions.filter(r => !r.key) };
 conversation.import_report.resources = conversation.resources;
 conversation.import_report.resource_counts = Object.fromEntries(['downloaded', 'unresolved', 'failed'].map(status =>
@@ -89,6 +97,7 @@ for (const asset of conversation.import_report.assets) {
 conversation.import_report.complete_offline_archive = conversation.resources.every(resource => resource.status === 'downloaded') &&
   conversation.import_report.status === 'structure_checked' &&
   conversation.completeness?.structured_payload?.status === 'usable';
+mark('files-written');
 await writeFile(join(folder, 'conversation.ceobe.json'), JSON.stringify(conversation, null, 2));
 await writeFile(join(folder, 'conversation.md'), exportConversationMarkdown(conversation, { timestamps: true }), { flag: 'wx' });
 await writeFile(join(folder, 'import-report.json'), JSON.stringify(conversation.import_report, null, 2), { flag: 'wx' });
@@ -99,4 +108,7 @@ if (!values['skip-library']) {
 const libraryRun = spawnSync(process.execPath, ['scripts/build-library.mjs'], { encoding: 'utf8', windowsHide: true });
 if (libraryRun.status === 0) console.log(libraryRun.stdout.trim());
 else console.warn(`Archive saved, but library index update failed: ${libraryRun.stderr || libraryRun.error}`);
+mark('library-rebuilt');
+console.log('Timing: ' + timing.marks.map(([name, ms]) => `${name}=${(ms / 1000).toFixed(1)}s`).join(' ')
+  + ` total=${((Date.now() - timing.started) / 1000).toFixed(1)}s`);
 }
