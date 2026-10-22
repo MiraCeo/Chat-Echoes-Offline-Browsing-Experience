@@ -1,0 +1,60 @@
+/* CEOBE：DIL 控件的中性外观（方案 B）。
+   官方按钮把尺寸交给主题 token（--button-*），我们的页面没有那一层，导致高度算成 0。
+   这里只在控件自身作用域内给一组中性值，并用自带属性兜底，不引入全局变量。 */
+
+.ceobe-dil-button,
+.QZcSVW_Button {
+  --button-size: 2.25rem;
+  --button-gutter: 1rem;
+  --button-radius: 999px;
+  --button-gap: 0.35rem;
+  --button-icon-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--button-gap);
+  min-height: var(--button-size);
+  height: auto;
+  padding: 0 var(--button-gutter);
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-radius: var(--button-radius);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: default;
+}
+
+/* solid 变体给一个极淡的底，和描边按钮区分开。 */
+.ceobe-dil-button[data-variant="solid"],
+.QZcSVW_Button[data-variant="solid"] {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  border-color: transparent;
+}
+
+.ceobe-dil-button[data-size="sm"],
+.QZcSVW_Button[data-size="sm"] {
+  --button-size: 1.75rem;
+  --button-gutter: 0.75rem;
+}
+
+.ceobe-dil-button[data-size="lg"],
+.QZcSVW_Button[data-size="lg"] {
+  --button-size: 2.5rem;
+  --button-gutter: 1.25rem;
+}
+
+/* 单选行用了应用层的 .flex 工具类，冻结包里没有它，补一条最小定义。 */
+.ceobe-dil-radio {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+
+/* 纯图标按钮：图标本身是装饰节点，我们按规则丢弃后按钮会变成空胶囊。
+   与其显示一个不知道干什么的圆圈，不如隐藏——这类控件通常是轮播/翻页，离线阅读里没有意义。 */
+.ceobe-dil-button:empty {
+  display: none;
+}

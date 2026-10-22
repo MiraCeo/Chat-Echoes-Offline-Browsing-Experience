@@ -165,5 +165,7 @@ ChatGPT 分享页面及公开资源
 ### 明确不做的项
 
 - DIL 的推理折叠块（「思考了 1m 30s」）按用户要求**不做**；
-- `button` / `radio-group` 的官方外观需要主题 token 层（`--button-size` 等），尚未决定是否引入，见 TODO。
+- `button` / `radio-group` 的官方外观依赖主题 token 层（`--button-size` 等）。**已按方案 B 处理**：
+  `assets/dil-controls.css` 只在控件自身作用域内定义一组中性 token 与兜底属性，不引入官方 root 变量；
+  纯图标按钮（图标是装饰节点，已按规则丢弃）会变成空胶囊，因此 `:empty` 时隐藏。
 

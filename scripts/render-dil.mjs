@@ -131,6 +131,24 @@ export function renderDilTree(tree, { templates, document, officialCitations, me
       };
       return renderShell(shell, attributeOverrides(type, props));
     }
+    if (type === 'button') {
+      const props = node.props || {};
+      const attrs = ['type="button"', 'class="QZcSVW_Button IIC5SG_Button ceobe-dil-button"', 'data-d-component="button"'];
+      for (const key of ['color', 'variant', 'size']) {
+        if (props[key]) attrs.push(`data-${key}="${escapeHtml(props[key])}"`);
+      }
+      if (props.pill) attrs.push('data-pill=""');
+      if (props.block) attrs.push('data-block=""', 'data-d-block=""');
+      return `<button ${attrs.join(' ')}>${children()}</button>`;
+    }
+    if (type === 'radio-group') {
+      const props = node.props || {};
+      const direction = props.direction === 'row' ? 'row' : 'col';
+      const label = props.label ? ` aria-label="${escapeHtml(props.label)}"` : ' aria-label="Options"';
+      return `<div role="radiogroup" aria-required="false" class="_4rft7G_RadioGroup dEvL_a_RadioGroup"`
+        + ` data-direction="${direction}" data-d-component="radio-group" tabindex="0"${label}>${children()}</div>`;
+    }
+    if (type === 'radio') return `<div class="flex ceobe-dil-radio" data-d-component="radio">${children()}</div>`;
     // Unknown or non-representable: report it so the caller can prefer the Markdown fallback.
     unsupported.add(type);
     return children();
