@@ -81,6 +81,15 @@ for (const path of pages) {
       return [...counts].filter(([id, count]) => count > 1 && !id.startsWith('radix-')).map(([id]) => id).slice(0, 8);
     })(),
     // alt="" 是装饰图的正确写法（旁边已有文件名），只有完全缺省才算问题。
+    // 未渲染的 DIL 标记会以文本形式出现在正文里；代码块中被引用的示例不算。
+    dilMarkup: (() => {
+      const clone = document.body.cloneNode(true);
+      for (const node of clone.querySelectorAll('pre, code, script, style, template')) node.remove();
+      // 只认带 DIL 属性的标记（gap={3}、weight="medium" 之类）；正文里顺口提到的
+      // <text>、<title> 这类 HTML/SVG 名字不算。
+      const matches = (clone.textContent || '').match(/<(box|row|column|text|title|caption)\b[^>]{0,80}?(gap=|padding=|flex=|align=|weight=|size=|color=|data-d-)/g);
+      return matches ? matches.length : 0;
+    })(),
     imagesWithoutAlt: [...document.images].filter(image => image.getAttribute('alt') === null && !image.getAttribute('aria-label')).length,
   }));
   const real = failed.filter(entry => !entry.endsWith('/favicon.ico'));
@@ -93,6 +102,7 @@ for (const path of pages) {
   if (metrics.empty) problems.push({ path, kind: 'empty-main', detail: metrics.title });
   if (metrics.duplicateIds.length) problems.push({ path, kind: 'duplicate-ids', detail: metrics.duplicateIds });
   if (metrics.imagesWithoutAlt) problems.push({ path, kind: 'images-without-alt', detail: metrics.imagesWithoutAlt });
+  if (metrics.dilMarkup) problems.push({ path, kind: 'dil-markup', detail: metrics.dilMarkup + ' 处未渲染的 DIL 标记' });
   await page.close();
 }
 await browser.close();

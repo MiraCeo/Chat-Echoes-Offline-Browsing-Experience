@@ -10,7 +10,26 @@ export async function buildSourcesPanel(document, root, output, conversation, te
     .map(block => block.text || '')
     .join('\n')
     .trim(), { message });
-  const previewText = value => value
+  // 目录预览只取可读文字：DIL 的 JSX 片段整块丢掉，避免目录里出现 <box gap={3}>。
+  const stripDilMarkup = value => {
+    const tags = 'box|row|column|text|title|caption|list|list-item|button|radio|radio-group';
+    const open = new RegExp(`<(${tags})\\b`, 'g');
+    const close = new RegExp(`</(${tags})>`, 'g');
+    const start = new RegExp(`^\\s*<(${tags})\\b`);
+    const kept = [];
+    let depth = 0;
+    for (const line of String(value || '').split('\n')) {
+      const opens = (line.match(open) || []).length;
+      const closes = (line.match(close) || []).length;
+      if (depth > 0 || start.test(line)) { depth = Math.max(0, depth + opens - closes); continue; }
+      kept.push(line);
+    }
+    return kept.join('\n');
+  };
+  const previewText = value => stripDilMarkup(value)
+    // 有些标记夹在表格行里，不占整行；这里再把残留的标签本身去掉。
+    .replace(/<\/?(box|row|column|text|title|caption|list|list-item|button|radio-group|radio)\b[^>]*>/g, ' ')
+
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/\*\*|__|~~|`/g, '')

@@ -253,6 +253,27 @@ const dilTemplates = JSON.parse(await readFile(join(projectRoot, 'official-templ
  * Markdown path. A document the reader cannot represent faithfully (unsupported components) falls back
  * to Markdown wholesale, so nothing half-rendered ever reaches the reader.
  */
+// 整条回答退回 Markdown 时，正文里常混着同一段内容的 DIL 源码；此时没有 DIL 渲染兜底，
+// 只能把这层标记去掉，避免把 <box>/<row> 原样印在页面上。
+const DIL_TAGS = 'box|row|column|text|title|caption|list|list-item|button|radio-group';
+const stripDilMarkup = text => {
+  const start = new RegExp(`^\\s*<(${DIL_TAGS})\\b`);
+  const open = new RegExp(`<(${DIL_TAGS})\\b`, 'g');
+  const close = new RegExp(`</(${DIL_TAGS})>`, 'g');
+  const kept = [];
+  let depth = 0;
+  for (const line of String(text || '').split('\n')) {
+    const opens = (line.match(open) || []).length;
+    const closes = (line.match(close) || []).length;
+    if (depth > 0 || start.test(line)) {
+      depth = Math.max(0, depth + opens - closes);
+      continue;
+    }
+    kept.push(line);
+  }
+  return kept.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+};
+
 const assistantDocumentHtml = (entries, source, renderOptions) => {
   const documents = entries.filter(entry => entry.kind === 'document');
   const dilDocuments = new Map();
@@ -266,12 +287,12 @@ const assistantDocumentHtml = (entries, source, renderOptions) => {
       // A payload we cannot parse simply keeps the Markdown rendering.
     }
   }
-  if (!dilDocuments.size) return renderAssistantMarkdown(baseDocument, source, renderOptions);
+  if (!dilDocuments.size) return renderAssistantMarkdown(baseDocument, stripDilMarkup(source), renderOptions);
   const rendered = [];
   for (const entry of documents) {
     const parsed = dilDocuments.get(entry.message.id);
     if (!parsed) {
-      rendered.push(renderAssistantMarkdown(baseDocument, recordMarkdown(entry.message), {
+      rendered.push(renderAssistantMarkdown(baseDocument, stripDilMarkup(recordMarkdown(entry.message)), {
         ...renderOptions,
         contentReferences: entry.message.content_references || [],
         genuiComponents: messageComponents(entry.message),
@@ -288,7 +309,7 @@ const assistantDocumentHtml = (entries, source, renderOptions) => {
     // 少量不认识的组件不该让整条回答退回 Markdown：只要渲染出了实质内容就保留，
     // 仅当几乎是空壳（例如根节点就是不支持的组件）才整体退回。
     if (unsupported.length && html.replace(/<[^>]+>/g, '').trim().length < 120) {
-      return renderAssistantMarkdown(baseDocument, source, renderOptions);
+      return renderAssistantMarkdown(baseDocument, stripDilMarkup(source), renderOptions);
     }
     rendered.push(html);
   }
