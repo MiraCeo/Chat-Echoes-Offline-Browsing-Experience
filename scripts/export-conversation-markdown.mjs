@@ -11,6 +11,18 @@ const formatStamp = seconds => {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} `
     + `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
 };
+// 长文件里助手正文自带的 # 标题会和文档标题抢层级；统一降两级，代码块内的 # 不动。
+const demoteHeadings = (text, levels = 2) => {
+  let fenced = false;
+  return text.split('\n').map(line => {
+    if (/^\s*```/.test(line)) { fenced = !fenced; return line; }
+    if (fenced) return line;
+    const match = /^(#{1,6})(\s+)/.exec(line);
+    if (!match) return line;
+    return '#'.repeat(Math.min(6, match[1].length + levels)) + line.slice(match[1].length);
+  }).join('\n');
+};
+
 export function exportConversationMarkdown(conversation, {textOnly=false, timestamps=false} = {}) {
   const { document } = parseHTML('<html><body></body></html>');
   const output = [`# ${conversation.title.replace(/[\r\n]/g, ' ')}`, '',
@@ -20,6 +32,7 @@ export function exportConversationMarkdown(conversation, {textOnly=false, timest
   // while scrolling. Counted per assistant reply, so one Q&A is one 段.
   const totalExchanges = turns.filter(turn => turn.role === 'assistant').length;
   let exchange = 0;
+  let previousDay = '';
   for (const turn of turns) {
     const parts = turn.parts.filter(part => part.type === 'markdown');
     if (!parts.length) continue;
@@ -27,12 +40,19 @@ export function exportConversationMarkdown(conversation, {textOnly=false, timest
     // 时间线：只在显式要求时输出（下载通道），快照里的 conversation.md 保持原样。
     if (timestamps) {
       const stamp = Number.isFinite(turn.createdAt) ? formatStamp(turn.createdAt) : '';
-      if (stamp) output.push(`*${stamp} · 第 ${exchange + 1} 段 / 共 ${totalExchanges} 段*`, '');
+      if (stamp) {
+        // 同一天只在第一条消息上写日期，其余只写时分秒；跨天时日期重新出现。
+        const day = stamp.slice(0, 10);
+        const label = day === previousDay ? stamp.slice(11) : stamp;
+        previousDay = day;
+        output.push(`*${label} · 第 ${exchange + 1} 段 / 共 ${totalExchanges} 段*`, '');
+      }
     }
     // Separate reference definition scopes so repeated [1] definitions cannot collide.
     for (const part of parts) {
       const prefix = `ref-${part.id.replace(/[^a-zA-Z0-9-]/g, '')}-`;
       let text = messageCopyContent([part], document, prefix).text;
+      if (turn.role === 'assistant') text = demoteHeadings(text);
       const partResources = (conversation.resources || []).filter(resource => resource.message_ids.includes(part.id));
       if (textOnly) { output.push(markdownTextOnly(text, partResources).trim(), ''); continue; }
       const represented = new Set();
@@ -60,7 +80,7 @@ export function exportConversationMarkdown(conversation, {textOnly=false, timest
     // Marker after each exchange (one user question + its answer), so a long file stays locatable.
     if (turn.role === 'assistant') {
       exchange += 1;
-      output.push('', `*（第 ${exchange} 段对话，共 ${totalExchanges} 段）*`, '');
+
     }
   }
   return textOnly ? markdownTextOnly(output.join('\n')) : output.join('\n');
