@@ -140,3 +140,30 @@ ChatGPT 分享页面及公开资源
 文本导出复用 JSON → Markdown 转换器。图片、附件与普通资源链接降为可读文字，代码示例中的链接语法不改写。
 
 项目 ZIP 收集项目关联的聊天，并按当前标题生成唯一文件名；不加入附件、项目简介或书签备注。完整消息关系、历史版本和资源仍以归档数据为准，因此 MD／ZIP 不能替代备份。
+
+## 组件样式与冻结包的边界
+
+冻结包（`official-templates/`）只保存**外壳 DOM 与类名**，不保存组件自己的样式表。页面能画出结构，但
+`display`、方向、对齐、尺寸可能全部缺失——2026-10-21 之前 DIL 的模型卡片就是因此纵向堆叠的。
+
+### 遇到"结构对、排版塌"时
+
+先查样式规则在不在包里，再动渲染器。判断方法：在 `official-templates/assets/*.css` 里搜组件类名
+（如 `.oIb9lq_Box`），若只找到变量赋值（`--w-box-flex-in-row:1 1 0%`）却没有任何消费它的规则
+（`flex:var(--w-box-flex-in-row)`），缺的就是样式表。
+
+### 补齐方式
+
+1. 用 `capture-official-dom.mjs` 匿名抓取包含该组件的分享页；
+2. 快照会把页面加载的**全部样式表**存到 `data/private/official-dom/<label>/css/`；
+3. 从中只抽取相关规则，写成一个独立文件挂到 `shell.html`，不要整包引入；
+4. 重建后按截图 + `npm test` + `npm run check` 验证。
+
+已按此补齐的案例：`assets/box-layout.css`（47 条规则，源自 `chart-hxo96mku.css`，驱动 DIL 的 `box`/`row`
+排版与两栏卡片）。
+
+### 明确不做的项
+
+- DIL 的推理折叠块（「思考了 1m 30s」）按用户要求**不做**；
+- `button` / `radio-group` 的官方外观需要主题 token 层（`--button-size` 等），尚未决定是否引入，见 TODO。
+
