@@ -62,6 +62,14 @@
 - 已尝试：共享页面缓存（同一页只解析一次、统一写回）。`chat-menu` + `chat-actions` 合并后**输出逐字节一致**，省下约 10 秒；
 - 卡点：`reader-ui` 与 `bookmarks` 是**追加式**的，重复执行会把内容叠加（实测 `data-reader-menu` 1→2、书签标记 83→113），合并后输出不一致，已整体回退；
 - 下一步：先给这些步骤补"清理自身旧产物"的幂等逻辑（`chat-menu` 已经是这种写法），再逐个接入缓存；
+- 第 2 轮实测：同一个页面连续两次构建会**变大**（759KB → 800KB → 825KB 一路涨），原因是各步骤都在"追加"而不清理：
+  - `sidebar-controls`：重复插入启动脚本 `ceobeSidebarCollapsed` 与官方样式表链接；
+  - `chat-organizer`：每次追加 6 个 `data-organizer-template`；
+  - `bookmarks`：重复插入 `#ceobe-bookmark-data` 与 `reading-position.css`；
+  - `chat-actions`：重复插入 `#ceobe-chat-catalog` 与 `chat-actions.css/js`。
+- 已试过逐一补清理逻辑，过程中把项目页的原生节点也删了（`/project.html`、`/projects.html` 报 `textContent of null`），说明清理必须**按页面类型加白名单**；
+- 这些幂等补丁已全部回退，`replay/` 重新全量构建，巡检 40 页 0 问题；
+- 结论：合并遍历的前置条件是六个步骤全部幂等，且幂等测试要"连续两次构建页面逐字节一致"，先做到这一步再谈合并。
 - 验收标准：合并前后 41 个页面逐字节一致 + 全站巡检 0 问题。
 
 ## 已知限制
