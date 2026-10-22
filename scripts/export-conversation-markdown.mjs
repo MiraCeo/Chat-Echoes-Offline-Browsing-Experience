@@ -27,7 +27,7 @@ export function exportConversationMarkdown(conversation, {textOnly=false, timest
     // 时间线：只在显式要求时输出（下载通道），快照里的 conversation.md 保持原样。
     if (timestamps) {
       const stamp = Number.isFinite(turn.createdAt) ? formatStamp(turn.createdAt) : '';
-      if (stamp) output.push(`*${stamp}*`, '');
+      if (stamp) output.push(`*${stamp} · 第 ${exchange + 1} 段 / 共 ${totalExchanges} 段*`, '');
     }
     // Separate reference definition scopes so repeated [1] definitions cannot collide.
     for (const part of parts) {

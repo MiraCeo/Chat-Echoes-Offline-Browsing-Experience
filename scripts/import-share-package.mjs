@@ -107,7 +107,7 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
       && conversation.completeness?.structured_payload?.status === 'usable';
 
     await writeFile(join(plan.dir, 'conversation.ceobe.json'), `${JSON.stringify(conversation, null, 2)}\n`);
-    await writeFile(join(plan.dir, 'conversation.md'), exportConversationMarkdown(conversation));
+    await writeFile(join(plan.dir, 'conversation.md'), exportConversationMarkdown(conversation, { timestamps: true }));
     await writeFile(join(plan.dir, 'import-report.json'), `${JSON.stringify(conversation.import_report, null, 2)}\n`);
 
     const counts = { messages: Object.keys(conversation.messages).length, nodes: Object.keys(conversation.nodes).length };

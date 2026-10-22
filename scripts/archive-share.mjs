@@ -90,7 +90,7 @@ conversation.import_report.complete_offline_archive = conversation.resources.eve
   conversation.import_report.status === 'structure_checked' &&
   conversation.completeness?.structured_payload?.status === 'usable';
 await writeFile(join(folder, 'conversation.ceobe.json'), JSON.stringify(conversation, null, 2));
-await writeFile(join(folder, 'conversation.md'), exportConversationMarkdown(conversation), { flag: 'wx' });
+await writeFile(join(folder, 'conversation.md'), exportConversationMarkdown(conversation, { timestamps: true }), { flag: 'wx' });
 await writeFile(join(folder, 'import-report.json'), JSON.stringify(conversation.import_report, null, 2), { flag: 'wx' });
 console.log(run.stdout.trim());
 console.log(`Archive: ${folder}\nReport: ${conversation.import_report.status}\nResources: ${JSON.stringify(conversation.import_report.resource_counts)}`);

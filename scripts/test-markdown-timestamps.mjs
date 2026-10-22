@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { exportConversationMarkdown } from './export-conversation-markdown.mjs';
 import { conversationToMarkdownView } from './conversation-to-markdown-view.mjs';
 
-const stampLine = /^\*(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d)\*$/;
+const stampLine = /^\*(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d):(\d\d) · 第 (\d+) 段 \/ 共 (\d+) 段\*$/;
 const base = 1792591756; // 任意固定的 epoch 秒，断言只关心"有没有"和顺序
 
 const conversation = {
@@ -30,6 +30,8 @@ assert.ok(!plain.split('\n').some(line => stampLine.test(line.trim())), '默认�
 const timed = exportConversationMarkdown(conversation, { timestamps: true });
 const timeLines = timed.split('\n').map(line => line.trim()).filter(line => stampLine.test(line));
 assert.equal(timeLines.length, 4, '四条可见消息各一行时间');
+const segments = timeLines.map(line => line.match(stampLine)).map(m => [Number(m[7]), Number(m[8])]);
+assert.deepEqual(segments, [[1, 2], [1, 2], [2, 2], [2, 2]], '段号按问答对递增，总数一致');
 
 // 时间行紧跟在标题之后，且正文仍在。
 const lines = timed.split('\n');
