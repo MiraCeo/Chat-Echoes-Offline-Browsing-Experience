@@ -177,9 +177,9 @@ async function buildReader(library, selectedId, onlyIds = null) {
   await step('chat-actions', async () => buildChatActions(projectRoot, library, pageCache));
   await step('chat-organizer', async () => buildChatOrganizer(projectRoot, pageCache));
   await step('sidebar-controls', async () => buildSidebarControls(projectRoot, pageCache));
-  if (pageCache) { const written = await pageCache.flush(); console.log(`Page cache: parsed ${pageCache.parsedPages}, wrote ${written.length} page(s).`); }
   await step('search-index', async () => writeSearchIndex(projectRoot, library));
-  await step('reader-ui', async () => buildReaderUI(projectRoot, library));
+  await step('reader-ui', async () => buildReaderUI(projectRoot, library, pageCache));
+  if (pageCache) { const written = await pageCache.flush(); console.log(`Page cache: parsed ${pageCache.parsedPages}, wrote ${written.length} page(s).`); }
   await step('bookmarks', async () => buildBookmarks(projectRoot, library));
   await step('fonts', async () => localizeGeneratedFonts(join(projectRoot,'replay')));
   console.log('Steps: ' + stepTiming.map(([n, ms]) => `${n}=${(ms / 1000).toFixed(1)}s`).join(' '));
