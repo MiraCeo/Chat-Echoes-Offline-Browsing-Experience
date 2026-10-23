@@ -16,6 +16,7 @@ import { writeSearchIndex } from './search-index.mjs';
 import { buildProjectDetail } from './build-project-detail.mjs';
 import { buildProjectsPage } from './build-projects-page.mjs';
 import { buildChatMenu } from './build-chat-menu.mjs';
+import { createPageCache } from './page-cache.mjs';
 import { buildChatActions } from './build-chat-actions.mjs';
 import { readChatMetadata } from './chat-store.mjs';
 import { writeChatIndexMarkdown } from './chat-index-markdown.mjs';
@@ -170,8 +171,11 @@ async function buildReader(library, selectedId, onlyIds = null) {
   await step('asset-library', async () => buildAssetLibrary(projectRoot, library));
   await step('projects-page', async () => buildProjectsPage(projectRoot));
   await step('project-detail', async () => buildProjectDetail(projectRoot, library));
-  await step('chat-menu', async () => buildChatMenu(projectRoot, library));
-  await step('chat-actions', async () => buildChatActions(projectRoot, library));
+  // chat-menu 与 chat-actions 合并成同一趟：一页只解析一次，最后统一写回。
+  const pageCache = process.env.CEOBE_NO_CACHE ? null : createPageCache(join(projectRoot, 'replay'));
+  await step('chat-menu', async () => buildChatMenu(projectRoot, library, pageCache));
+  await step('chat-actions', async () => buildChatActions(projectRoot, library, pageCache));
+  if (pageCache) { const written = await pageCache.flush(); console.log(`Page cache: parsed ${pageCache.parsedPages}, wrote ${written.length} page(s).`); }
   await step('chat-organizer', async () => buildChatOrganizer(projectRoot));
   await step('sidebar-controls', async () => buildSidebarControls(projectRoot));
   await step('search-index', async () => writeSearchIndex(projectRoot, library));

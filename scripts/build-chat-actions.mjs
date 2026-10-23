@@ -1,6 +1,6 @@
 import {readFile,writeFile,copyFile,readdir} from 'node:fs/promises';import{join}from'node:path';import{createHash}from'node:crypto';import{parseHTML}from'linkedom';import{htmlSafeSvg}from'./serialize-html.mjs';
 import {applyProjectLabel} from './sidebar-project-label.js';
-export async function buildChatActions(root,library){
+export async function buildChatActions(root,library,pageCache=null){
  const base=join(root,'replay'),f=JSON.parse(await readFile(join(root,'official-templates/chat-actions.json'),'utf8'));
  const pinButton=JSON.parse(await readFile(join(root,'official-templates/chat-pin-button.json'),'utf8')).button;
   const projectPage=parseHTML(await readFile(join(base,'projects.html'),'utf8')).document;
@@ -11,7 +11,7 @@ export async function buildChatActions(root,library){
  const assets={};for(const name of ['chat-actions.js','chat-actions.css']){const b=await readFile(join(root,'scripts',name));await writeFile(join(base,name),b);assets[name]=name+'?v='+createHash('sha256').update(b).digest('hex').slice(0,12)}
  for(const file of f.stylesheets)await copyFile(join(root,'official-templates/assets',file),join(base,'assets',file));
  for(const page of pages){
-  const prefix=page.startsWith('conversations/')?'../':'./',d=parseHTML(await readFile(join(base,page),'utf8')).document;
+  const prefix=page.startsWith('conversations/')?'../':'./',d=pageCache?await pageCache.load(page):parseHTML(await readFile(join(base,page),'utf8')).document;
   const labelTemplate=d.createElement('template');labelTemplate.id='ceobe-sidebar-project-label';labelTemplate.innerHTML=labelHTML;d.body.append(labelTemplate);
    for(const b of d.querySelectorAll('[data-ceobe-chat-id]')){const pin=parseHTML(pinButton).document.querySelector('button');pin.dataset.chatUnpin=b.dataset.ceobeChatId;pin.setAttribute('aria-label','置顶 '+b.closest('a').getAttribute('aria-label'));pin.querySelector('use').setAttribute('href',prefix+'cdn/assets/sprites-shell-097001e7.svg#pin-sm');b.before(pin);const c=library.conversations.find(c=>c.id===b.dataset.ceobeChatId),p=projects.find(p=>p.conversation_ids?.includes(c?.id));if(c)applyProjectLabel(b.closest('li'),c.title,p,labelTemplate.content.firstElementChild)}
    const modal=parseHTML(f.delete).document.querySelector('[data-testid=modal-delete-conversation-confirmation]');modal.dataset.chatDelete='';modal.hidden=true;modal.querySelector('strong').textContent='';
@@ -32,6 +32,6 @@ export async function buildChatActions(root,library){
   for(const use of d.querySelectorAll('[data-chat-delete] use,[data-chat-pinned-section] use,[data-project-modal] use,[data-project-picker] use')){const h=use.getAttribute('href');use.setAttribute('href',prefix+'cdn/assets/'+(h.includes('sprites-shell')?'sprites-shell-097001e7.svg':'sprites-core-26c3f2d4.svg')+'#'+h.split('#')[1])}
   for(const file of f.stylesheets){const l=d.createElement('link');l.rel='stylesheet';l.href=prefix+'assets/'+file;d.head.append(l)}
   for(const name of ['chat-actions.css','chat-actions.js']){const e=d.createElement(name.endsWith('.css')?'link':'script');if(name.endsWith('.css')){e.rel='stylesheet';e.href=prefix+assets[name];d.head.append(e)}else{e.type='module';e.src=prefix+assets[name];d.body.append(e)}}
-  await writeFile(join(base,page),'<!DOCTYPE html>\n'+htmlSafeSvg(d.documentElement.outerHTML));
+  if(pageCache)pageCache.markDirty(page);else await writeFile(join(base,page),'<!DOCTYPE html>\n'+htmlSafeSvg(d.documentElement.outerHTML));
  }
 }
