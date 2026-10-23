@@ -1,3 +1,4 @@
+import { writeIfChanged } from './page-cache.mjs';
 import { readFile, writeFile, mkdir, cp } from 'node:fs/promises';
 import { join, dirname, basename, resolve, relative } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -109,7 +110,7 @@ export async function buildAssetLibrary(root, library) {
     if (name.endsWith('.js')) { node.type = 'module'; node.src = `./${name}?v=${hash(content)}`; document.body.append(node); }
     else { node.rel = 'stylesheet'; node.href = `./${name}?v=${hash(content)}`; document.head.append(node); }
   }
-  await writeFile(join(replay, 'assets.html'), '<!DOCTYPE html>\n' + htmlSafeSvg(document.documentElement.outerHTML));
+  await writeIfChanged(join(replay, 'assets.html'), '<!DOCTYPE html>\n' + htmlSafeSvg(document.documentElement.outerHTML));
   await writeFile(join(pub, 'assets-index.json'), JSON.stringify(records, null, 2));
   console.log(`Asset library: ${records.length} unique resources, ${records.filter(r => r.download).length} verified local files.`);
 }

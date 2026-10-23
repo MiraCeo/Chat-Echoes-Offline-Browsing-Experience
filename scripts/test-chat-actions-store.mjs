@@ -19,10 +19,13 @@ try{
  await assert.rejects(()=>readFile(join(root,'archive/chatgpt-share/chat-one/2026-01-01/raw/share.html')));
  assert.equal(await readFile(join(root,'archive/chatgpt-share/chat-two/2026-01-01/assets/53bc8e6bd2720512dfebe2cab3c763e4503f55a41809b68bcc148637850bf871.txt'),'utf8'),'shared-safe');
  assert.ok(!(await ps.list())[0].conversation_ids.includes('chat-one'));
- assert.deepEqual((await bookmarks.list()).map(b=>b.chat_id),['chat-two']);for(const dir of ['replay','dist'])assert.ok(!(await readFile(join(root,dir,'index.html'),'utf8')).includes('PRIVATE-BOOKMARK-NOTE-'));
+ assert.deepEqual((await bookmarks.list()).map(b=>b.chat_id),['chat-two']);assert.ok(!(await readFile(join(root,'replay/index.html'),'utf8')).includes('PRIVATE-BOOKMARK-NOTE-'));
  assert.equal((await store.list()).length,1);assert.equal((await store.list())[0].title,'新标题');
- for(const dir of ['replay','dist']){await assert.rejects(()=>readFile(join(root,dir,'old-secret.html')));await assert.rejects(()=>readFile(join(root,dir,'conversations/chat-one.html')))}
+ // dist 不再随删除重建（只标记过期）：replay 必须干净，dist 保持原样并留下过期原因。
+ await assert.rejects(()=>readFile(join(root,'replay/old-secret.html')));await assert.rejects(()=>readFile(join(root,'replay/conversations/chat-one.html')));
+ assert.equal(await readFile(join(root,'dist/old-secret.html'),'utf8'),'RAW-SECRET-chat-one');
+ assert.equal(JSON.parse(await readFile(join(root,'data/private/dist-stale.json'),'utf8')).reason,'delete');
  assert.equal((await readdir(join(root,'data/private/delete-jobs'))).length,0);
- await store.mutate({id:'chat-two',action:'delete',confirm:'chat-two'});assert.equal((await store.list()).length,0);assert.equal((await bookmarks.list()).length,0);assert.ok((await readFile(join(root,'dist/index.html'),'utf8')).includes('本地聊天'));
- console.log('PASS: rename/pin persistence, path/confirmation validation, failed-build preservation, all archive versions removed, survivor shared attachment preserved, project unlink, clean replay/dist, last-chat empty rebuild. Isolated data only.');
+ await store.mutate({id:'chat-two',action:'delete',confirm:'chat-two'});assert.equal((await store.list()).length,0);assert.equal((await bookmarks.list()).length,0);assert.ok((await readFile(join(root,'replay/index.html'),'utf8')).includes('本地聊天'));
+ console.log('PASS: rename/pin persistence, path/confirmation validation, failed-build preservation, all archive versions removed, survivor shared attachment preserved, project unlink, clean replay with dist marked stale, last-chat empty rebuild. Isolated data only.');
 }finally{await rm(root,{recursive:true,force:true})}

@@ -3,7 +3,10 @@
  const sidebar=document.getElementById('stage-slideover-sidebar'),rail=document.getElementById('stage-sidebar-tiny-bar'),panel=document.querySelector('[data-ceobe-sidebar-panel]'),dialog=document.querySelector('[data-ceobe-search]');if(!sidebar||!rail||!panel||!dialog)return;
  const root=new URL(location.pathname.includes('/conversations/')?'../':'./',location.href),key='ceobe.sidebar-collapsed.v1';
  const input=dialog.querySelector('input'),list=dialog.querySelector('ol'),heading=dialog.querySelector('h3'),clear=dialog.querySelector('.F_cuGW_clearButton'),divider=dialog.querySelector('.F_cuGW_headerActionDivider'),status=dialog.querySelector('[data-ceobe-search-status]');
- const initial=JSON.parse(document.getElementById('ceobe-chat-catalog').textContent);let catalog=initial,opener=null,inerted=[],generation=0,offline=false;
+ let catalog=[],opener=null,inerted=[],generation=0,offline=false;
+ // 会话清单不再内嵌到每一页（那会让删除会话改写全部页面）：先按静态 chats.json 播种，
+ // 本地服务可用时 refresh() 会换成最新数据。
+ fetch(new URL('chats.json',root),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(data=>{if(catalog.length||!Array.isArray(data?.chats))return;catalog=data.chats;if(!dialog.hidden)render();if(!recentPopup.hidden)renderRecent()}).catch(()=>{});
  const bodySection=dialog.querySelector('[data-ceobe-search-body]'),bodyList=bodySection.querySelector('ol'),bodyHeading=bodySection.querySelector('h3'),currentChat=document.body.dataset.readerChatId||null;let index=null,indexState='idle',indexPromise=null;let lastQuery=null,forceTop=true;
  const recentPopup=document.querySelector('[data-ceobe-rail-recent]'),recentTrigger=document.querySelector('[data-ceobe-recent-trigger]'),recentMenu=recentPopup.querySelector('[role=menu]'),recentList=recentMenu.querySelector('ul'),recentLayout=JSON.parse(recentPopup.dataset.layout);let recentGeneration=0,recentEditing=false,recentCloseRequested=false;
  const normal=s=>String(s||'').normalize('NFKC').toLocaleLowerCase().trim();

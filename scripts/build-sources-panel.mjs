@@ -2,7 +2,7 @@ import { cp } from 'node:fs/promises';
 import { join } from 'node:path';
 import { stripInlineComponents } from './dil-inline-components.mjs';
 
-export async function buildSourcesPanel(document, root, output, conversation, templates) {
+export async function buildSourcesPanel(document, root, output, conversation, templates, { skipSharedAssets = false } = {}) {
   const clone = name => templates.clone(name, document);
   const cloneNode = node => node.cloneNode(true);
   const messageText = message => stripInlineComponents((message?.content?.blocks || [])
@@ -207,7 +207,10 @@ export async function buildSourcesPanel(document, root, output, conversation, te
     }
     document.body.append(rail);
   }
-  for (const name of ['sources-panel.js', 'sources-panel.css', 'prompt-rail.js']) await cp(join(root, 'scripts', name), join(output, name));
+  // 共享脚本由第一个页面进程拷贝一次；并行渲染的子进程跳过，避免同一路径被并发复制。
+  if (!skipSharedAssets) {
+    for (const name of ['sources-panel.js', 'sources-panel.css', 'prompt-rail.js']) await cp(join(root, 'scripts', name), join(output, name));
+  }
   const script = document.createElement('script'); script.type = 'module'; script.src = './sources-panel.js'; document.body.append(script);
   const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = './sources-panel.css'; document.head.append(css);
 }

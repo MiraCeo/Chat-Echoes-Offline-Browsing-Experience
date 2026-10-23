@@ -11,6 +11,8 @@ try {
   const failed = [];
   page.on('response', response => { if (response.status() >= 400) failed.push(`${response.status()} ${response.url()}`); });
   await page.goto(origin);
+  // 侧栏会话列表由客户端按 chats.json 渲染（页面里只留当前会话一行），等它渲染完成再数行数。
+  await page.waitForFunction(() => document.documentElement.dataset.ceobeSidebarChats === 'ready');
   assert.equal(await page.title(), library.conversations[0].title);
   const links = page.locator('a[data-sidebar-item][href*="./conversations/"]');
   assert.equal(await links.count(), library.conversations.length);
@@ -50,12 +52,22 @@ try {
     assert.ok((await fileUploadItem.locator('.ceobe-prompt-item-reply').innerText()).length > 20);
     const promptList = page.locator('.ceobe-prompt-menu ul');
     const expandedHeight = await promptList.evaluate(element => element.scrollHeight);
-    const anotherPromptItem = page.locator('.ceobe-prompt-menu .ceobe-prompt-item:not([data-ceobe-prompt-kind="file-upload"])').first();
+    // 只挑带回复的条目来对比：只生成图片的一轮没有回复文本，本来就没有详情可展开。
+    const anotherPromptItem = page.locator('.ceobe-prompt-menu .ceobe-prompt-item:not([data-ceobe-prompt-kind="file-upload"])')
+      .filter({ has: page.locator('.ceobe-prompt-item-detail') }).first();
     await anotherPromptItem.hover();
     assert.equal(await page.locator('.ceobe-prompt-item[data-ceobe-detail-active]').count(), 1);
     assert.equal(await fileUploadItem.locator('.ceobe-prompt-item-detail').evaluate(element => getComputedStyle(element).height), '0px');
     assert.equal(await anotherPromptItem.locator('.ceobe-prompt-item-detail').evaluate(element => getComputedStyle(element).height), '37px');
     assert.equal(await promptList.evaluate(element => element.scrollHeight), expandedHeight);
+    // 悬停到没有回复的条目时，上一条的详情必须收起，而不是留在展开状态。
+    const plainPromptItem = page.locator('.ceobe-prompt-menu .ceobe-prompt-item')
+      .filter({ hasNot: page.locator('.ceobe-prompt-item-detail') }).first();
+    if (await plainPromptItem.count()) {
+      await plainPromptItem.hover();
+      assert.equal(await page.locator('.ceobe-prompt-item[data-ceobe-detail-active]').count(), 0, '没有回复的条目不应保留已展开的详情');
+      assert.equal(await anotherPromptItem.locator('.ceobe-prompt-item-detail').evaluate(element => getComputedStyle(element).height), '0px');
+    }
   } else {
     console.log('prompt rail: 当前会话没有文件类提示项，跳过该段断言。');
   }

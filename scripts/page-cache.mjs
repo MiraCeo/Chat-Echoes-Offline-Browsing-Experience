@@ -5,6 +5,16 @@ import { join } from 'node:path';
 import { parseHTML } from 'linkedom';
 import { htmlSafeSvg } from './serialize-html.mjs';
 
+/**
+ * 内容没变就不写盘。删除/重命名一个会话时，没有变动的页面只是被重新装饰了一遍，
+ * 结果与磁盘上的字节相同；这里省掉的就是那 39×4 MB 的重写。
+ */
+export async function writeIfChanged(file, output) {
+  try { if (await readFile(file, 'utf8') === output) return false; } catch { /* 新文件 */ }
+  await writeFile(file, output);
+  return true;
+}
+
 export function createPageCache(base) {
   const documents = new Map();
   const dirty = new Set();
@@ -20,8 +30,8 @@ export function createPageCache(base) {
       const written = [];
       for (const page of dirty) {
         const document = documents.get(page);
-        await writeFile(join(base, page), `<!DOCTYPE html>\n${htmlSafeSvg(document.documentElement.outerHTML)}`);
-        written.push(page);
+        const output = `<!DOCTYPE html>\n${htmlSafeSvg(document.documentElement.outerHTML)}`;
+        if (await writeIfChanged(join(base, page), output)) written.push(page);
       }
       dirty.clear();
       return written;

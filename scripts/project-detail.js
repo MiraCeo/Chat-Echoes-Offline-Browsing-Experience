@@ -14,7 +14,8 @@ function render(){if(editing)return;const project=projects.find(p=>p.id===id);li
  status.textContent=members.length?'':'此项目还没有会话，可在上方导入，或通过聊天菜单移入。';
 }
 async function load(){const token=++generation;try{const [pr,cr]=await Promise.all([fetch('/api/projects',{cache:'no-store'}),fetch('/api/chats',{cache:'no-store'})]);const [p,c]=await Promise.all([pr.json(),cr.json()]);if(!pr.ok||!cr.ok||!Array.isArray(p.projects)||!Array.isArray(c.conversations))throw new Error();if(token!==generation)return;projects=p.projects;chats=c.conversations;render()}catch{if(token===generation){render();status.textContent+=' 当前为本地只读快照，无法确认最新项目关联。'}}}
-chats=JSON.parse(document.getElementById('ceobe-chat-catalog').textContent).slice();render();load();
+// 会话清单改由 chats.json 提供（页面里不再内嵌全部会话）；本地服务可用时 load() 会换成最新数据。
+chats=[];render();load();fetch(new URL('chats.json',location.href),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(chats.length||!Array.isArray(d?.chats))return;chats=d.chats;render()}).catch(()=>{});
 list.addEventListener('click',e=>{if(e.target.closest('button,a,input'))return;e.target.closest('li')?.querySelector('a')?.click()});
 list.addEventListener('focusin',e=>{if(e.target.matches('input[name=title-editor]'))editing=true});
 document.addEventListener('ceobe:chat-updated',()=>{editing=false;load()});document.addEventListener('ceobe:project-updated',load);document.addEventListener('ceobe:project-moved',load);document.addEventListener('ceobe:project-created',load);document.addEventListener('ceobe:project-imported',load);window.addEventListener('focus',()=>{if(!editing)load()});

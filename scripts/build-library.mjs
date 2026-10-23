@@ -211,6 +211,9 @@ async function buildReader(library, selectedId, onlyIds = null) {
       title: overlays[entry.id]?.title || entry.title,
       pinned_at: overlays[entry.id]?.pinned_at || null,
       turn_count: entry.turn_count ?? null,
+      // 与 /api/chats 的字段保持一致，浏览器端的排序在“静态播种”和“服务刷新”之间不会跳变。
+      created_at: entry.created_at ?? null,
+      updated_at: entry.updated_at ?? null,
       captured_at: entry.captured_at || null,
       source_type: entry.source_type || 'chatgpt_share',
     }));

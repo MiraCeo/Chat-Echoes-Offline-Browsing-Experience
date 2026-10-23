@@ -4,6 +4,8 @@ import { createHash } from 'node:crypto';
 import { parseHTML } from 'linkedom';
 import { htmlSafeSvg } from './serialize-html.mjs';
 import { bookmarkTargets } from './bookmark-targets.mjs';
+import { removeInjected, placeStylesheet, placeScript } from './page-decoration.mjs';
+import { writeIfChanged } from './page-cache.mjs';
 export async function buildBookmarks(root, library) {
   const base = join(root, 'replay'),
     f = JSON.parse(await readFile(join(root, 'official-templates/project-sources.json'), 'utf8')),
@@ -31,6 +33,16 @@ export async function buildBookmarks(root, library) {
     );
   for (const path of pages) {
     const d = parseHTML(await readFile(join(base, path), 'utf8')).document,
+      // 幂等：这个步骤没有共享的页面缓存，每次都会重新解析并写盘；
+      // 先删掉上一次注入的模板、数据块、弹窗、按钮与资源引用，否则重建会不断累积。
+      _clean = (() => {
+        removeInjected(d, [
+          'template#ceobe-bookmark-icon-user', 'template#ceobe-bookmark-icon-gpt', 'template#ceobe-bookmark-icon-edit',
+          '#ceobe-bookmark-data', '[data-bookmark-menu]', '[data-bookmark-dialog]', '[data-bookmark-status]',
+          '[data-bookmark-open]', '[data-bookmark-mark]',
+        ]);
+        return 0;
+      })(),
       prefix = path.startsWith('conversations/') ? '../' : './',
       isReader = ![
         'data-ceobe-import-page',
@@ -127,7 +139,8 @@ export async function buildBookmarks(root, library) {
       button.innerHTML = icon;
       if (rail) rail.before(button);
       else d.querySelector('main')?.prepend(button);
-      const form = d.querySelector('#prompt-textarea')?.closest('form');
+      // 第二次构建时 #prompt-textarea 已经被替换掉，靠标记找回同一个表单，避免输入区空掉。
+      const form = d.querySelector('#prompt-textarea')?.closest('form') || d.querySelector('[data-bookmark-composer]');
       if (form) {
         form.dataset.bookmarkComposer = '';
         form.replaceChildren();
@@ -218,18 +231,11 @@ export async function buildBookmarks(root, library) {
       'bookmarks.css',
       ...(chatId ? ['reading-position.js', 'reading-position.css'] : []),
     ]) {
-      const e = d.createElement(name.endsWith('.js') ? 'script' : 'link');
-      if (name.endsWith('.js')) {
-        e.type = 'module';
-        e.src = prefix + files[name];
-        d.body.append(e);
-      } else {
-        e.rel = 'stylesheet';
-        e.href = prefix + files[name];
-        d.head.append(e);
-      }
+      // 就地更新版本，保持 head/body 里的位置稳定。
+      if (name.endsWith('.js')) placeScript(d, name.match(/^[a-z-]+/)[0] + '.', prefix + files[name]);
+      else placeStylesheet(d, name.match(/^[a-z-]+/)[0] + '.', prefix + files[name]);
     }
-    await writeFile(
+    await writeIfChanged(
       join(base, path),
       '<!DOCTYPE html>\n' + htmlSafeSvg(d.documentElement.outerHTML),
     );

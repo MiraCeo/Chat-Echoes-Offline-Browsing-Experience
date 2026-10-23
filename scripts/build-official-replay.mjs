@@ -665,28 +665,49 @@ for (const [index, message] of turns.entries()) {
   messageList.append(wrapper);
 }
 baseDocument.querySelector("title").textContent = canonicalConversation.title;
+// 侧栏会话列表改由浏览器按 replay/chats.json 渲染（chat-actions.js），页面里只留当前会话这一行：
+// 首屏仍有正确的一行，且作为客户端行模板的来源（见 build-chat-actions.mjs）。
+// 这样新增/删除会话只改动 chats.json、索引与那一页，不再重写每一页。
 const historyLinks = [...baseDocument.querySelectorAll('a[data-sidebar-item]')]
   .filter(link => /\/c\//.test(link.getAttribute('href') || ''));
-if (library?.conversations?.length && historyLinks.length) {
-  const parent = historyLinks[0].parentElement.parentElement;
-  const activeTemplate = historyLinks.find(link => link.hasAttribute('data-active')) || historyLinks[0];
-  const inactiveTemplate = historyLinks.find(link => !link.hasAttribute('data-active')) || historyLinks[0];
-  for (const link of historyLinks) link.parentElement?.remove();
-  for (const entry of library.conversations) {
-    const template = entry.id === values['entry-id'] ? activeTemplate : inactiveTemplate;
-    const item = cloneIntoBase(template.parentElement);
-    const link = item.matches?.('a[data-sidebar-item]') ? item : item.querySelector('a[data-sidebar-item]');
-    link.setAttribute('href', entry.page);
-    link.setAttribute('aria-label', entry.title);
-    link.toggleAttribute('data-active', entry.id === values['entry-id']);
-    const label = link.querySelector('._NCija_content') || link;
-    label.textContent = entry.title;
-    parent.append(item);
-  }
-} else {
-  for (const [index, link] of historyLinks.entries()) {
-    if (index) { link.remove(); continue; }
+// CEOBE_LEGACY_SIDEBAR=1 走改造前的分支（每页写入全部会话），只用于逐字节对照验证。
+const sidebarSelf = library?.conversations?.find(entry => entry.id === values['entry-id']) || null;
+if (process.env.CEOBE_LEGACY_SIDEBAR === '1') {
+  if (library?.conversations?.length && historyLinks.length) {
+    const parent = historyLinks[0].parentElement.parentElement;
+    const activeTemplate = historyLinks.find(link => link.hasAttribute('data-active')) || historyLinks[0];
+    const inactiveTemplate = historyLinks.find(link => !link.hasAttribute('data-active')) || historyLinks[0];
+    for (const link of historyLinks) link.parentElement?.remove();
+    for (const entry of library.conversations) {
+      const template = entry.id === values['entry-id'] ? activeTemplate : inactiveTemplate;
+      const item = cloneIntoBase(template.parentElement);
+      const link = item.matches?.('a[data-sidebar-item]') ? item : item.querySelector('a[data-sidebar-item]');
+      link.setAttribute('href', entry.page);
+      link.setAttribute('aria-label', entry.title);
+      link.toggleAttribute('data-active', entry.id === values['entry-id']);
+      const label = link.querySelector('._NCija_content') || link;
+      label.textContent = entry.title;
+      parent.append(item);
+    }
+  } else if (historyLinks.length) {
+    const [link] = historyLinks;
     link.setAttribute('href', '#main');
+    link.setAttribute('aria-label', canonicalConversation.title);
+    const label = link.querySelector('._NCija_content') || link;
+    label.textContent = canonicalConversation.title;
+  }
+} else if (historyLinks.length) {
+  for (const link of historyLinks.slice(1)) link.parentElement?.remove();
+  const [link] = historyLinks;
+  if (sidebarSelf) {
+    link.setAttribute('href', sidebarSelf.page);
+    link.setAttribute('aria-label', sidebarSelf.title);
+    link.toggleAttribute('data-active', true);
+    const label = link.querySelector('._NCija_content') || link;
+    label.textContent = sidebarSelf.title;
+  } else {
+    link.setAttribute('href', '#main');
+    link.removeAttribute('data-active');
     link.setAttribute('aria-label', canonicalConversation.title);
     const label = link.querySelector('._NCija_content') || link;
     label.textContent = canonicalConversation.title;
@@ -807,8 +828,10 @@ const availablePreviewFiles = await buildFilePreviews(
   officialTemplates,
   dirname(canonicalConversationPath),
   useSampleAssets,
+  { skipSharedAssets: values['skip-shared-assets'] },
 );
-await buildSourcesPanel(baseDocument, projectRoot, outputRoot, canonicalConversation, officialTemplates);
+await buildSourcesPanel(baseDocument, projectRoot, outputRoot, canonicalConversation, officialTemplates,
+  { skipSharedAssets: values['skip-shared-assets'] });
 for (const opener of baseDocument.querySelectorAll('[data-ceobe-open-preview]')) {
   const key = opener.getAttribute('data-ceobe-open-preview');
   const previewFile = availablePreviewFiles.get(key);

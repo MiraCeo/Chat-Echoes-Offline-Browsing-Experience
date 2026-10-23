@@ -55,7 +55,7 @@ const replacePastedProse = (document, container, source) => {
   }
 };
 
-export async function buildFilePreviews(document, projectRoot, outputRoot, conversation, templates, sourceRoot, sampleAssets = false) {
+export async function buildFilePreviews(document, projectRoot, outputRoot, conversation, templates, sourceRoot, sampleAssets = false, { skipSharedAssets = false } = {}) {
   const assets = join(outputRoot, 'previews');
   const templateAssets = join(assets, 'templates');
   await mkdir(assets, { recursive: true });
@@ -239,9 +239,14 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
     }
   }
   const script = document.createElement('script'); script.type = 'module'; script.src = './file-previews.js'; document.body.append(script);
-  await cp(join(projectRoot, 'scripts/file-previews.js'), join(outputRoot, 'file-previews.js'));
+  // 这两个文件与页面无关，只由第一个页面进程拷贝（public/previews 仍需逐页同步，见下）。
+  if (!skipSharedAssets) {
+    await cp(join(projectRoot, 'scripts/file-previews.js'), join(outputRoot, 'file-previews.js'));
+  }
   const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = './file-previews.css'; document.head.append(css);
-  await cp(join(projectRoot, 'scripts/file-previews.css'), join(outputRoot, 'file-previews.css'));
+  if (!skipSharedAssets) {
+    await cp(join(projectRoot, 'scripts/file-previews.css'), join(outputRoot, 'file-previews.css'));
+  }
   await cp(assets,join(outputRoot,'public/previews'),{recursive:true});
   return previewFiles;
 }

@@ -47,10 +47,14 @@ if (rail) {
   let hovered = false, open = false, closeTimer, fadeTimer, active, frame, detailItem, menuPositioned = false;
   let accurateLayout;
   function showDetail(item) {
-    if (!item || item === detailItem || !item.querySelector('.ceobe-prompt-item-detail')) return;
+    if (!item || item === detailItem) return;
+    // 没有回复可预览的条目（例如只生成了图片的一轮）也要收起上一条的详情，
+    // 否则悬停过去之后旧详情仍然展开，看起来像卡住了。
+    const expandable = item.querySelector('.ceobe-prompt-item-detail') ? item : null;
+    if (detailItem === expandable) return;
     detailItem?.removeAttribute('data-ceobe-detail-active');
-    detailItem = item;
-    detailItem.setAttribute('data-ceobe-detail-active', '');
+    detailItem = expandable;
+    detailItem?.setAttribute('data-ceobe-detail-active', '');
   }
   function clearDetail() {
     detailItem?.removeAttribute('data-ceobe-detail-active');

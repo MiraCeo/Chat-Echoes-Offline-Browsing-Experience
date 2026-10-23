@@ -3,6 +3,8 @@ import {join} from 'node:path';
 import {createHash} from 'node:crypto';
 import {parseHTML} from 'linkedom';
 import {htmlSafeSvg} from './serialize-html.mjs';
+import {clearPageDecorations,placeStylesheet,placeScript} from './page-decoration.mjs';
+import {decorationStylesheets} from './decoration-stylesheets.mjs';
 export async function buildChatMenu(root,library,pageCache=null){
  const base=join(root,'replay'),f=JSON.parse(await readFile(join(root,'official-templates/chat-menu.json'),'utf8'));
  if(f.version!==2)throw new Error('The full official chat-menu capture is required');
@@ -12,10 +14,12 @@ export async function buildChatMenu(root,library,pageCache=null){
  for(const file of f.stylesheets)await copyFile(join(root,'official-templates/assets',file),join(base,'assets',file));
  const icons=JSON.parse(await readFile(join(root,'official-templates/new-project.json'),'utf8')).icons;
  const pages=(await readdir(base)).filter(p=>p.endsWith('.html')).concat((await readdir(join(base,'conversations'))).filter(p=>p.endsWith('.html')).map(p=>'conversations/'+p));
+ const officialStylesheets=await decorationStylesheets(root);
  for(const page of pages){
   const prefix=page.startsWith('conversations/')?'../':'./',d=pageCache?await pageCache.load(page):parseHTML(await readFile(join(base,page),'utf8')).document;
   // Make postprocessing repeatable without accumulating wrappers or scripts.
-  for(const e of d.querySelectorAll('[data-ceobe-chat-wrapper],#ceobe-chat-project-row,#ceobe-chat-icon-bank,#ceobe-chat-status,#ceobe-chat-layout,script[src*="chat-menu.js"],link[href*="chat-menu.css"]'))e.remove();
+  // 这是每趟构建的第一个装饰步骤：先清掉上一趟注入的全部节点，再由各步骤按固定顺序重新注入。
+  clearPageDecorations(d,{stylesheets:officialStylesheets});
   for(const a of d.querySelectorAll('a[data-sidebar-item]')){
    const entry=library.conversations.find(e=>(a.getAttribute('href')||'').endsWith('/'+e.id+'.html'));if(!entry)continue;
    const b=a.querySelector('[data-conversation-options-trigger]');if(!b)continue;
@@ -55,8 +59,8 @@ export async function buildChatMenu(root,library,pageCache=null){
   const layout=d.createElement('script');layout.id='ceobe-chat-layout';layout.type='application/json';layout.textContent=JSON.stringify(f.layouts.map(l=>({offset:l.offset,side:l.side,align:l.align})));d.body.append(layout);
   const status=d.createElement('div');status.id='ceobe-chat-status';status.setAttribute('role','status');status.hidden=true;d.body.append(status);
   for(const file of f.stylesheets){if([...d.querySelectorAll('link[rel=stylesheet]')].some(e=>e.getAttribute('href')===prefix+'assets/'+file))continue;const l=d.createElement('link');l.rel='stylesheet';l.href=prefix+'assets/'+file;d.head.append(l)}
-  const css=d.createElement('link');css.rel='stylesheet';css.href=prefix+assets['chat-menu.css'];d.head.append(css);
-  const js=d.createElement('script');js.type='module';js.src=prefix+assets['chat-menu.js'];d.body.append(js);
+  placeStylesheet(d,'chat-menu.css',prefix+assets['chat-menu.css']);
+  placeScript(d,'chat-menu.js',prefix+assets['chat-menu.js']);
   if(pageCache)pageCache.markDirty(page);else await writeFile(join(base,page),'<!DOCTYPE html>\n'+htmlSafeSvg(d.documentElement.outerHTML));
  }
  console.log('Complete official chat-menu DOM wired on',pages.length,'pages.');

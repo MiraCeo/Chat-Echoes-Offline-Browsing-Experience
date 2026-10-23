@@ -1,3 +1,4 @@
+import { writeIfChanged } from './page-cache.mjs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -54,6 +55,6 @@ export async function buildProjectsPage(root) {
   const url=`./${file}?v=${createHash('sha256').update(content).digest('hex').slice(0,12)}`;
   if(file.endsWith('.js')){const e=d.createElement('script');e.type='module';e.src=url;d.body.append(e)}else{const e=d.createElement('link');e.rel='stylesheet';e.href=url;d.head.append(e)}
  }
- await writeFile(join(replay,'projects.html'),'<!DOCTYPE html>\n'+htmlSafeSvg(d.documentElement.outerHTML));
+ await writeIfChanged(join(replay,'projects.html'),'<!DOCTYPE html>\n'+htmlSafeSvg(d.documentElement.outerHTML));
  console.log('Built local projects page:',projects.length,'saved projects; official create dialog and icon picker.');
 }

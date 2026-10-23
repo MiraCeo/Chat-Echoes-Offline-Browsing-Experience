@@ -1,3 +1,4 @@
+import { writeIfChanged } from './page-cache.mjs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parseHTML } from 'linkedom';
@@ -38,6 +39,6 @@ export async function buildImportPage(projectRoot = resolve(import.meta.dirname,
     document.head.append(link);
   }
 
-  await writeFile(join(replayRoot, 'import.html'), `<!DOCTYPE html>\n${htmlSafeSvg(document.documentElement.outerHTML)}`, 'utf8');
+  await writeIfChanged(join(replayRoot, 'import.html'), `<!DOCTYPE html>\n${htmlSafeSvg(document.documentElement.outerHTML)}`);
   console.log('Built official-DOM import page: replay/import.html');
 }
