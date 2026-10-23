@@ -24,6 +24,7 @@ import { renderDilTree } from './render-dil.mjs';
 const projectRoot = resolve(import.meta.dirname, "..");
 const { values } = parseArgs({ options: {
   input: { type: "string" },
+  "skip-shared-assets": { type: "boolean", default: false },
   "sample-assets": { type: "boolean", default: false },
   "output-page": { type: "string" },
   "preserve-output": { type: "boolean", default: false },
@@ -705,6 +706,8 @@ if (!values['preserve-output']) {
   }
   await rm(outputRoot, { recursive: true, force: true });
 }
+const copiedFiles = new Set();
+if (!values['skip-shared-assets']) {
 await mkdir(outputAssets, { recursive: true });
 await mkdir(join(outputRoot, 'archive-resources'), { recursive: true });
 for (const [path, bytes] of resourceBytes) await writeFile(join(outputRoot, 'archive-resources', basename(path)), bytes);
@@ -726,11 +729,11 @@ for (const spriteName of officialSpriteNames) {
 await cp(join(officialAssetsRoot, officialFontName), join(outputAssets, officialFontName));
 await cp(outputOfficialAssets,join(outputRoot,'public/cdn/assets'),{recursive:true});
 
-const copiedFiles = new Set();
 for (const entry of await readdir(join(officialTemplates.root, 'assets'), { withFileTypes: true })) {
   if (!entry.isFile()) continue;
   await cp(join(officialTemplates.root, 'assets', entry.name), join(outputAssets, entry.name));
   copiedFiles.add(entry.name);
+}
 }
 
 const availablePreviewFiles = await buildFilePreviews(
@@ -751,13 +754,13 @@ for (const opener of baseDocument.querySelectorAll('[data-ceobe-open-preview]'))
     opener.removeAttribute('data-ceobe-preview-file');
   } else opener.setAttribute('data-ceobe-preview-file', previewFile);
 }
-await cp(join(projectRoot, 'scripts/clipboard.js'), join(outputRoot, 'clipboard.js'));
+if (!values['skip-shared-assets']) await cp(join(projectRoot, 'scripts/clipboard.js'), join(outputRoot, 'clipboard.js'));
 const clipboardScript = baseDocument.createElement('script');
 clipboardScript.type = 'module';
 clipboardScript.src = './clipboard.js';
 baseDocument.body.append(clipboardScript);
-await cp(join(projectRoot, 'scripts/link-import.js'), join(outputRoot, 'link-import.js'));
-await cp(join(projectRoot, 'scripts/link-import.css'), join(outputRoot, 'link-import.css'));
+if (!values['skip-shared-assets']) await cp(join(projectRoot, 'scripts/link-import.js'), join(outputRoot, 'link-import.js'));
+if (!values['skip-shared-assets']) await cp(join(projectRoot, 'scripts/link-import.css'), join(outputRoot, 'link-import.css'));
 const importStylesheet = baseDocument.createElement('link');
 importStylesheet.rel = 'stylesheet';
 importStylesheet.href = './link-import.css';

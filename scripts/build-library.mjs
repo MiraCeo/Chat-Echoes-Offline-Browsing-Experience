@@ -2,7 +2,7 @@ import { localizeGeneratedFonts } from './local-katex-fonts.mjs';
 import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { stat } from 'node:fs/promises';
@@ -110,6 +110,31 @@ const exists = async path => { try { await stat(path); return true; } catch { re
 const stepTiming = [];
 const step = async (name, fn) => { const started = Date.now(); const value = await fn(); stepTiming.push([name, Date.now() - started]); return value; };
 
+// 页面渲染相互独立，可以并行；共享资源（字体、sprites、模板资产）由第一张页面负责拷贝一次，
+// 其余子进程用 --skip-shared-assets 只写自己的页面，避免并发覆盖同一批文件。
+const runAsync = (entry, output, extra = []) => new Promise((done, fail) => {
+  const args = ['scripts/build-official-replay.mjs', '--input', entry.conversation_path, '--output-page', output,
+    '--library', posixRelative(indexPath), '--entry-id', entry.id, '--preserve-output', ...extra];
+  const child = spawn(process.execPath, args, { cwd: projectRoot, windowsHide: true });
+  let stderr = '';
+  child.stderr.on('data', chunk => { stderr += chunk; });
+  child.stdout.on('data', chunk => process.stdout.write(chunk));
+  child.on('error', fail);
+  child.on('close', code => (code === 0 ? done() : fail(new Error(stderr || `Failed to build ${entry.title}`))));
+});
+
+/** 以固定并发跑一组任务；第一个任务单独跑，负责共享资源。 */
+const runPool = async (entries, limit, extraForAll = []) => {
+  const queue = [...entries];
+  const worker = async () => {
+    while (queue.length) {
+      const entry = queue.shift();
+      await runAsync(entry, join('replay', 'conversations', `${entry.id}.html`), extraForAll);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, entries.length)) }, worker));
+};
+
 async function buildReader(library, selectedId, onlyIds = null) {
 
   const run = (entry, output, preserve) => {
@@ -150,14 +175,22 @@ async function buildReader(library, selectedId, onlyIds = null) {
     if (name.endsWith('.html') && !keep.has(name)) await rm(join(projectRoot, 'replay', 'conversations', name), { force: true });
   }
   let rebuilt = 0;
+  const pending = [];
   for (const entry of library.conversations) {
     const page = join(projectRoot, 'replay', 'conversations', `${entry.id}.html`);
     const source = hashBytes(await readFile(entry.conversation_path));
     const stamp = `${source}:${renderer}`;
     next[entry.id] = stamp;
     if (previous[entry.id] === stamp && await exists(page)) continue;
-    run(entry, join('replay', 'conversations', `${entry.id}.html`), true);
-    rebuilt += 1;
+    pending.push(entry);
+  }
+  if (pending.length) {
+    // 第一页顺带把共享资产拷好，其余并行且跳过共享拷贝。
+    const [first, ...rest] = pending;
+    await runAsync(first, join('replay', 'conversations', `${first.id}.html`));
+    const limit = process.env.CEOBE_SERIAL_PAGES ? 1 : Math.max(1, Number(process.env.CEOBE_PAGE_WORKERS) || 4);
+    if (rest.length) await runPool(rest, limit, ['--skip-shared-assets']);
+    rebuilt = pending.length;
   }
   await mkdir(join(projectRoot, 'data/private'), { recursive: true });
   await writeFile(stampFile, JSON.stringify(next));
