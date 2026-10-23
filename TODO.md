@@ -72,6 +72,18 @@
   后处理约 52 秒 + `replay/` 620 MB 复制进出约 28 秒；
 - 已完成第一步：`build-library` 现在生成 `replay/chats.json`（及 `public/` 副本），
   含 id / 标题 / 置顶 / 轮数 / 抓取时间 / 来源类型，供浏览器端渲染侧栏使用；
+- 集成点已定位：`scripts/build-official-replay.mjs` 第 668–694 行会把示例侧栏的历史条目替换成
+  `library.conversations` 的真实列表（每页 34 条）。改造时这里应改为"输出一个空容器 + 行模板 +
+  `sidebar-chats.js`"，由浏览器按 `chats.json` 渲染；
+- 依赖清单（都要跟着改成客户端事件委托，否则新列表会丢失这些装饰）：
+  1. `build-chat-actions`：置顶按钮 `[data-chat-unpin]`、项目标签、`#ceobe-chat-catalog`；
+  2. `build-chat-menu`：会话操作菜单、重命名行、删除入口；
+  3. `build-chat-organizer`：项目分组与"更多"菜单；
+  4. `build-sidebar-controls`：侧栏折叠、搜索触发；
+  5. `build-bookmarks`：侧栏书签入口；
+- 建议分两次提交：先"客户端渲染 + 只读列表"（此时删除仍会更新页面，但可验证渲染一致），
+  再"把上述装饰迁移到客户端"，最后用"删除后页面哈希不变"验收。
+
 - 下一步：
   1. 页面里侧栏列表改为占位容器 + 客户端脚本按 `chats.json` 渲染（含置顶分区）；
   2. 置顶、重命名、删除菜单等交互沿用现有 `chat-actions` 客户端逻辑，改成事件委托；
