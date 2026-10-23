@@ -200,6 +200,26 @@ async function buildReader(library, selectedId, onlyIds = null) {
     console.log(`Incremental: rebuilt ${rebuilt} of ${library.conversations.length} conversation pages.`);
   }
   await cp(indexPath, join(projectRoot, 'replay', 'library.ceobe.json'));
+  // 浏览器端渲染用的公开聊天清单：只含侧栏需要的字段，不含本地路径。
+  // 侧栏改由客户端渲染后，新增/删除会话只需要更新这个文件，不必重写每一页。
+  {
+    const meta = await readFile(join(projectRoot, 'data/private/chats.ceobe.json'), 'utf8').catch(() => '{}');
+    let overlays = {};
+    try { overlays = JSON.parse(meta).items || {}; } catch { overlays = {}; }
+    const chats = library.conversations.map(entry => ({
+      id: entry.id,
+      title: overlays[entry.id]?.title || entry.title,
+      pinned_at: overlays[entry.id]?.pinned_at || null,
+      turn_count: entry.turn_count ?? null,
+      captured_at: entry.captured_at || null,
+      source_type: entry.source_type || 'chatgpt_share',
+    }));
+    const payload = JSON.stringify({ kind: 'ceobe.chat-list', version: 1, generated_at: new Date().toISOString(), chats });
+    await writeFile(join(projectRoot, 'replay', 'chats.json'), payload, 'utf8');
+    await mkdir(join(projectRoot, 'replay', 'public'), { recursive: true });
+    await writeFile(join(projectRoot, 'replay', 'public', 'chats.json'), payload, 'utf8');
+  }
+
   await mkdir(join(projectRoot, 'replay', 'public'), { recursive: true });
   await cp(indexPath, join(projectRoot, 'replay', 'public', 'library.ceobe.json'));
   await step('import-page', async () => buildImportPage(projectRoot));
