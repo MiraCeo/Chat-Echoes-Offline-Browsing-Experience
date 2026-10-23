@@ -164,9 +164,9 @@ Remove-Item Env:CEOBE_TEST_DIST
 - 永久删除测试必须验证保留对象和失败路径，不能在个人归档上演练。
 - **不要把 `archive/`、`data/private/` 用 junction／符号链接接进任何会被递归删除的目录**
   （临时目录、`git worktree` 等）：Windows 上 `git worktree remove --force` 会穿过 junction，
-  把真实档案删空（本项目已发生过一次，见 `HANDOVER.md` 第 8 节）。隔离副本要真实复制
-  `official-templates`／`official-assets` 这类小目录，只对 `node_modules` 建联接；
-  参考 `scripts/test-sidebar-client-render.mjs`。
+  把真实档案删空（本项目已发生过一次，见 `HANDOVER.md` 第 8 节）。隔离副本放在 `data/private/` 下
+  （Node 会沿目录树找到真实 `node_modules`），真实复制 `official-templates`／`official-assets`／
+  `node_modules/katex`，不要建任何联接；参考 `scripts/test-sidebar-client-render.mjs`。
 - 真实分享链接导入仅通过显式配置启用，例如 `CEOBE_TEST_SHARE_URL`；不要默认联网归档。
 - 异常锁和恢复目录不是缓存，不应未经核查清除。
 

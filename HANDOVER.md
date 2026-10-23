@@ -171,5 +171,6 @@ npm run verify:archive      # 只读检查档案结构
   重新生成的 `archive/library.ceobe.json` 与事故前 `dist/library.ceobe.json` 逐字段比对 **0 差异**
   （标题、来源、抓取时间、消息/轮次计数、资源计数、快照路径全部相同）。
 - **教训（务必遵守）**：不要用 junction/symlink 把 `archive/`、`data/private/` 接进任何临时目录或 git 工作树，
-  尤其是之后要递归删除的目录（git 在 Windows 上会穿过去）。隔离测试应当**真实复制**需要的部分，
-  参见 `scripts/test-sidebar-client-render.mjs`（复制 `official-templates`/`official-assets`，只给 `node_modules` 建联接）。
+  尤其是之后要递归删除的目录（git 在 Windows 上会穿过去）。隔离测试应当**真实复制**需要的部分，并把副本放在
+  `data/private/` 下（Node 会沿目录树找到真实 `node_modules`）；参考 `scripts/test-sidebar-client-render.mjs`：
+  复制 `official-templates`、`official-assets` 与 `node_modules/katex`，全程不建任何联接。
