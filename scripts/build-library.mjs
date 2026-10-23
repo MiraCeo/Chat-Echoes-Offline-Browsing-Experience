@@ -1,5 +1,5 @@
 import { localizeGeneratedFonts } from './local-katex-fonts.mjs';
-import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { spawn, spawnSync } from 'node:child_process';
@@ -90,20 +90,22 @@ export async function buildLibraryIndex() {
 const hashBytes = bytes => createHash('sha256').update(bytes).digest('hex').slice(0, 16);
 const stampFile = join(projectRoot, 'data/private/library-stamps.json');
 async function rendererStamp() {
+  // 用文件内容而非修改时间：删除流程会把脚本复制到暂存目录，mtime 会变，
+  // 那样指纹必然不同、每次删除都退化成全量渲染。
   const roots = [join(projectRoot, 'scripts'), join(projectRoot, 'official-templates')];
   const parts = [];
   for (const root of roots) {
-    for await (const entry of await import('node:fs/promises').then(fs => fs.readdir(root, { recursive: true, withFileTypes: true }))) {
+    for (const entry of await readdir(root, { recursive: true, withFileTypes: true })) {
       if (!entry.isFile()) continue;
-      const full = join(entry.parentPath || entry.path, entry.name);
       if (!/\.(mjs|js|json|html|css)$/.test(entry.name)) continue;
-      const info = await stat(full).catch(() => null);
-      if (info) parts.push(`${entry.name}:${info.size}:${Math.round(info.mtimeMs)}`);
+      const full = join(entry.parentPath || entry.path, entry.name);
+      parts.push(`${entry.name}:${hashBytes(await readFile(full))}`);
     }
   }
   parts.sort();
   return hashBytes(parts.join('|'));
 }
+
 const exists = async path => { try { await stat(path); return true; } catch { return false; } };
 
 // 索引类步骤的耗时（用于判断增量构建剩下的时间花在哪）。

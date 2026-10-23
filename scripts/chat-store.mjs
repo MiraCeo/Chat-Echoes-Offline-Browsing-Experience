@@ -19,8 +19,14 @@ export async function rebuildDeletionStage(stage,sourceRoot){
  await cp(join(sourceRoot,'node_modules/katex'),join(stage,'node_modules/katex'),{recursive:true});
  await mkdir(join(stage,'official-assets/cdn/assets'),{recursive:true});
  for(const file of ['sprites-core-26c3f2d4.svg','sprites-shell-097001e7.svg','OpenAISans-Semibold.woff2'])await cp(join(sourceRoot,'official-assets/cdn/assets',file),join(stage,'official-assets/cdn/assets',file));
+ // 复用现有产物与构建指纹：只删掉那个会话的页面，其余页面按指纹跳过渲染，
+ // 后处理步骤仍会跑一遍刷新侧栏、搜索与索引。没有这步时暂存目录是空的，等于全量重建。
+ for(const name of ['replay','dist'])if(await exists(join(sourceRoot,name)))await cp(join(sourceRoot,name),join(stage,name),{recursive:true});
+ const stamps=join(sourceRoot,'data/private/library-stamps.json');
+ if(await exists(stamps)){await mkdir(join(stage,'data/private'),{recursive:true});await cp(stamps,join(stage,'data/private/library-stamps.json'))}
  await run(stage,['scripts/build-library.mjs']);
- await run(stage,[join(sourceRoot,'node_modules/vite/bin/vite.js'),'build','replay','--config','vite.config.mjs','--outDir','../dist','--emptyOutDir']);
+ // 生产构建产物只在实际存在时才需要跟着更新；只用 dev 服务的用户不必为删除付这笔时间。
+ if(await exists(join(sourceRoot,'dist')))await run(stage,[join(sourceRoot,'node_modules/vite/bin/vite.js'),'build','replay','--config','vite.config.mjs','--outDir','../dist','--emptyOutDir']);
 }
 // Windows 上本地服务会占用 replay/dist 的句柄，直接 rename 会 EPERM。
 // 先短暂重试；仍失败时给出可执行的提示，而不是一句"操作失败"。
@@ -38,6 +44,50 @@ const renameWithRetry = async (from, to) => {
     throw Object.assign(new Error('本地服务正在占用 replay/ 或 dist/，请先停止 npm run dev（或关闭本地服务）后再删除'), { status: 409 });
   }
   throw lastError;
+};
+
+// 本地服务会一直占用 replay/ 与 dist/：Windows 不允许重命名，但允许覆盖与删除其中的文件。
+// 所以优先用重命名（快），被占用时退回"整份复制 + 剪枝"，保证开着服务也能删除。
+const pruneToMatch = async (live, fresh) => {
+  for (const name of await readdir(live)) {
+    const a = join(live, name), b = join(fresh, name);
+    if (!(await exists(b))) { await rm(a, { recursive: true, force: true }); continue; }
+    const [sa, sb] = [await lstat(a), await lstat(b)];
+    if (sa.isDirectory() && sb.isDirectory()) await pruneToMatch(a, b);
+  }
+};
+
+const replaceTree = async (live, backupPath) => {
+  const fresh = live; // 调用方传入的是"暂存目录中的同一路径"
+  return { live, backupPath, fresh };
+};
+
+const installPath = async (live, old, fresh) => {
+  const backup = async () => {
+    if (!await exists(live)) return false;
+    await mkdir(dirname(old), { recursive: true });
+    try { await renameWithRetry(live, old); }
+    catch (error) {
+      if (error.status !== 409) throw error;
+      await cp(live, old, { recursive: true });
+    }
+    return true;
+  };
+  const install = async () => {
+    if (!await exists(fresh)) return false;
+    await mkdir(dirname(live), { recursive: true });
+    try { await renameWithRetry(fresh, live); }
+    catch (error) {
+      if (error.status !== 409) throw error;
+      await cp(fresh, live, { recursive: true });
+      await pruneToMatch(live, fresh);
+    }
+    return true;
+  };
+  const hadOld = await backup();
+  const installed = await install();
+  console.log('DEBUG install', live, { hadOld, installed, freshExists: await exists(fresh) });
+  return { hadOld, installed };
 };
 
 export function createChatStore(root,{rebuild=rebuildDeletionStage}={}){
@@ -62,19 +112,23 @@ export function createChatStore(root,{rebuild=rebuildDeletionStage}={}){
     meta.items[body.id]={...meta.items[body.id],pinned_at};await atomic(join(root,'data/private/chats.ceobe.json'),meta);return {conversation:{...entry,pinned_at}};
    }
    if(body.action!=='delete'||body.confirm!==body.id)throw failure('需要明确确认永久删除');
-   const target=join(root,'archive/chatgpt-share',body.id);
-   if(relative(root,target).startsWith('..'))throw failure('无效路径');
+   // 会话可能来自分享归档，也可能是本地登录态采集（archive/chatgpt-web），两处都要找。
+   const targetRoots=['archive/chatgpt-share','archive/chatgpt-web'].map(dir=>join(root,dir,body.id));
+   for(const dir of targetRoots)if(relative(root,dir).startsWith('..'))throw failure('无效路径');
    // No reparse points are traversed. A nonstandard shared cross-archive path is
    // rejected rather than guessing whether its bytes may be removed.
    await assertSafeTree(join(root,'archive'));
    for(const dir of ['replay','dist'])if(await exists(join(root,dir)))await assertSafeTree(join(root,dir));
-   if(!await exists(target))throw failure('原始归档目录不存在',409);
+   const targets=[];
+   for(const dir of targetRoots)if(await exists(dir))targets.push(dir);
+   if(!targets.length)throw failure('原始归档目录不存在',409);
    const checkResources=async(dir)=>{for(const n of await readdir(dir,{withFileTypes:true})){const path=join(dir,n.name);if(n.isDirectory())await checkResources(path);else if(n.name==='conversation.ceobe.json'){const c=JSON.parse(await readFile(path,'utf8'));for(const r of c.resources||[]){if(!r.local_path)continue;const resolved=resolve(dirname(path),r.local_path);if(!resolved.startsWith(dirname(path)+requireSeparator()))throw failure('存在跨归档附件路径，需先检查共享资源，已取消删除',409)}}}};
    await checkResources(join(root,'archive/chatgpt-share'));
    const job=join(root,'data/private/delete-jobs',randomUUID()),stage=join(job,'stage'),backup=join(job,'backup');await mkdir(stage,{recursive:true});await mkdir(backup);
    let committed=false,rollbackFailed=false;const moved=[];
    try{
-    await cp(join(root,'archive'),join(stage,'archive'),{recursive:true,filter:path=>path!==target&&!path.startsWith(target+requireSeparator())});
+    const excluded=targets.flatMap(dir=>[dir,dir+requireSeparator()]);
+    await cp(join(root,'archive'),join(stage,'archive'),{recursive:true,filter:path=>!excluded.some(prefix=>path===prefix||path.startsWith(prefix))});
     delete meta.items[body.id];await atomic(join(stage,'data/private/chats.ceobe.json'),meta);
     const projectFile=join(root,'data/private/projects.ceobe.json');
     if(await exists(projectFile)){const projects=JSON.parse(await readFile(projectFile,'utf8'));if(projects.kind!=='ceobe.projects'||!Array.isArray(projects.projects))throw new Error('项目文件格式错误');for(const p of projects.projects)p.conversation_ids=(p.conversation_ids||[]).filter(id=>id!==body.id);await atomic(join(stage,'data/private/projects.ceobe.json'),projects)}
@@ -83,13 +137,13 @@ export function createChatStore(root,{rebuild=rebuildDeletionStage}={}){
     await rebuild(stage,root);
     // Durable journal allows fail-closed manual recovery after a process/OS crash.
     await atomic(join(job,'journal.json'),{id:body.id,state:'prepared',paths:[]});
-    const paths=[...(await exists(bookmarkFile)?['data/private/bookmarks.ceobe.json']:[]),'archive/chatgpt-share/'+body.id,'archive/library.ceobe.json',CHAT_INDEX_FILE,'data/private/chats.ceobe.json',...(await exists(projectFile)?['data/private/projects.ceobe.json']:[]),'replay','dist'];
-    for(const path of paths){const live=join(root,path),old=join(backup,path),fresh=join(stage,path);const item={path,hadOld:false,installed:false};moved.push(item);if(await exists(live)){await mkdir(dirname(old),{recursive:true});await renameWithRetry(live,old);item.hadOld=true}if(await exists(fresh)){await mkdir(dirname(live),{recursive:true});await renameWithRetry(fresh,live);item.installed=true}await atomic(join(job,'journal.json'),{id:body.id,state:'committing',paths:moved})}
+    const paths=[...(await exists(bookmarkFile)?['data/private/bookmarks.ceobe.json']:[]),...targets.map(dir=>relative(root,dir).replaceAll('\\','/')),'archive/library.ceobe.json',CHAT_INDEX_FILE,'data/private/chats.ceobe.json',...(await exists(projectFile)?['data/private/projects.ceobe.json']:[]),'replay','dist'];
+    for(const path of paths){const live=join(root,path),old=join(backup,path),fresh=join(stage,path);const item={path,hadOld:false,installed:false};moved.push(item);const result=await installPath(live,old,fresh);item.hadOld=result.hadOld;item.installed=result.installed;await atomic(join(job,'journal.json'),{id:body.id,state:'committing',paths:moved})}
     committed=true;
     // Success is not returned while raw archives or old generated copies remain.
     await rm(job,{recursive:true});return {deleted:body.id,redirect:'./index.html'};
    }catch(e){
-    if(!committed){try{for(const item of moved.reverse()){const live=join(root,item.path);if(item.installed)await rm(live,{recursive:true,force:true});if(item.hadOld){await mkdir(dirname(live),{recursive:true});await renameWithRetry(join(backup,item.path),live)}}}catch{rollbackFailed=true}}
+    if(!committed){try{for(const item of moved.reverse()){const live=join(root,item.path);if(item.installed)await rm(live,{recursive:true,force:true});if(item.hadOld){await mkdir(dirname(live),{recursive:true});try{await renameWithRetry(join(backup,item.path),live)}catch(error){if(error.status!==409)throw error;await cp(join(backup,item.path),live,{recursive:true})}}}}catch{rollbackFailed=true}}
     if(committed||rollbackFailed){e.message='操作未完全结束，已保留恢复记录；请检查 data/private/delete-jobs，勿重复操作。';e.status=500;throw e}
     await rm(job,{recursive:true,force:true});throw e;
    }
