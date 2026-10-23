@@ -288,7 +288,17 @@ export const renderAssistantMarkdown = (
     const value = (element.getAttribute(attribute) || '').replace(/[\u0000-\u0020]/g, '');
     if (/^[a-z][a-z0-9+.-]*:/i.test(value) && !/^(https?:|mailto:)/i.test(value)) {
       element.removeAttribute(attribute);
-      element.setAttribute('title', '该资源尚未关联可用的本地地址');
+      element.setAttribute('title', '该资源尚未关联可用的本地地址（例如 ChatGPT 沙箱里的生成文件，分享页本身不提供）');
+      // 去掉 href 后仍是个看起来能点的链接：显式标成不可用，并补一句可见提示。
+      element.setAttribute('aria-disabled', 'true');
+      element.setAttribute('tabindex', '-1');
+      element.classList.add('ceobe-unavailable-link');
+      element.setAttribute('style', 'cursor:default;text-decoration:none;opacity:.7');
+      const hint = document.createElement('span');
+      hint.className = 'ceobe-unavailable-hint';
+      hint.setAttribute('style', 'margin-inline-start:.35em;font-size:.85em;opacity:.7');
+      hint.textContent = '（未归档）';
+      element.after(hint);
     }
   }
   enhanceCodeBlocks(document, container);
