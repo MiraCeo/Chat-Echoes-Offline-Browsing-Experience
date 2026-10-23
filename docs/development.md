@@ -38,6 +38,19 @@ npm run dev -- --host 127.0.0.1 --port 5173
   直接请求不带哈希的旧路径会命中 SPA 回退、返回 `index.html`——这是预期行为，不是资源缺失；
 - `npm run preview` 默认端口是 **4173**（`npm run dev` 才是 5173），检查生产产物时别打错端口。
 
+### 侧栏由浏览器渲染
+
+- `build-library` 产出 `replay/chats.json`（并复制到 `replay/public/`，所以 `dist/chats.json` 也有），
+  字段与 `/api/chats` 对齐（id、标题、置顶、轮数、时间、来源）；
+- 每个页面只写当前会话一行 + `<template id="ceobe-sidebar-chat-row">`；`chat-actions.js` 先按 `chats.json`
+  渲染，`/api/chats` 可用时再换成最新数据。渲染完成后页面会设置
+  `document.documentElement.dataset.ceobeSidebarChats = 'ready'`，浏览器测试等这个标记再数行数；
+- 因此**删除/重命名一个会话不会改写其他页面**；`scripts/test-sidebar-client-render.mjs` 用逐字节哈希守住这一点；
+- 想回到“每页写入全部会话”的旧行为做对照：`CEOBE_LEGACY_SIDEBAR=1 npm run library`（只用于逐字节比对，不要长期开启）；
+- 后处理步骤必须**幂等**：`scripts/page-decoration.mjs` 的 `clearPageDecorations()` 在每趟构建开头统一清场，
+  资源引用用 `placeStylesheet`/`placeScript` 就地更新版本，`writeIfChanged` 在内容没变时不写盘。
+  新增后处理步骤时照这个模式写，否则每次重建都会重复注入节点、页面体积持续增长。
+
 ## 打印（PDF）样式约束
 
 - 打印规则写在 `official-templates/assets/print.css`（`media="print"`），屏幕渲染不受影响；
@@ -113,6 +126,7 @@ node scripts/test-copy-content.mjs
 | 连续调整宽度、离屏旁注与精确跳转 | `test-bookmark-resize-browser.mjs`（`npm run test:bookmarks:browser`）；在临时目录构建隔离副本（`bookmark-browser-fixture.mjs` + `fixtures/browser/bookmark-conversations.mjs`，100／500 条消息、20／100 条书签），不依赖本地 5173，不读写使用者归档；支持 `CEOBE_TEST_DIST=1` 与 `CEOBE_TEST_HEADED=1`，检查布局／样式重算次数、懒滚动、精确跳转与面板开关 |
 | 阅读边缘：书签面板停靠与上次阅读位置 | `test-reader-margin-browser.mjs`（`npm run test:reader-margins`）；在临时目录构建隔离副本（同一夹具，120／60 条消息、24／12 条书签），检查 1440→420 各宽度下展开或收起面板都不移动、不压缩正文，留白足够时停靠在正文左侧、不足时改为短浮层且点击别处即收起，空列表收缩为一行提示，以及按聊天恢复阅读位置的精确跳转、从头阅读、清除与只保存 ID＋偏移；全程只读 GET，不依赖本地 5173，不读写使用者归档；支持 `CEOBE_TEST_DIST=1` 与 `CEOBE_TEST_HEADED=1` |
 | 侧栏、搜索与整理 | `test-sidebar-controls.mjs`（标题与正文搜索、片段高亮、页内精确跳转与跨页哈希跳转，新查询把结果列表送回顶部、后台刷新保留焦点与位置；正文索引和 `/api/chats` 均为只读夹具）、`test-search-index.mjs`（索引只含可见提问／回复／代码，排除推理、隐藏上下文、引用与附件名）、`test-sidebar-polish.mjs`、`test-chat-organizer.mjs` |
+| 侧栏客户端渲染（删除不改页面） | `test-sidebar-client-render.mjs`：在临时目录真实复制运行时 + 三份夹具会话，跑真实构建与真实删除流程；断言“数据不变时重建逐字节一致”“删除一个会话后其余页面哈希不变、只有被删页面消失”“页面里没有 `#ceobe-chat-catalog`、保留一行静态回退与行模板”。不读写使用者归档 |
 | 导入与发布 | `test-local-import-api.mjs`、`test-production-import.mjs`、`test-link-import-browser.mjs` |
 | 离线资源 | `test-offline-resources.mjs` |
 
@@ -148,6 +162,11 @@ Remove-Item Env:CEOBE_TEST_DIST
 - 创建、重命名、移动、置顶、简介保存和删除测试，应使用临时存储或明确的内存 API 拦截。
 - 对真实档案的 UI 验证默认只读；检查前后数据是否变化。
 - 永久删除测试必须验证保留对象和失败路径，不能在个人归档上演练。
+- **不要把 `archive/`、`data/private/` 用 junction／符号链接接进任何会被递归删除的目录**
+  （临时目录、`git worktree` 等）：Windows 上 `git worktree remove --force` 会穿过 junction，
+  把真实档案删空（本项目已发生过一次，见 `HANDOVER.md` 第 8 节）。隔离副本要真实复制
+  `official-templates`／`official-assets` 这类小目录，只对 `node_modules` 建联接；
+  参考 `scripts/test-sidebar-client-render.mjs`。
 - 真实分享链接导入仅通过显式配置启用，例如 `CEOBE_TEST_SHARE_URL`；不要默认联网归档。
 - 异常锁和恢复目录不是缓存，不应未经核查清除。
 

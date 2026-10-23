@@ -62,34 +62,29 @@
 - `bookmarks` 未合并：它写入的页面里，SVG `<title>` 内容在"同 DOM 多次解析"时会从 `&lt;desc&gt;` 变回 `<desc>`，
   产生 1 页差异；收益仅约 5 秒，暂不处理；
 - 实测：后处理步骤合计 70.2s → 51.3s；但**全量构建墙钟几乎不变**（137.7s vs 135.5s），因为大头是 36 个会话页的串行渲染；
-- 下一步优先级：页面渲染并行化（36 次串行 Node 启动），而不是继续合并后处理。
+- 页面渲染已并行化（4 并发），全量重建 111.9s → 70.9s。
 
-### 架构改造：侧栏客户端渲染（进行中）
+### 架构改造：侧栏客户端渲染（已完成）
 
-目标：新会话的增删不再重写每一页，删除从约 80 秒降到秒级。
+目标：新会话的增删不再重写每一页。**已达成**：删除一个会话后，其余会话页逐字节不变
+（`scripts/test-sidebar-client-render.mjs` 在隔离副本里跑真实构建 + 真实删除流程来验收）。
 
-- 现状：每个页面内嵌完整侧栏与菜单（单页已达 4.7 MB），删除会话必须重写全部 34 页，
-  后处理约 52 秒 + `replay/` 620 MB 复制进出约 28 秒；
-- 已完成第一步：`build-library` 现在生成 `replay/chats.json`（及 `public/` 副本），
-  含 id / 标题 / 置顶 / 轮数 / 抓取时间 / 来源类型，供浏览器端渲染侧栏使用；
-- 集成点已定位：`scripts/build-official-replay.mjs` 第 668–694 行会把示例侧栏的历史条目替换成
-  `library.conversations` 的真实列表（每页 34 条）。改造时这里应改为"输出一个空容器 + 行模板 +
-  `sidebar-chats.js`"，由浏览器按 `chats.json` 渲染；
-- 依赖清单（都要跟着改成客户端事件委托，否则新列表会丢失这些装饰）：
-  1. `build-chat-actions`：置顶按钮 `[data-chat-unpin]`、项目标签、`#ceobe-chat-catalog`；
-  2. `build-chat-menu`：会话操作菜单、重命名行、删除入口；
-  3. `build-chat-organizer`：项目分组与"更多"菜单；
-  4. `build-sidebar-controls`：侧栏折叠、搜索触发；
-  5. `build-bookmarks`：侧栏书签入口；
-- 建议分两次提交：先"客户端渲染 + 只读列表"（此时删除仍会更新页面，但可验证渲染一致），
-  再"把上述装饰迁移到客户端"，最后用"删除后页面哈希不变"验收。
+- 页面里只保留“当前会话一行 + `<template id="ceobe-sidebar-chat-row">`”，浏览器按 `replay/chats.json` 渲染；
+- `#ceobe-chat-catalog`（每页内嵌全部会话 JSON）已移除；`sidebar-controls`、`project-detail`、`project-sources`
+  改为 fetch `chats.json`，服务不可用时用静态清单；
+- 五处装饰（chat-actions / chat-menu / chat-organizer / sidebar-controls / bookmarks）都是幂等的：
+  每趟构建先 `clearPageDecorations()` 清场，再按固定顺序重新注入；资源引用就地更新版本；
+- 页面内容没变就不写盘（`writeIfChanged`）。
 
-- 下一步：
-  1. 页面里侧栏列表改为占位容器 + 客户端脚本按 `chats.json` 渲染（含置顶分区）；
-  2. 置顶、重命名、删除菜单等交互沿用现有 `chat-actions` 客户端逻辑，改成事件委托；
-  3. 逐页后处理里删掉"写侧栏"的部分，只保留页面自身内容相关的处理；
-  4. 验收：删除一个会话后 `replay/conversations/*.html` 的哈希不变，只有 `chats.json`、
-     索引与该会话的页面变化；巡检与现有浏览器测试全绿。
+**还没做（下一步）**
+
+- [ ] **按页面“装饰指纹”跳过未变化的页面**：`渲染器指纹 + 该页会话条目 + 项目清单` 没变就不解析、不写盘。
+      这是删除从约 60s（后处理）+ 复制耗时降到秒级的关键；
+- [ ] `project.html` 内嵌每个会话的预览片段，删除任何会话都会让它变；可改为按需加载或只内嵌本项目成员；
+- [ ] `scripts/test-ui-followups-browser.mjs` 在 390px 宽度仍有既有失败（书签标注越出视口），已在干净 HEAD 上复现；
+- [ ] `scripts/test-project-detail.mjs` 的几何对比也有既有失败：项目页 composer 里多了
+      `link-import.js` 的「上传采集包」块（约 61px），把 tablist 推低；两个测试都不在 `npm test` 里。
+      要么把该块从项目页 composer 移走，要么把参考基线改成带该块的样子——需要先定哪种才是想要的界面。
 
 ## 已知限制
 
@@ -113,8 +108,13 @@
 - **页面渲染并行化**：4 并发工作池，第一页顺带拷贝共享资源，其余子进程带 `--skip-shared-assets`
   （`CEOBE_PAGE_WORKERS=n` 可调，`CEOBE_SERIAL_PAGES=1` 退回串行）；全量重建 **111.9s → 70.9s**，输出逐字节一致；
   6 并发反而更慢（74.1s），4 并发是本机最优点。
+- **后处理幂等**：同一份数据重建两次页面逐字节一致（`scripts/page-decoration.mjs` + `writeIfChanged`）；
+  数据没变时重建约 55–62s，不再重写 39×4 MB。
 
 ---
 
 所有新增写入测试继续使用隔离数据。`archive/` 是只增不改的原始档案：采集、导入与测试路径均不得覆盖或删除其中的快照。
+**不要把 `archive/` 或 `data/private/` 用 junction/symlink 接进会被递归删除的临时目录或 git 工作树**——
+Windows 上 `git worktree remove --force` 会穿过 junction 把真实档案删空（2026-10-24 发生过一次，已从备份恢复）。
+隔离测试请真实复制需要的部分，参考 `scripts/test-sidebar-client-render.mjs`。
 删除项目保留聊天；聊天永久删除须保留确认与恢复保护。**本文列出的待办不代表已获实施授权。**

@@ -2,6 +2,30 @@
 
 按功能域汇总当前版本的能力与修复，逐条历史见 `git log`。本文件描述的是**现在这一版**的状态，不是完整的提交编年史。
 
+## 未发布（本轮）
+
+### 侧栏改为浏览器渲染
+
+- 每个页面只保留“当前会话一行 + `<template id="ceobe-sidebar-chat-row">`”，浏览器按 `replay/chats.json`
+  渲染全部会话；内嵌全部会话的 `#ceobe-chat-catalog` 已删除。删除／重命名一个会话不再改写其他页面。
+- `sidebar-controls`、`project-detail`、`project-sources` 改为读取 `chats.json`；本地服务不可用时静态清单仍能渲染。
+- 修正 `build-chat-organizer` 会删掉承载会话列表的整个分区——任何“不重渲染页面”的重建都会让侧栏列表永久消失。
+- 五个后处理步骤改为幂等：`scripts/page-decoration.mjs` 每趟统一清场、资源引用就地更新版本、
+  内容没变不写盘。此前每次重建都会重复注入弹窗、模板、样式表与脚本。
+
+### 修复
+
+- `test-library-browser.mjs` 第 56 行的既有失败：悬停到没有回复文本的目录项时，上一条的详情卡在展开状态（37px）。
+  `prompt-rail.js` 现在会收起旧详情，测试改为对比“带详情”的条目，并补了一条“悬停无详情条目应收起”的回归断言。
+- `test-chat-actions-store.mjs` 不再断言删除后 `dist/index.html` 存在（`440cc8e` 起写操作只标记 `dist` 过期）。
+
+### 验证
+
+- `npm test` exit 0，含新增的 `scripts/test-sidebar-client-render.mjs`：同一数据重建两次逐字节一致；
+  删除一个会话后其余会话页哈希不变、只有被删页面消失、`chats.json` 更新。
+- `npm run check` exit 0：34 个分享会话 / 42 快照 / 14704 条消息、PDF 零越界、巡检 39 页 0 问题。
+- `npm run build` exit 0；`vite preview` 下侧栏正常，拦掉 `/api/chats` 后仅靠 `chats.json` 也能渲染出 34 行。
+
 ## v1.0.2（2026-10-22）
 
 ### DIL 渲染
