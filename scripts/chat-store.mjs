@@ -22,6 +22,24 @@ export async function rebuildDeletionStage(stage,sourceRoot){
  await run(stage,['scripts/build-library.mjs']);
  await run(stage,[join(sourceRoot,'node_modules/vite/bin/vite.js'),'build','replay','--config','vite.config.mjs','--outDir','../dist','--emptyOutDir']);
 }
+// Windows 上本地服务会占用 replay/dist 的句柄，直接 rename 会 EPERM。
+// 先短暂重试；仍失败时给出可执行的提示，而不是一句"操作失败"。
+const renameWithRetry = async (from, to) => {
+  let lastError;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try { await rename(from, to); return; }
+    catch (error) {
+      lastError = error;
+      if (!['EPERM', 'EBUSY', 'EACCES', 'ENOTEMPTY'].includes(error.code)) break;
+      await new Promise(done => setTimeout(done, 200 * (attempt + 1)));
+    }
+  }
+  if (['EPERM', 'EBUSY', 'EACCES'].includes(lastError?.code)) {
+    throw Object.assign(new Error('本地服务正在占用 replay/ 或 dist/，请先停止 npm run dev（或关闭本地服务）后再删除'), { status: 409 });
+  }
+  throw lastError;
+};
+
 export function createChatStore(root,{rebuild=rebuildDeletionStage}={}){
  root=resolve(root);
  async function list(){const library=JSON.parse(await readFile(join(root,'archive/library.ceobe.json'),'utf8'));if(library.kind!=='ceobe.library'||!Array.isArray(library.conversations))throw new Error('聊天索引格式错误');const meta=await readChatMetadata(root);return library.conversations.map(e=>({...e,...meta.items[e.id]}))}
@@ -66,12 +84,12 @@ export function createChatStore(root,{rebuild=rebuildDeletionStage}={}){
     // Durable journal allows fail-closed manual recovery after a process/OS crash.
     await atomic(join(job,'journal.json'),{id:body.id,state:'prepared',paths:[]});
     const paths=[...(await exists(bookmarkFile)?['data/private/bookmarks.ceobe.json']:[]),'archive/chatgpt-share/'+body.id,'archive/library.ceobe.json',CHAT_INDEX_FILE,'data/private/chats.ceobe.json',...(await exists(projectFile)?['data/private/projects.ceobe.json']:[]),'replay','dist'];
-    for(const path of paths){const live=join(root,path),old=join(backup,path),fresh=join(stage,path);const item={path,hadOld:false,installed:false};moved.push(item);if(await exists(live)){await mkdir(dirname(old),{recursive:true});await rename(live,old);item.hadOld=true}if(await exists(fresh)){await mkdir(dirname(live),{recursive:true});await rename(fresh,live);item.installed=true}await atomic(join(job,'journal.json'),{id:body.id,state:'committing',paths:moved})}
+    for(const path of paths){const live=join(root,path),old=join(backup,path),fresh=join(stage,path);const item={path,hadOld:false,installed:false};moved.push(item);if(await exists(live)){await mkdir(dirname(old),{recursive:true});await renameWithRetry(live,old);item.hadOld=true}if(await exists(fresh)){await mkdir(dirname(live),{recursive:true});await renameWithRetry(fresh,live);item.installed=true}await atomic(join(job,'journal.json'),{id:body.id,state:'committing',paths:moved})}
     committed=true;
     // Success is not returned while raw archives or old generated copies remain.
     await rm(job,{recursive:true});return {deleted:body.id,redirect:'./index.html'};
    }catch(e){
-    if(!committed){try{for(const item of moved.reverse()){const live=join(root,item.path);if(item.installed)await rm(live,{recursive:true,force:true});if(item.hadOld){await mkdir(dirname(live),{recursive:true});await rename(join(backup,item.path),live)}}}catch{rollbackFailed=true}}
+    if(!committed){try{for(const item of moved.reverse()){const live=join(root,item.path);if(item.installed)await rm(live,{recursive:true,force:true});if(item.hadOld){await mkdir(dirname(live),{recursive:true});await renameWithRetry(join(backup,item.path),live)}}}catch{rollbackFailed=true}}
     if(committed||rollbackFailed){e.message='操作未完全结束，已保留恢复记录；请检查 data/private/delete-jobs，勿重复操作。';e.status=500;throw e}
     await rm(job,{recursive:true,force:true});throw e;
    }
