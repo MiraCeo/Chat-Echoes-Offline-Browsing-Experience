@@ -400,6 +400,22 @@ const appendFileTiles = (section, entries) => {
   }
 };
 
+const missingImageTile = attachment => {
+  const box = baseDocument.createElement('div');
+  box.className = 'ceobe-missing-image';
+  box.setAttribute('role', 'img');
+  box.setAttribute('aria-label', `图片未归档：${attachment?.name || '图片'}`);
+  box.setAttribute('style', 'margin:12px 0;padding:14px 16px;border:1px dashed #d0d5dd;border-radius:12px;background:#fafbfc;color:#667085;font-size:13px;line-height:1.6');
+  const label = baseDocument.createElement('div');
+  label.setAttribute('style', 'font-weight:600;color:#475467');
+  label.textContent = '图片未归档';
+  const detail = baseDocument.createElement('div');
+  detail.setAttribute('style', 'margin-top:2px;color:#98a2b3;word-break:break-all');
+  detail.textContent = `${attachment?.name || '图片'}（${attachment?.mime_type || '未知类型'}；分享页没有提供此文件）`;
+  box.append(label, detail);
+  return box;
+};
+
 const appendUserImages = (section, entries) => {
   const userMessage = section.querySelector('[data-message-author-role="user"]');
   const stack = userMessage?.firstElementChild;
@@ -409,16 +425,22 @@ const appendUserImages = (section, entries) => {
     const attachments = (entry.message.attachments || [])
       .filter(attachment => attachment.type !== 'generated_file' && attachment.type !== 'image_asset_pointer' && attachment.mime_type?.startsWith('image/'));
     if (!attachments.length) continue;
-    const template = userImageTemplates.get(attachments.length);
-    if (!template) continue;
+    const sizes = [...userImageTemplates.keys()].sort((a, b) => a - b);
+    const maxTiles = sizes.at(-1) || 1;
+    const chunks = [];
+    for (let start = 0; start < attachments.length; start += maxTiles) chunks.push(attachments.slice(start, start + maxTiles));
+    for (const chunk of chunks) {
+    const template = userImageTemplates.get(chunk.length) || userImageTemplates.get(maxTiles);
+    if (!template) { for (const attachment of chunk) stack.insertBefore(missingImageTile(attachment), bubble); continue; }
     const imageRow = cloneIntoBase(template);
     const images = [...imageRow.querySelectorAll('[class~="group/message-image"] img')];
     const buttons = [...imageRow.querySelectorAll('[class~="group/message-image"] button')];
-    for (const [index, attachment] of attachments.entries()) {
+    for (const [index, attachment] of chunk.entries()) {
       const image = images[index];
       const button = buttons[index];
       const resource = resourcesForMessage(entry.id).find(item => resourceMatches(item, attachment) && item.status === 'downloaded');
-      if (!image || !resource) continue;
+      if (!image) continue;
+      if (!resource) { image.replaceWith(missingImageTile(attachment)); continue; }
       image.src = `./archive-resources/${basename(resource.local_path)}`;
       image.alt = attachment.name;
       image.width = attachment.width || image.width;
@@ -438,6 +460,7 @@ const appendUserImages = (section, entries) => {
       }
     }
     stack.insertBefore(imageRow, bubble);
+    }
   }
 };
 
@@ -558,6 +581,19 @@ function appendUnavailableContent(container, message, { skipFileAttachments = fa
       if (matches.length) {
         for (const node of matches) { const replacement = link.cloneNode(true); replacement.className = node.className; node.replaceWith(replacement); }
       } else if (resource.mime_type?.startsWith('image/') && !skipImages) container.append(link);
+    }
+    // 有资源记录但没能下载的附件（文本、视频、被安全策略拦下的文件）：显式说明，
+      // 否则读者只会看到一条消息里少了几样东西。已在附件卡片里展示过的文件不重复。
+    const attachmentKeys = (record.attachments || []).map(assetKey);
+    for (const resource of archivedResources.filter(r => r.status !== 'downloaded' && r.message_ids.includes(record.id))) {
+      if (attachmentKeys.includes(resource.key)) continue;
+      if ((resource.mime_type || '').startsWith('image/')) continue;
+      const note = baseDocument.createElement('p');
+      note.setAttribute('data-ceobe-missing-resource', resource.key);
+      note.className = 'text-token-text-secondary text-sm';
+      note.setAttribute('style', 'margin:8px 0;color:#667085');
+      note.textContent = `附件未随分享提供：${resource.name || '未命名资源'}（${resource.mime_type || '未知类型'} · ${resource.status === 'failed' ? '获取失败' : '未能取得地址'}）`;
+      container.append(note);
     }
     for (const block of record.content?.blocks || []) {
       if (['text','code','file_citation','web_citation','widget','url','embedded_reference'].includes(block.type)) continue;
