@@ -32,7 +32,7 @@ const profiles = [
 ];
 await mkdir(join(source, 'data', 'private'), { recursive: true });
 const root = await mkdtemp(join(source, 'data', 'private', 'sidebar-chat-'));
-const run = args => promisify(execFile)(process.execPath, args, { cwd: root, windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
+const runCapture = args => promisify(execFile)(process.execPath, args, { cwd: root, windowsHide: true, maxBuffer: 16 * 1024 * 1024 });
 const hashFile = async path => createHash('sha256').update(await readFile(join(root, 'replay', path))).digest('hex');
 async function pageHashes() {
   const hashes = {};
@@ -62,31 +62,60 @@ try {
     await writeFile(file, JSON.stringify(makeBookmarkConversation(profile)));
   }
 
+  const decorations = stdout => {
+    const line = stdout.split(/\r?\n/).find(entry => entry.startsWith('Decorations:'));
+    assert.ok(line, `构建日志里应有装饰统计：${stdout.slice(0, 400)}`);
+    const [, refreshed, total] = line.match(/Decorations: (\d+) of (\d+)/).map(Number);
+    return { refreshed, total, line };
+  };
   let started = Date.now();
-  await run(['scripts/build-library.mjs']);
+  const firstLog = (await runCapture(['scripts/build-library.mjs'])).stdout;
   const buildMs = Date.now() - started;
   const first = await pageHashes();
   assert.equal(Object.keys(first).filter(name => name.startsWith('conversations/')).length, profiles.length, '每个会话都应生成一页');
+  const firstDecoration = decorations(firstLog);
+  assert.equal(firstDecoration.refreshed, firstDecoration.total, '首次构建要装饰全部页面');
+  assert.ok(await readFile(join(root, 'data/private/decoration-stamps.json'), 'utf8'), '首次构建应写下装饰指纹');
 
-  // 1. 幂等：数据没变时再构建一次，页面必须逐字节一致。
+  // 1. 幂等：数据没变时再构建一次，页面必须逐字节一致；而且只应重新装饰会被重建的顶层页面。
   started = Date.now();
-  await run(['scripts/build-library.mjs']);
+  const rebuildLog = (await runCapture(['scripts/build-library.mjs'])).stdout;
   const rebuildMs = Date.now() - started;
   assert.deepEqual(await pageHashes(), first, '同一份数据重建后页面必须逐字节一致（后处理步骤要幂等）');
+  const rebuildDecoration = decorations(rebuildLog);
+  assert.ok(rebuildDecoration.refreshed < rebuildDecoration.total,
+    `没有变化的页面不应重新装饰：${rebuildDecoration.line}`);
+  assert.ok(rebuildDecoration.refreshed <= 5,
+    `只重建首页/导入/资料库/项目页时，需要重做的页面不应超过 5 个：${rebuildDecoration.line}`);
+  assert.equal(parseInt(rebuildLog.match(/Page cache: parsed (\d+)/)[1], 10), rebuildDecoration.refreshed,
+    '页面缓存只应解析需要重做的页面');
 
-  // 2. 真实删除流程：只有被删页面消失，其余页面哈希不变。
+  // 2. 重命名：只有那一个会话页需要重做（装饰指纹按页计算）。
   const store = createChatStore(root);
+  await store.mutate({ action: 'rename', id: 'fixture-chat-c', title: 'fixture-chat-c 新标题' });
+  started = Date.now();
+  const renameLog = (await runCapture(['scripts/build-library.mjs'])).stdout;
+  const renameMs = Date.now() - started;
+  const baseline = await pageHashes();
+  const renameDecoration = decorations(renameLog);
+  // 顶层 5 页每次都要重建、因此每次都要重做；重命名只应让被改名的那一页额外重做。
+  assert.equal(renameDecoration.refreshed, rebuildDecoration.refreshed + 1,
+    `重命名只应重做被改名的那一页：${rebuildDecoration.line} → ${renameDecoration.line}`);
+  const renamed = Object.keys(first).filter(name => first[name] !== baseline[name]).sort();
+  assert.deepEqual(renamed, ['chats.json', 'conversations/fixture-chat-c.html'], `重命名只应改动 chats.json 与该会话页：${renamed.join(', ')}`);
+
+  // 3. 真实删除流程：只有被删页面消失，其余页面哈希不变。
   started = Date.now();
   await store.mutate({ action: 'delete', id: deletedId, confirm: deletedId });
   const deleteMs = Date.now() - started;
   const after = await pageHashes();
   assert.equal(after[`conversations/${deletedId}.html`], undefined, '被删除会话的页面应当消失');
-  assert.notEqual(after['chats.json'], first['chats.json'], 'chats.json 应当随删除更新');
+  assert.notEqual(after['chats.json'], baseline['chats.json'], 'chats.json 应当随删除更新');
   assert.equal(JSON.parse(await readFile(join(root, 'replay', 'chats.json'), 'utf8')).chats.some(chat => chat.id === deletedId), false);
   // project.html 内嵌的是“每个会话的预览片段”，少了一个会话它就该变；会话页与索引页不应变。
-  const changed = Object.keys(first).filter(name => ![`conversations/${deletedId}.html`, 'chats.json', 'project.html'].includes(name) && first[name] !== after[name]);
+  const changed = Object.keys(baseline).filter(name => ![`conversations/${deletedId}.html`, 'chats.json', 'project.html'].includes(name) && baseline[name] !== after[name]);
   assert.deepEqual(changed, [], `删除一个会话不应改写其他页面：${changed.join(', ')}`);
-  const changedConversations = Object.keys(after).filter(name => name.startsWith('conversations/') && first[name] !== after[name]);
+  const changedConversations = Object.keys(after).filter(name => name.startsWith('conversations/') && baseline[name] !== after[name]);
   assert.deepEqual(changedConversations, [], '会话页必须逐字节保持不变');
 
   // 3. 结构：没有内嵌全部会话的数据块；仍保留一行静态回退与行模板。
@@ -98,7 +127,7 @@ try {
     assert.equal(document.querySelectorAll('a[data-sidebar-item][href*="conversations/"]').length, 1, `${name} 侧栏不应再写入其他会话`);
   }
 
-  console.log(`Sidebar client render passed: build ${seconds(buildMs)}, idempotent rebuild ${seconds(rebuildMs)}, delete ${seconds(deleteMs)}; ${Object.keys(after).length - 1} pages unchanged.`);
+  console.log(`Sidebar client render passed: build ${seconds(buildMs)}, idempotent rebuild ${seconds(rebuildMs)} (${rebuildDecoration.line}), rename ${seconds(renameMs)} (${renameDecoration.line}), delete ${seconds(deleteMs)}; ${Object.keys(after).length - 1} pages unchanged.`);
 } finally {
   await rm(root, { recursive: true, force: true, maxRetries: 3 });
 }

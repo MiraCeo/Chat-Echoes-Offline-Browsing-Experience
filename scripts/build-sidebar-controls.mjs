@@ -1,5 +1,5 @@
 import{readFile,writeFile,readdir,copyFile}from'node:fs/promises';import{join}from'node:path';import{createHash}from'node:crypto';import{parseHTML}from'linkedom';import{htmlSafeSvg}from'./serialize-html.mjs';import{ensureStylesheet,placeStylesheet,placeScript}from'./page-decoration.mjs';
-export async function buildSidebarControls(root,pageCache=null){
+export async function buildSidebarControls(root,pageCache=null,selected=null){
  const base=join(root,'replay'),f=JSON.parse(await readFile(join(root,'official-templates/sidebar-search.json'),'utf8')),files={};
  // linkedom 按插入顺序序列化属性；先删再设，保证每次重建的属性顺序一致（否则同一页两次构建字节不同）。
  const setAttrs=(node,attrs)=>{for(const [name,value]of Object.entries(attrs)){node.removeAttribute(name);if(value!==null)node.setAttribute(name,String(value))}};
@@ -7,7 +7,7 @@ export async function buildSidebarControls(root,pageCache=null){
  const syncTemplate=t=>{t.innerHTML=[...t.content.childNodes].map(n=>n.nodeType===1?n.outerHTML:n.textContent).join('')};
  for(const name of ['sidebar-controls.js','sidebar-controls.css']){const code=await readFile(join(root,'scripts',name));files[name]=name.replace(/\.(js|css)$/,(ext)=>'.'+createHash('sha256').update(code).digest('hex').slice(0,12)+ext);await writeFile(join(base,files[name]),code)}
  for(const name of f.stylesheets)await copyFile(join(root,'official-templates/assets',name),join(base,'assets',name));
- const pages=(await readdir(base)).filter(n=>n.endsWith('.html')).concat((await readdir(join(base,'conversations'))).filter(n=>n.endsWith('.html')).map(n=>'conversations/'+n));
+ const pages=selected??(await readdir(base)).filter(n=>n.endsWith('.html')).concat((await readdir(join(base,'conversations'))).filter(n=>n.endsWith('.html')).map(n=>'conversations/'+n));
  for(const page of pages){
   const d=pageCache?await pageCache.load(page):parseHTML(await readFile(join(base,page),'utf8')).document,sidebar=d.getElementById('stage-slideover-sidebar');if(!sidebar)continue;
   // 幂等：先清掉本步骤上一次注入的节点、启动脚本与标记属性。

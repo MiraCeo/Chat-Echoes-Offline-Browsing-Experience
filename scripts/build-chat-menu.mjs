@@ -5,7 +5,7 @@ import {parseHTML} from 'linkedom';
 import {htmlSafeSvg} from './serialize-html.mjs';
 import {clearPageDecorations,placeStylesheet,placeScript} from './page-decoration.mjs';
 import {decorationStylesheets} from './decoration-stylesheets.mjs';
-export async function buildChatMenu(root,library,pageCache=null){
+export async function buildChatMenu(root,library,pageCache=null,selected=null){
  const base=join(root,'replay'),f=JSON.parse(await readFile(join(root,'official-templates/chat-menu.json'),'utf8'));
  if(f.version!==2)throw new Error('The full official chat-menu capture is required');
  const assets={};const filenameCode=await readFile(join(root,'scripts/markdown-filename.js'),'utf8'),filenameAsset='markdown-filename.'+createHash('sha256').update(filenameCode).digest('hex').slice(0,12)+'.js';await writeFile(join(base,filenameAsset),filenameCode);
@@ -13,7 +13,7 @@ export async function buildChatMenu(root,library,pageCache=null){
   for(const name of ['chat-menu.js','chat-menu.css']){let data=await readFile(join(root,'scripts',name),'utf8');if(name==='chat-menu.js')data=data.replace("'./export-download.js'","'./"+exportAsset+"'");await writeFile(join(base,name),data);assets[name]=name+'?v='+createHash('sha256').update(data).digest('hex').slice(0,12)}
  for(const file of f.stylesheets)await copyFile(join(root,'official-templates/assets',file),join(base,'assets',file));
  const icons=JSON.parse(await readFile(join(root,'official-templates/new-project.json'),'utf8')).icons;
- const pages=(await readdir(base)).filter(p=>p.endsWith('.html')).concat((await readdir(join(base,'conversations'))).filter(p=>p.endsWith('.html')).map(p=>'conversations/'+p));
+ const pages=selected??(await readdir(base)).filter(p=>p.endsWith('.html')).concat((await readdir(join(base,'conversations'))).filter(p=>p.endsWith('.html')).map(p=>'conversations/'+p));
  const officialStylesheets=await decorationStylesheets(root);
  for(const page of pages){
   const prefix=page.startsWith('conversations/')?'../':'./',d=pageCache?await pageCache.load(page):parseHTML(await readFile(join(base,page),'utf8')).document;

@@ -1,6 +1,6 @@
 import{readFile,writeFile,readdir,copyFile}from'node:fs/promises';import{join}from'node:path';import{parseHTML}from'linkedom';import{htmlSafeSvg}from'./serialize-html.mjs';import{placeStylesheet}from'./page-decoration.mjs';
 import {createHash} from 'node:crypto';
-export async function buildChatOrganizer(root,pageCache=null){const base=join(root,'replay'),f=JSON.parse(await readFile(join(root,'official-templates/chat-organizer.json'),'utf8'));
+export async function buildChatOrganizer(root,pageCache=null,selected=null){const base=join(root,'replay'),f=JSON.parse(await readFile(join(root,'official-templates/chat-organizer.json'),'utf8'));
 f.nestedPinned=JSON.parse(await readFile(join(root,'official-templates/project-pinned-row.json'),'utf8')).row;
 const actions=JSON.parse(await readFile(join(root,'official-templates/project-actions.json'),'utf8'));
 const headerMore=JSON.parse(await readFile(join(root,'official-templates/project-header-more.json'),'utf8'));
@@ -15,7 +15,7 @@ const moreCode=(await readFile(join(root,'scripts/project-more.js'),'utf8')).rep
 const organizeCode=(await readFile(join(root,'scripts/chat-organizer.js'),'utf8')).replace("'./project-more.js'","'./"+moreFile+"'"),organizeFile='chat-organizer.'+hash(organizeCode)+'.js';await writeFile(join(base,organizeFile),organizeCode);
 const actionCode=(await readFile(join(base,'chat-actions.js'),'utf8')).replace("'./chat-organizer.js'","'./"+organizeFile+"'"),actionFile='chat-actions.'+hash(actionCode)+'.js';await writeFile(join(base,actionFile),actionCode);
 const css=await readFile(join(root,'scripts/chat-organizer.css'),'utf8'),cssFile='chat-organizer.'+hash(css)+'.css';await writeFile(join(base,cssFile),css);
-const pages=(await readdir(base)).filter(n=>n.endsWith('.html')).concat((await readdir(join(base,'conversations'))).filter(n=>n.endsWith('.html')).map(n=>'conversations/'+n));
+const pages=selected??(await readdir(base)).filter(n=>n.endsWith('.html')).concat((await readdir(join(base,'conversations'))).filter(n=>n.endsWith('.html')).map(n=>'conversations/'+n));
 for(const page of pages){const d=pageCache?await pageCache.load(page):parseHTML(await readFile(join(base,page),'utf8')).document,prefix=page.startsWith('conversations/')?'../':'./',_clean=(()=>{
  // 幂等清理：只删上一次注入的弹出层/模板/项目分区。承载会话列表的那个分区（[data-organizer-recent]）
  // 必须留下来——它里面就是 [data-chat-recent-list]；删掉它，没有重渲染的页面会永久失去侧栏列表。

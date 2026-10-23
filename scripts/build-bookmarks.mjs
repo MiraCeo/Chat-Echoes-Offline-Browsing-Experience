@@ -6,7 +6,7 @@ import { htmlSafeSvg } from './serialize-html.mjs';
 import { bookmarkTargets } from './bookmark-targets.mjs';
 import { removeInjected, placeStylesheet, placeScript } from './page-decoration.mjs';
 import { writeIfChanged } from './page-cache.mjs';
-export async function buildBookmarks(root, library) {
+export async function buildBookmarks(root, library, selected = null) {
   const base = join(root, 'replay'),
     f = JSON.parse(await readFile(join(root, 'official-templates/project-sources.json'), 'utf8')),
     menuRef = JSON.parse(await readFile(join(root, 'official-templates/reader-more.json'), 'utf8')),
@@ -24,7 +24,7 @@ export async function buildBookmarks(root, library) {
     files[name] = name.replace('.', '.' + hash(s) + '.');
     await writeFile(join(base, files[name]), s);
   }
-  const pages = (await readdir(base))
+  const pages = selected ?? (await readdir(base))
     .filter((x) => x.endsWith('.html'))
     .concat(
       (await readdir(join(base, 'conversations')))

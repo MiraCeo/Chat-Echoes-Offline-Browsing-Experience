@@ -17,6 +17,7 @@ import { buildProjectDetail } from './build-project-detail.mjs';
 import { buildProjectsPage } from './build-projects-page.mjs';
 import { buildChatMenu } from './build-chat-menu.mjs';
 import { createPageCache } from './page-cache.mjs';
+import { decorationPlan, finalizeDecorationPlan } from './decoration-plan.mjs';
 import { buildChatActions } from './build-chat-actions.mjs';
 import { readChatMetadata } from './chat-store.mjs';
 import { writeChatIndexMarkdown } from './chat-index-markdown.mjs';
@@ -137,6 +138,21 @@ const runPool = async (entries, limit, extraForAll = []) => {
   await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, entries.length)) }, worker));
 };
 
+/**
+ * 装饰阶段：只处理给定页面。页面清单由 decoration-plan 决定（见那里的指纹口径），
+ * 清单之外的页面不会被解析、也不会被写盘。
+ */
+async function decoratePages(library, pages) {
+  const pageCache = process.env.CEOBE_NO_CACHE ? null : createPageCache(join(projectRoot, 'replay'));
+  await step('chat-menu', async () => buildChatMenu(projectRoot, library, pageCache, pages));
+  await step('chat-actions', async () => buildChatActions(projectRoot, library, pageCache, pages));
+  await step('chat-organizer', async () => buildChatOrganizer(projectRoot, pageCache, pages));
+  await step('sidebar-controls', async () => buildSidebarControls(projectRoot, pageCache, pages));
+  await step('reader-ui', async () => buildReaderUI(projectRoot, library, pageCache, pages));
+  if (pageCache) { const written = await pageCache.flush(); console.log(`Page cache: parsed ${pageCache.parsedPages}, wrote ${written.length} page(s).`); }
+  await step('bookmarks', async () => buildBookmarks(projectRoot, library, pages));
+}
+
 async function buildReader(library, selectedId, onlyIds = null) {
 
   const run = (entry, output, preserve) => {
@@ -157,7 +173,13 @@ async function buildReader(library, selectedId, onlyIds = null) {
       const entry = library.conversations.find(item => item.id === id);
       run(entry, join('replay', 'conversations', `${entry.id}.html`), true);
     }
-    console.log(`Rebuilt ${onlyIds.length} conversation page(s); the home page and shared bundles were left untouched.`);
+    // 重新渲染出来的页面还没装饰：照常过一遍装饰步骤，否则侧栏/菜单/书签会从这一页消失。
+    const pages = onlyIds.map(id => `conversations/${id}.html`);
+    const renderer = await rendererStamp();
+    const plan = await decorationPlan(projectRoot, { renderer, library, homeId: library.conversations[0]?.id || 'empty' });
+    await decoratePages(library, pages);
+    await finalizeDecorationPlan(projectRoot, plan, pages);
+    console.log(`Rebuilt and decorated ${pages.length} conversation page(s); the home page and shared bundles were left untouched.`);
     return;
   }
   const selected = library.conversations.find(item => item.id === selectedId) || library.conversations[0];
@@ -229,17 +251,14 @@ async function buildReader(library, selectedId, onlyIds = null) {
   await step('asset-library', async () => buildAssetLibrary(projectRoot, library));
   await step('projects-page', async () => buildProjectsPage(projectRoot));
   await step('project-detail', async () => buildProjectDetail(projectRoot, library));
-  // chat-menu 与 chat-actions 合并成同一趟：一页只解析一次，最后统一写回。
-  const pageCache = process.env.CEOBE_NO_CACHE ? null : createPageCache(join(projectRoot, 'replay'));
-  await step('chat-menu', async () => buildChatMenu(projectRoot, library, pageCache));
-  await step('chat-actions', async () => buildChatActions(projectRoot, library, pageCache));
-  await step('chat-organizer', async () => buildChatOrganizer(projectRoot, pageCache));
-  await step('sidebar-controls', async () => buildSidebarControls(projectRoot, pageCache));
+  // 页面装饰指纹：渲染器 + 项目清单 + 这一页自己的会话条目 + 页面字节。
+  // 删除/重命名/置顶一个会话时，其余页面指纹不变，于是不解析、不写盘——这正是删除的主要开销。
+  const plan = await decorationPlan(projectRoot, { renderer, library, homeId: selected?.id || 'empty' });
+  await decoratePages(library, plan.changed);
   await step('search-index', async () => writeSearchIndex(projectRoot, library));
-  await step('reader-ui', async () => buildReaderUI(projectRoot, library, pageCache));
-  if (pageCache) { const written = await pageCache.flush(); console.log(`Page cache: parsed ${pageCache.parsedPages}, wrote ${written.length} page(s).`); }
-  await step('bookmarks', async () => buildBookmarks(projectRoot, library));
   await step('fonts', async () => localizeGeneratedFonts(join(projectRoot,'replay')));
+  await finalizeDecorationPlan(projectRoot, plan, plan.changed);
+  console.log(`Decorations: ${plan.changed.length} of ${plan.total} page(s) refreshed (${plan.total - plan.changed.length} unchanged).`);
   console.log('Steps: ' + stepTiming.map(([n, ms]) => `${n}=${(ms / 1000).toFixed(1)}s`).join(' '));
   console.log(`Library reader built: ${library.conversations.length} conversations; home is “${selected?.title || "本地聊天"}”.`);
 }
