@@ -1,5 +1,5 @@
 import{readFile,writeFile,readdir,copyFile}from'node:fs/promises';import{join}from'node:path';import{createHash}from'node:crypto';import{parseHTML}from'linkedom';import{htmlSafeSvg}from'./serialize-html.mjs';
-export async function buildSidebarControls(root){
+export async function buildSidebarControls(root,pageCache=null){
  const base=join(root,'replay'),f=JSON.parse(await readFile(join(root,'official-templates/sidebar-search.json'),'utf8')),files={};
  // linkedom serializes <template> from its light children, not template.content; write mutated content back so href rewrites and added nodes reach the page.
  const syncTemplate=t=>{t.innerHTML=[...t.content.childNodes].map(n=>n.nodeType===1?n.outerHTML:n.textContent).join('')};
@@ -7,7 +7,11 @@ export async function buildSidebarControls(root){
  for(const name of f.stylesheets)await copyFile(join(root,'official-templates/assets',name),join(base,'assets',name));
  const pages=(await readdir(base)).filter(n=>n.endsWith('.html')).concat((await readdir(join(base,'conversations'))).filter(n=>n.endsWith('.html')).map(n=>'conversations/'+n));
  for(const page of pages){
-  const d=parseHTML(await readFile(join(base,page),'utf8')).document,sidebar=d.getElementById('stage-slideover-sidebar');if(!sidebar)continue;const prefix=page.startsWith('conversations/')?'../':'./',rail=d.getElementById('stage-sidebar-tiny-bar');
+  const d=pageCache?await pageCache.load(page):parseHTML(await readFile(join(base,page),'utf8')).document,sidebar=d.getElementById('stage-slideover-sidebar');if(!sidebar)continue;
+  // 幂等：先清掉本步骤上一次注入的节点、启动脚本与标记属性。
+  for(const sel of ['[data-ceobe-rail-recent]','#ceobe-rail-recent-row','[data-ceobe-search]','#ceobe-search-row','#ceobe-search-body-row','#ceobe-search-empty','script[src*="sidebar-controls."],link[href*="sidebar-controls"]'])for(const n of d.querySelectorAll(sel))n.remove();
+  for(const n of d.querySelectorAll('script'))if((n.textContent||'').includes('ceobeSidebarCollapsed'))n.remove();
+  for(const a of ['data-ceobe-sidebar-panel','data-ceobe-recent-trigger','data-ceobe-sidebar-toggle','data-ceobe-search-trigger','data-ceobe-project-new'])for(const n of d.querySelectorAll('['+a+']'))n.removeAttribute(a);const prefix=page.startsWith('conversations/')?'../':'./',rail=d.getElementById('stage-sidebar-tiny-bar');
   rail.nextElementSibling.dataset.ceobeSidebarPanel='';
   const recentRef=JSON.parse(await readFile(join(root,'official-templates/rail-recent.json'),'utf8'));
   const recentPopup=parseHTML(recentRef.menu).document.firstElementChild;recentPopup.dataset.ceobeRailRecent='';recentPopup.dataset.layout=JSON.stringify(recentRef.layout);recentPopup.dataset.limit=String(recentRef.limit);recentPopup.hidden=true;recentPopup.querySelector('[role=menu]').id='ceobe-rail-recent-menu';recentPopup.querySelector('[role=menu]').setAttribute('aria-label','最近聊天');d.body.append(recentPopup);
@@ -27,6 +31,6 @@ export async function buildSidebarControls(root){
   const boot=d.createElement('script');boot.textContent="try{document.documentElement.dataset.ceobeSidebarCollapsed=localStorage.getItem('ceobe.sidebar-collapsed.v1')==='true'?'true':'false';document.documentElement.dataset.ceobePinnedCollapsed=localStorage.getItem('ceobe.pinned-expanded.v1')==='false'?'true':'false'}catch{}";d.head.prepend(boot);
   for(const name of [...f.stylesheets.map(n=>'assets/'+n),files['sidebar-controls.css']]){const link=d.createElement('link');link.rel='stylesheet';link.href=prefix+name;d.head.append(link)}
   const script=d.createElement('script');script.type='module';script.src=prefix+files['sidebar-controls.js'];d.body.append(script);
-  await writeFile(join(base,page),'<!DOCTYPE html>\n'+htmlSafeSvg(d.documentElement.outerHTML));
+  if(pageCache)pageCache.markDirty(page);else await writeFile(join(base,page),'<!DOCTYPE html>\n'+htmlSafeSvg(d.documentElement.outerHTML));
  }
 }
