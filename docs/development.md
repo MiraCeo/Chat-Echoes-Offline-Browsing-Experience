@@ -51,6 +51,20 @@ npm run dev -- --host 127.0.0.1 --port 5173
   资源引用用 `placeStylesheet`/`placeScript` 就地更新版本，`writeIfChanged` 在内容没变时不写盘。
   新增后处理步骤时照这个模式写，否则每次重建都会重复注入节点、页面体积持续增长。
 
+### 页面装饰指纹
+
+没有变化的页面不该被重新装饰——这是删除/重命名一个会话仍然要几十秒的主要原因。
+
+- `scripts/decoration-plan.mjs` 给每个页面算指纹：`装饰口径版本号 + 渲染器与模板指纹 + replay/projects.html +
+  这一页的会话条目（id/标题/page；顶层页面用首页会话）+ 页面当前字节`；
+- 页面字节同时包含“渲染结果”和“上一轮装饰结果”，因此重新渲染过、会话内容变了、或有人手改过这一页，
+  都会自动重做；指纹存在 `data/private/decoration-stamps.json`，删除流程会把它带进暂存目录再装回来；
+- 五个装饰步骤都接受可选的页面清单（`buildChatMenu(root, library, pageCache, pages)` 等），
+  清单之外的页面不会被解析、也不会被写盘；构建日志会打印 `Decorations: N of M page(s) refreshed`；
+- 新增“会影响页面字节”的全局输入时，必须加进 `decoration-plan.mjs` 的共享输入（例如项目清单），
+  否则改它之后页面不会刷新；改装饰口径（不是脚本内容）时把 `DECORATION_VERSION` 加一；
+- `npm run library -- --only <id>` 会渲染并装饰指定的页面，其余页面不动。
+
 ## 打印（PDF）样式约束
 
 - 打印规则写在 `official-templates/assets/print.css`（`media="print"`），屏幕渲染不受影响；

@@ -13,16 +13,29 @@
 - 五个后处理步骤改为幂等：`scripts/page-decoration.mjs` 每趟统一清场、资源引用就地更新版本、
   内容没变不写盘。此前每次重建都会重复注入弹窗、模板、样式表与脚本。
 
+### 构建
+
+- **页面装饰指纹**：`scripts/decoration-plan.mjs` 按“渲染器/模板 + 项目清单 + 该页会话条目 + 页面字节”算指纹
+  （`data/private/decoration-stamps.json`），只把需要重做的页面交给五个后处理步骤。没有变化的页面
+  不再被解析、也不再被写盘。
+  - 真实档案数据没变时重建：24s、`Decorations: 5 of 39`、39 页哈希 0 差异（此前每趟都要重做全部页面）；
+  - 删除演练（按删除流程复制 archive/replay 后重建）：重建 **22.9s**（旧日志 52.5s），输出与线上页面 0 差异；
+  - 重命名一个会话只多重做那一页；删除一个会话不会重做任何会话页。
+- `npm run library -- --only <id>` 现在会在渲染之后照常装饰这一页。此前它只渲染不装饰，
+  重建出来的页面会丢掉侧栏、菜单与书签入口。
+
 ### 修复
 
 - `test-library-browser.mjs` 第 56 行的既有失败：悬停到没有回复文本的目录项时，上一条的详情卡在展开状态（37px）。
   `prompt-rail.js` 现在会收起旧详情，测试改为对比“带详情”的条目，并补了一条“悬停无详情条目应收起”的回归断言。
 - `test-chat-actions-store.mjs` 不再断言删除后 `dist/index.html` 存在（`440cc8e` 起写操作只标记 `dist` 过期）。
+- `build-chat-actions` 的置顶按钮 `aria-label` 改为只取档案标题：此前它读取 anchor 上已有的 `aria-label`，
+  同一页“首次装饰”和“再次装饰”结果不同，重新渲染后页面就会变。
 
 ### 验证
 
-- `npm test` exit 0，含新增的 `scripts/test-sidebar-client-render.mjs`：同一数据重建两次逐字节一致；
-  删除一个会话后其余会话页哈希不变、只有被删页面消失、`chats.json` 更新。
+- `npm test` exit 0，含新增的 `scripts/test-sidebar-client-render.mjs`：同一数据重建两次逐字节一致、
+  未变化的页面不重新装饰；重命名只重做那一页；删除一个会话后其余会话页哈希不变、只有被删页面消失、`chats.json` 更新。
 - `npm run check` exit 0：34 个分享会话 / 42 快照 / 14704 条消息、PDF 零越界、巡检 39 页 0 问题。
 - `npm run build` exit 0；`vite preview` 下侧栏正常，拦掉 `/api/chats` 后仅靠 `chats.json` 也能渲染出 34 行。
 

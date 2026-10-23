@@ -64,22 +64,31 @@
 - 实测：后处理步骤合计 70.2s → 51.3s；但**全量构建墙钟几乎不变**（137.7s vs 135.5s），因为大头是 36 个会话页的串行渲染；
 - 页面渲染已并行化（4 并发），全量重建 111.9s → 70.9s。
 
-### 架构改造：侧栏客户端渲染（已完成）
+### 架构改造：侧栏客户端渲染 + 页面装饰指纹（已完成）
 
-目标：新会话的增删不再重写每一页。**已达成**：删除一个会话后，其余会话页逐字节不变
-（`scripts/test-sidebar-client-render.mjs` 在隔离副本里跑真实构建 + 真实删除流程来验收）。
+目标：新会话的增删不再重写每一页。**已达成**：删除一个会话后，其余会话页逐字节不变，
+未变化的页面连解析、写盘都跳过（`scripts/test-sidebar-client-render.mjs` 在隔离副本里跑真实构建 +
+真实重命名/删除流程来验收）。
 
 - 页面里只保留“当前会话一行 + `<template id="ceobe-sidebar-chat-row">`”，浏览器按 `replay/chats.json` 渲染；
 - `#ceobe-chat-catalog`（每页内嵌全部会话 JSON）已移除；`sidebar-controls`、`project-detail`、`project-sources`
   改为 fetch `chats.json`，服务不可用时用静态清单；
 - 五处装饰（chat-actions / chat-menu / chat-organizer / sidebar-controls / bookmarks）都是幂等的：
   每趟构建先 `clearPageDecorations()` 清场，再按固定顺序重新注入；资源引用就地更新版本；
-- 页面内容没变就不写盘（`writeIfChanged`）。
+- 页面内容没变就不写盘（`writeIfChanged`）；
+- **页面装饰指纹**（`scripts/decoration-plan.mjs`）：指纹 = 渲染器/模板 + 项目清单 + 该页会话条目 + 页面字节，
+  存在 `data/private/decoration-stamps.json`，只把需要重做的页面交给后处理步骤。删除流程会把指纹带进暂存目录；
+- `npm run library -- --only <id>` 现在会在渲染之后照常装饰这一页（以前会丢掉侧栏/菜单/书签）。
 
-**还没做（下一步）**
+**实测**：真实档案没有变化时重建 24s、`Decorations: 5 of 39`、页面哈希 0 差异；
+按删除流程演练（复制 archive/replay 后重建）重建 **22.9s**（旧日志 52.5s），输出与线上页面 0 差异；
+隔离副本里删除 2.3s。
 
-- [ ] **按页面“装饰指纹”跳过未变化的页面**：`渲染器指纹 + 该页会话条目 + 项目清单` 没变就不解析、不写盘。
-      这是删除从约 60s（后处理）+ 复制耗时降到秒级的关键；
+**还没做**
+
+- [ ] `build-asset-library` 现在每次逐页扫描资源（约 8–9s，是暂存重建里最大的一项），
+      可以按“页面内容哈希 → 资源记录”做缓存，只重扫变化的页面；
+- [ ] 顶层 5 页（首页/导入/资料库/项目/项目详情）每趟都要重建，因此每趟都要重新装饰（约 1.3s），影响不大；
 - [ ] `project.html` 内嵌每个会话的预览片段，删除任何会话都会让它变；可改为按需加载或只内嵌本项目成员；
 - [ ] `scripts/test-ui-followups-browser.mjs` 在 390px 宽度仍有既有失败（书签标注越出视口），已在干净 HEAD 上复现；
 - [ ] `scripts/test-project-detail.mjs` 的几何对比也有既有失败：项目页 composer 里多了
