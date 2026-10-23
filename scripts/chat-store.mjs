@@ -123,6 +123,7 @@ export function createChatStore(root,{rebuild=rebuildDeletionStage}={}){
    if(!targets.length)throw failure('原始归档目录不存在',409);
    const checkResources=async(dir)=>{for(const n of await readdir(dir,{withFileTypes:true})){const path=join(dir,n.name);if(n.isDirectory())await checkResources(path);else if(n.name==='conversation.ceobe.json'){const c=JSON.parse(await readFile(path,'utf8'));for(const r of c.resources||[]){if(!r.local_path)continue;const resolved=resolve(dirname(path),r.local_path);if(!resolved.startsWith(dirname(path)+requireSeparator()))throw failure('存在跨归档附件路径，需先检查共享资源，已取消删除',409)}}}};
    await checkResources(join(root,'archive/chatgpt-share'));
+   const startedAt=Date.now();let rebuildMs=0;
    const job=join(root,'data/private/delete-jobs',randomUUID()),stage=join(job,'stage'),backup=join(job,'backup');await mkdir(stage,{recursive:true});await mkdir(backup);
    let committed=false,rollbackFailed=false;const moved=[];
    try{
@@ -133,14 +134,16 @@ export function createChatStore(root,{rebuild=rebuildDeletionStage}={}){
     if(await exists(projectFile)){const projects=JSON.parse(await readFile(projectFile,'utf8'));if(projects.kind!=='ceobe.projects'||!Array.isArray(projects.projects))throw new Error('项目文件格式错误');for(const p of projects.projects)p.conversation_ids=(p.conversation_ids||[]).filter(id=>id!==body.id);await atomic(join(stage,'data/private/projects.ceobe.json'),projects)}
     const bookmarkFile=join(root,'data/private/bookmarks.ceobe.json');
     if(await exists(bookmarkFile)){const bookmarks=await readBookmarkDocument(root);bookmarks.items=bookmarks.items.filter(b=>b.chat_id!==body.id);await atomic(join(stage,'data/private/bookmarks.ceobe.json'),bookmarks)}
-    await rebuild(stage,root);
+    const rebuildStart=Date.now();await rebuild(stage,root);rebuildMs=Date.now()-rebuildStart;
     // Durable journal allows fail-closed manual recovery after a process/OS crash.
     await atomic(join(job,'journal.json'),{id:body.id,state:'prepared',paths:[]});
     const paths=[...(await exists(bookmarkFile)?['data/private/bookmarks.ceobe.json']:[]),...targets.map(dir=>relative(root,dir).replaceAll('\\','/')),'archive/library.ceobe.json',CHAT_INDEX_FILE,'data/private/chats.ceobe.json',...(await exists(projectFile)?['data/private/projects.ceobe.json']:[]),'replay','dist'];
     for(const path of paths){const live=join(root,path),old=join(backup,path),fresh=join(stage,path);const item={path,hadOld:false,installed:false};moved.push(item);const result=await installPath(live,old,fresh);item.hadOld=result.hadOld;item.installed=result.installed;await atomic(join(job,'journal.json'),{id:body.id,state:'committing',paths:moved})}
     committed=true;
     // Success is not returned while raw archives or old generated copies remain.
-    await rm(job,{recursive:true});return {deleted:body.id,redirect:'./index.html'};
+    await rm(job,{recursive:true});
+    console.log(`Chat delete: ${body.id} took ${((Date.now()-startedAt)/1000).toFixed(1)}s (rebuild ${(rebuildMs/1000).toFixed(1)}s)`);
+    return {deleted:body.id,redirect:'./index.html'};
    }catch(e){
     if(!committed){try{for(const item of moved.reverse()){const live=join(root,item.path);if(item.installed)await rm(live,{recursive:true,force:true});if(item.hadOld){await mkdir(dirname(live),{recursive:true});try{await renameWithRetry(join(backup,item.path),live)}catch(error){if(error.status!==409)throw error;await cp(join(backup,item.path),live,{recursive:true})}}}}catch{rollbackFailed=true}}
     if(committed||rollbackFailed){e.message='操作未完全结束，已保留恢复记录；请检查 data/private/delete-jobs，勿重复操作。';e.status=500;throw e}
