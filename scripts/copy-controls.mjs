@@ -1,3 +1,4 @@
+import { decodeUnicodeEscapes } from './markdown-escapes.mjs';
 import { marked, Renderer } from 'marked';
 import { collectInlineComponents, inlineComponentMarkdown } from './dil-inline-components.mjs';
 
@@ -69,7 +70,7 @@ export function messageCopyContent(parts, document, referencePrefix = '') {
     math.push({ token, value });
     return token;
   });
-  let html = marked.parse(source, { renderer, gfm: true, breaks: true });
+  let html = marked.parse(decodeUnicodeEscapes(source), { renderer, gfm: true, breaks: true });
   for (const { token, value } of math) html = html.replaceAll(token, escape(value));
   const holder = document.createElement('div');
   holder.innerHTML = html;

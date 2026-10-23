@@ -7,6 +7,7 @@
  * the caller can fall back to the Markdown text instead of inventing markup.
  */
 import katex from 'katex';
+import { decodeUnicodeEscapes, decodeBareEscapes } from './markdown-escapes.mjs';
 import { htmlSafeSvg } from './serialize-html.mjs';
 import { renderInlineComponent } from './dil-inline-components.mjs';
 
@@ -86,7 +87,7 @@ export function renderDilTree(tree, { templates, document, officialCitations, me
 
   const render = node => {
     if (node === null || node === undefined) return '';
-    if (typeof node === 'string') return escapeHtml(node);
+    if (typeof node === 'string') return escapeHtml(decodeBareEscapes(decodeUnicodeEscapes(node)));
     if (typeof node === 'number' || typeof node === 'boolean') return escapeHtml(String(node));
     if (Array.isArray(node)) return node.map(render).join('');
     const type = node.type;

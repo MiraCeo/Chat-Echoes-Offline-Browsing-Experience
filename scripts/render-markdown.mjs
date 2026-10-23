@@ -1,5 +1,6 @@
 import hljs from "highlight.js";
 import katex from "katex";
+import { decodeUnicodeEscapes } from './markdown-escapes.mjs';
 import { marked, Renderer } from "marked";
 import { htmlSafeSvg } from './serialize-html.mjs';
 import { collectInlineComponents, renderInlineComponent, inlineComponentText } from './dil-inline-components.mjs';
@@ -250,7 +251,7 @@ export const renderAssistantMarkdown = (
   renderer.link = token => /^(?:https?:|mailto:)/i.test(token.href) && officialCitations?.url
     ? officialCitations.url(token.text, token.href)
     : `<a href="${escapeHtml(token.href)}">${token.text}</a>`;
-  let html = marked.parse(normalized, { renderer });
+  let html = marked.parse(decodeUnicodeEscapes(normalized), { renderer });
   for (const item of math) {
     const rendered = katex.renderToString(item.expression, {
       displayMode: item.displayMode,
