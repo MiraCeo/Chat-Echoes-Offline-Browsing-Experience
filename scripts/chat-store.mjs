@@ -86,7 +86,6 @@ const installPath = async (live, old, fresh) => {
   };
   const hadOld = await backup();
   const installed = await install();
-  console.log('DEBUG install', live, { hadOld, installed, freshExists: await exists(fresh) });
   return { hadOld, installed };
 };
 
