@@ -1,3 +1,4 @@
+import { markDistStale } from './dist-stale.mjs';
 import {readFile,writeFile,mkdir,rename,rm,cp,lstat,readdir} from 'node:fs/promises';
 import {join,resolve,relative,dirname} from 'node:path';
 import {randomUUID} from 'node:crypto';
@@ -21,12 +22,12 @@ export async function rebuildDeletionStage(stage,sourceRoot){
  for(const file of ['sprites-core-26c3f2d4.svg','sprites-shell-097001e7.svg','OpenAISans-Semibold.woff2'])await cp(join(sourceRoot,'official-assets/cdn/assets',file),join(stage,'official-assets/cdn/assets',file));
  // 复用现有产物与构建指纹：只删掉那个会话的页面，其余页面按指纹跳过渲染，
  // 后处理步骤仍会跑一遍刷新侧栏、搜索与索引。没有这步时暂存目录是空的，等于全量重建。
- for(const name of ['replay','dist'])if(await exists(join(sourceRoot,name)))await cp(join(sourceRoot,name),join(stage,name),{recursive:true});
+ if(await exists(join(sourceRoot,'replay')))await cp(join(sourceRoot,'replay'),join(stage,'replay'),{recursive:true});
  const stamps=join(sourceRoot,'data/private/library-stamps.json');
  if(await exists(stamps)){await mkdir(join(stage,'data/private'),{recursive:true});await cp(stamps,join(stage,'data/private/library-stamps.json'))}
  await run(stage,['scripts/build-library.mjs']);
  // 生产构建产物只在实际存在时才需要跟着更新；只用 dev 服务的用户不必为删除付这笔时间。
- if(await exists(join(sourceRoot,'dist')))await run(stage,[join(sourceRoot,'node_modules/vite/bin/vite.js'),'build','replay','--config','vite.config.mjs','--outDir','../dist','--emptyOutDir']);
+ // dist 不在这里重建：写操作只标记过期，npm run build 时再补。
 }
 // Windows 上本地服务会占用 replay/dist 的句柄，直接 rename 会 EPERM。
 // 先短暂重试；仍失败时给出可执行的提示，而不是一句"操作失败"。
@@ -137,11 +138,11 @@ export function createChatStore(root,{rebuild=rebuildDeletionStage}={}){
     const rebuildStart=Date.now();await rebuild(stage,root);rebuildMs=Date.now()-rebuildStart;
     // Durable journal allows fail-closed manual recovery after a process/OS crash.
     await atomic(join(job,'journal.json'),{id:body.id,state:'prepared',paths:[]});
-    const paths=[...(await exists(bookmarkFile)?['data/private/bookmarks.ceobe.json']:[]),...targets.map(dir=>relative(root,dir).replaceAll('\\','/')),'archive/library.ceobe.json',CHAT_INDEX_FILE,'data/private/chats.ceobe.json',...(await exists(projectFile)?['data/private/projects.ceobe.json']:[]),'replay','dist'];
+    const paths=[...(await exists(bookmarkFile)?['data/private/bookmarks.ceobe.json']:[]),...targets.map(dir=>relative(root,dir).replaceAll('\\','/')),'archive/library.ceobe.json',CHAT_INDEX_FILE,'data/private/chats.ceobe.json',...(await exists(projectFile)?['data/private/projects.ceobe.json']:[]),'replay'];
     for(const path of paths){const live=join(root,path),old=join(backup,path),fresh=join(stage,path);const item={path,hadOld:false,installed:false};moved.push(item);const result=await installPath(live,old,fresh);item.hadOld=result.hadOld;item.installed=result.installed;await atomic(join(job,'journal.json'),{id:body.id,state:'committing',paths:moved})}
     committed=true;
     // Success is not returned while raw archives or old generated copies remain.
-    await rm(job,{recursive:true});
+    await rm(job,{recursive:true});await markDistStale(root,'delete');
     console.log(`Chat delete: ${body.id} took ${((Date.now()-startedAt)/1000).toFixed(1)}s (rebuild ${(rebuildMs/1000).toFixed(1)}s)`);
     return {deleted:body.id,redirect:'./index.html'};
    }catch(e){

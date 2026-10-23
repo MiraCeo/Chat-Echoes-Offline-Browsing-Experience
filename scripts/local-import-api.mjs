@@ -1,3 +1,4 @@
+import { markDistStale } from './dist-stale.mjs';
 import {readFile,writeFile,mkdir,rename,rm,cp,lstat} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {randomUUID} from 'node:crypto';
@@ -17,7 +18,7 @@ async function atomic(file,data){const tmp=file+'.'+randomUUID()+'.tmp';try{awai
 export async function publishProduction(root){
  const token=randomUUID(),stage=join(root,'data/private/publish-'+token),dest=join(root,'dist'),backup=join(root,'data/private/previous-dist-'+token);let moved=false;
  try{
-  await runLocal(root,[resolve(import.meta.dirname,'../node_modules/vite/bin/vite.js'),'build','replay','--config','vite.config.mjs','--outDir',stage,'--emptyOutDir']);
+  await markDistStale(root, 'import');
   if(await exists(dest)){await assertSafeTree(dest);if(await exists(join(dest,'assets')))await cp(join(dest,'assets'),join(stage,'assets'),{recursive:true,force:false,errorOnExist:false});await rename(dest,backup);moved=true}
   try{await rename(stage,dest)}catch(e){if(moved){await rename(backup,dest);moved=false}throw e}
   if(moved)await rm(backup,{recursive:true,force:true}).catch(()=>{});
