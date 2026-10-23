@@ -608,8 +608,35 @@ function appendUnavailableContent(container, message, { skipFileAttachments = fa
   }
 }
 
+// 会话顶部的"缺口清单"：把本次分享没带来的附件集中列出来，读者不用逐条消息去发现。
+const buildGapNotice = () => {
+  const gaps = (canonicalConversation.resources || []).filter(resource => resource.status !== 'downloaded');
+  if (!gaps.length) return null;
+  const box = baseDocument.createElement('details');
+  box.className = 'ceobe-gap-notice';
+  box.setAttribute('data-ceobe-gap-notice', '');
+  box.setAttribute('style', 'margin:16px 0;padding:12px 16px;border:1px dashed #d0d5dd;border-radius:12px;background:#fafbfc;color:#475467;font-size:13px;line-height:1.7');
+  const summary = baseDocument.createElement('summary');
+  summary.setAttribute('style', 'cursor:pointer;font-weight:600');
+  summary.textContent = `本会话有 ${gaps.length} 个附件未随分享提供（点开查看）`;
+  const list = baseDocument.createElement('ul');
+  list.setAttribute('style', 'margin:8px 0 0;padding-inline-start:18px;color:#667085');
+  for (const resource of gaps) {
+    const item = baseDocument.createElement('li');
+    const reason = resource.status === 'failed' ? '获取失败' : '未能取得地址';
+    item.textContent = `${resource.name || '未命名资源'}（${resource.mime_type || '未知类型'} · ${reason}）`;
+    list.append(item);
+  }
+  const hint = baseDocument.createElement('p');
+  hint.setAttribute('style', 'margin:8px 0 0;color:#98a2b3');
+  hint.textContent = '完整原因记录在快照的 import-report.json 中；图片位置另有"图片未归档"占位。';
+  box.append(summary, list, hint);
+  return box;
+};
+
 const messageList = baseDocument.querySelector('[data-ceobe-message-list]');
 if (!messageList) throw new Error('Official shell message list is missing.');
+{ const notice = buildGapNotice(); if (notice) messageList.before(notice); }
 // No prompt rail, branch footer or captured message content survives into new data.
 messageList.replaceChildren();
 let reusedSections = 0;

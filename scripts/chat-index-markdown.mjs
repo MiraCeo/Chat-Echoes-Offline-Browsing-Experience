@@ -11,13 +11,13 @@ export const localTime=iso=>{const d=new Date(iso||'');if(Number.isNaN(d.getTime
 // `archive/chatgpt-share/<id>/<snapshot>/conversation.ceobe.json` → {snapshot, href}; other shapes get no link.
 export function snapshotOf(entry){const parts=String(entry.conversation_path||'').replaceAll('\\','/').split('/');const i=parts.indexOf('chatgpt-share');if(i<0||parts.length<i+4||parts[i+1]!==entry.id)return null;const snapshot=parts[i+2];return {snapshot,href:'./'+encodeURIComponent(entry.id)+'/'+encodeURIComponent(snapshot)+'/'}}
 export function renderChatIndexMarkdown(conversations,{generatedAt=new Date().toISOString()}={}){
- const rows=conversations.map(c=>{const s=snapshotOf(c);return `| ${cell(c.title)} | \`${cell(c.id)}\` | ${s?`[${cell(s.snapshot)}](${s.href})`:'—'} | ${localTime(c.captured_at)} | ${Number.isFinite(c.turn_count)?c.turn_count:'—'} |`});
+ const rows=conversations.map(c=>{const s=snapshotOf(c),gaps=Number(c.resource_counts?.unresolved||0)+Number(c.resource_counts?.failed||0);return `| ${cell(c.title)} | \`${cell(c.id)}\` | ${s?`[${cell(s.snapshot)}](${s.href})`:'—'} | ${localTime(c.captured_at)} | ${Number.isFinite(c.turn_count)?c.turn_count:'—'} | ${gaps||'—'} |`});
  return ['# 本地聊天归档索引','',
   '本文件由 `scripts/build-library.mjs` 自动生成（导入、删除、重命名聊天或运行 `npm run library` 时更新），请勿手工编辑。',
   '每个子文件夹以聊天 ID 命名，其下按抓取时间保存快照；“最新快照”即阅读页当前使用的一份，内含 `conversation.md`、`conversation.ceobe.json`、`assets/` 与 `raw/`。在阅读页或侧栏菜单选择“打开本地文件夹”也会直接打开该快照目录。','',
   `- 生成时间：${localTime(generatedAt)}`,`- 聊天数：${conversations.length}`,'',
-  '| 标题 | 聊天 ID（文件夹名） | 最新快照 | 导入时间 | 轮数 |','|---|---|---|---|---|',
-  ...(rows.length?rows:['| （暂无聊天） | — | — | — | — |']),''].join('\n');
+  '| 标题 | 聊天 ID（文件夹名） | 最新快照 | 导入时间 | 轮数 | 未归档附件 |','|---|---|---|---|---|---|',
+  ...(rows.length?rows:['| （暂无聊天） | — | — | — | — | — |']),''].join('\n');
 }
 export async function writeChatIndexMarkdown(root,conversations,options){
  const file=join(root,CHAT_INDEX_FILE);await mkdir(dirname(file),{recursive:true});const tmp=file+'.'+randomUUID()+'.tmp';
