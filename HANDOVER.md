@@ -123,8 +123,7 @@ npm run verify:archive      # 只读检查档案结构
 
 **还没做**
 
-- 顶层 5 页每趟都要重建、因此每趟都要重新装饰（约 1.3s），影响不大；
-- 书签标注在 390px 宽度会落到视口外（见第 5 节，既有问题，需要先定支持宽度）。
+- 顶层 5 页每趟都要重建、因此每趟都要重新装饰（约 1.3s）；评估后认为收益小于风险，暂不处理。
 
 **顺带修掉的构建缺陷**
 
@@ -137,18 +136,21 @@ npm run verify:archive      # 只读检查档案结构
 
 ## 5. 已知问题
 
-- `scripts/test-ui-followups-browser.mjs` 在 390px 宽度断言失败（书签标注 `x=-20` 越出视口）。
-  已在干净 HEAD 工作树上复现，**不是本版改动引入**；
-- `scripts/test-project-detail.mjs` 的几何对比失败：项目页 composer 里多了
-  `link-import.js` 注入的「上传采集包 .zip」块（约 61px），把 tablist 从 260px 推到 321px，
-  而冻结参考里没有这块。`link-import.js`、`build-import-page.mjs` 与
-  `official-templates/project-detail.json` 本版都没有改，属既有分歧；两个测试都不在 `npm test` 里；
 - `scripts/test-chat-actions-store.mjs` 原本断言删除后 `dist/index.html` 存在，与 `440cc8e`「写操作不再重建 dist」冲突；
   已改为断言 `replay` 干净、`dist` 保持原样并写入 `data/private/dist-stale.json`；
 - 删除会话仍不是“秒级”：重建约 15s，另有档案复制与安装回写；页面本身已经不再重写（见第 4 节）；
 - 官方安全检查拦下的资源匿名拿不到，缺口清单里标「获取失败」；
 - 指向作者本机的图片永远没有字节，显示「图片未归档」占位；
 - 单文件 HTML 导出仍是实验性（助手侧图片未内嵌）。
+
+**已解决（保留记录）**
+
+- `test-ui-followups-browser.mjs` 390px：断言的是**离屏**标注。书签标注只为视口附近的会话算布局，
+  缩窄后离屏标注保留旧决策、进入视口才重算；测试改为先滚进视口再测量（同时验证重算），全宽度通过；
+- `test-project-detail.mjs`：项目页 composer 里原本注入「上传采集包」与批量导入提示，而这两者在项目页
+  并不生效（`/api/archive-package` 没有项目语义、批量导入会被拒绝），还把 composer 撑高 61px。
+  现在它们只在「导入会话」页出现，项目页 composer 回到官方 52px、tablist 回到 260px，测试通过
+  （`project import association + retry without duplicate archive` 仍然覆盖逐条导入进项目）。
 
 ## 6. 文档索引
 

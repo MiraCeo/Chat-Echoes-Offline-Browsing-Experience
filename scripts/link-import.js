@@ -47,20 +47,26 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
       location.assign(data.page);
     } catch (error) { showStatus('导入失败：' + error.message, 'error'); }
   };
+  // 采集包与批量导入只在「导入会话」页提供。项目页的 composer 只做“逐条导入分享链接”：
+  // /api/archive-package 不带项目语义（导进来的会话不会进这个项目），批量导入会被明确拒绝；
+  // 这两块内容还会把项目页的 composer 撑高 61px，与冻结的官方几何不再一致（见 test-project-detail.mjs）。
+  const importPageOnly = !document.body.hasAttribute('data-ceobe-project-detail');
   const picker = document.createElement('input');
   picker.type = 'file';
   picker.accept = '.zip,application/zip';
   picker.hidden = true;
   picker.addEventListener('change', () => uploadPackage(picker.files && picker.files[0]));
-  form.insertAdjacentElement('beforebegin', picker);
-  form.addEventListener('dragover', event => { if (event.dataTransfer && event.dataTransfer.types.includes('Files')) { event.preventDefault(); highlight(true); } });
-  form.addEventListener('dragleave', () => { highlight(false); });
-  form.addEventListener('drop', async event => {
-    if (!event.dataTransfer || !event.dataTransfer.files[0]) return;
-    event.preventDefault();
-    highlight(false);
-    await uploadPackage(event.dataTransfer.files[0]);
-  });
+  if (importPageOnly) form.insertAdjacentElement('beforebegin', picker);
+  if (importPageOnly) {
+    form.addEventListener('dragover', event => { if (event.dataTransfer && event.dataTransfer.types.includes('Files')) { event.preventDefault(); highlight(true); } });
+    form.addEventListener('dragleave', () => { highlight(false); });
+    form.addEventListener('drop', async event => {
+      if (!event.dataTransfer || !event.dataTransfer.files[0]) return;
+      event.preventDefault();
+      highlight(false);
+      await uploadPackage(event.dataTransfer.files[0]);
+    });
+  }
   input.setAttribute('contenteditable', 'true');
   input.setAttribute('role', 'textbox');
   input.setAttribute('aria-multiline', 'false');
@@ -81,7 +87,8 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
   batchHint.dataset.ceobeBatchHint = '';
   batchHint.textContent = '也可以一次粘贴多条分享链接（每行一条）：会逐条导入，结束后汇总成功与失败。';
   Object.assign(batchHint.style, { marginTop: '8px', fontSize: '12px', lineHeight: '1.6', color: '#98a2b3' });
-  status.insertAdjacentElement('beforebegin', batchHint);
+  // 批量导入只在导入页可用；项目页会自动拒绝（见下），所以也不在项目页放这条提示。
+  if (importPageOnly) status.insertAdjacentElement('beforebegin', batchHint);
 
   // 拖拽反馈只在拖入时出现：常驻虚线边框会和圆角输入框的质感冲突。
   const highlight = on => {
@@ -140,7 +147,7 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
     form.insertAdjacentElement('afterend', details);
     tail = details;
   }
-  tail.insertAdjacentElement('afterend', block);
+  if (importPageOnly) tail.insertAdjacentElement('afterend', block);
   const actions = document.createElement('div');
   actions.className = 'ceobe-import-actions';
   status.insertAdjacentElement('afterend', actions);
