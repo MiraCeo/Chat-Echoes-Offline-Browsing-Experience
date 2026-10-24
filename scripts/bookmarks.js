@@ -693,11 +693,9 @@ document.addEventListener('click', async (e) => {
     return;
   }
   const button = e.target.closest(
-    '[data-bookmark-unavailable],[data-bookmark-open],[data-bookmark-sidebar-more],[data-bookmark-message-more],[data-bookmark-mark],[data-bookmark-caption],[data-bookmark-menu-action],[data-bookmark-scope],[data-bookmark-jump],[data-bookmark-edit],[data-bookmark-close],[data-bookmark-cancel],[data-bookmark-delete]',
+    '[data-bookmark-open],[data-bookmark-sidebar-more],[data-bookmark-message-more],[data-bookmark-mark],[data-bookmark-caption],[data-bookmark-menu-action],[data-bookmark-scope],[data-bookmark-jump],[data-bookmark-edit],[data-bookmark-close],[data-bookmark-cancel],[data-bookmark-delete]',
   );
   if (!button) return;
-  if (button.matches('[data-bookmark-unavailable]'))
-    return toast('本地归档不执行消息编辑、评价、云端分享或模型切换；请通过书签记录个人备注。');
   if (button.matches('[data-bookmark-open]')) return openList(button.dataset.bookmarkOpen);
   if (button.matches('[data-bookmark-sidebar-more]'))
     return openMenu(button, () => openList('all'), '全部书签');

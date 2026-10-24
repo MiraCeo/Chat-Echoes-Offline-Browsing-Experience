@@ -730,8 +730,36 @@ for (const element of baseDocument.querySelectorAll("button, textarea, input")) 
   element.setAttribute("tabindex", "-1");
 }
 baseDocument.documentElement.setAttribute('data-ceobe-render-source', 'canonical-json');
+// 归档页是只读回放：官方工具条里的“编辑消息 / 评价回复 / 分享 / 切换模型”和生成图片的
+// “喜欢 / 不喜欢 / 编辑图片 / 分享此图片”在本地没有任何对应能力，留着只会承诺做不到的事
+//（以前是保留按钮 + aria-disabled + 点击弹一句“本地归档不执行…”）。
+// 以复制按钮为锚点：工具条只保留复制，其余按钮和“只包着按钮的 span”一并删除；
+// 图片悬浮层整块删除。书签的“更多操作 / 编辑书签”由后处理追加，不受影响。
+// 只删按钮与空 span，绝不删带正文/图表的兄弟节点：万一复制按钮的父节点不是工具条，也不会伤到内容。
+const isToolbarControl = node => {
+  if (node.localName === 'button') return true;
+  if (node.localName !== 'span') return false;
+  if (!node.querySelector('button')) return false;
+  return (node.textContent || '').trim() === '';
+};
+const stripUnsupportedActions = section => {
+  const copy = section.querySelector('[data-testid="copy-turn-action-button"]');
+  const toolbar = copy?.parentElement;
+  if (toolbar && toolbar !== section) {
+    for (const child of [...toolbar.children]) {
+      if (child === copy || child.contains(copy)) continue;
+      if (!isToolbarControl(child)) continue;
+      child.remove();
+    }
+  }
+  for (const overlay of [...section.querySelectorAll('[data-testid^="image-gen-overlay"]')]) {
+    // 只删最外层：子节点会跟着一起走，避免对已移除的节点重复操作。
+    if (!overlay.parentElement?.closest('[data-testid^="image-gen-overlay"]')) overlay.remove();
+  }
+};
 for (const [index, section] of [...messageList.querySelectorAll('section[data-testid^="conversation-turn-"]')].entries()) {
   attachCopyControls(section, copyParts(turns[index].entries));
+  stripUnsupportedActions(section);
 }
 
 const staticStyle = baseDocument.createElement("style");

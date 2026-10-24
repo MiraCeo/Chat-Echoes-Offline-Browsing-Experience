@@ -120,13 +120,6 @@ export async function buildBookmarks(root, library, selected = null) {
       mark.innerHTML = icon;
       mark.hidden = true;
       more.after(mark);
-      for (const b of section.querySelectorAll('button'))
-        if (['编辑消息', '评价回复', '分享', '切换模型'].includes(b.getAttribute('aria-label'))) {
-          b.dataset.bookmarkUnavailable = '';
-          b.tabIndex = 0;
-          b.setAttribute('aria-disabled', 'true');
-          b.title = '本地归档不执行此操作；可用书签记录个人备注';
-        }
     }
     if (chatId) {
       const rail = d.querySelector('[data-ceobe-prompt-rail]');
