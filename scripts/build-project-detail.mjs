@@ -24,7 +24,12 @@ export async function buildProjectDetail(root,library){
  const input=form.querySelector('#prompt-textarea');input.dataset.ceobeImportInput='';input.setAttribute('contenteditable','true');input.setAttribute('aria-label','导入会话到当前项目');input.querySelector('p').setAttribute('data-placeholder','导入会话：粘贴 ChatGPT 分享链接');
  const chats=m.querySelector('[role=tab]');chats.removeAttribute('aria-disabled');chats.removeAttribute('title');chats.tabIndex=0;
  for(const [i,tab]of [...m.querySelectorAll('[role=tab]')].entries()){tab.id='project-detail-tab-'+i;tab.setAttribute('aria-controls','project-detail-panel-'+i);const panel=m.querySelectorAll('[role=tabpanel]')[i];panel.id='project-detail-panel-'+i;panel.setAttribute('aria-labelledby',tab.id)}
- const previews={};for(const c of library.conversations){try{const raw=JSON.parse(await readFile(join(root,c.conversation_path),'utf8'));const messages=(raw.linear_message_ids||[]).map(id=>raw.messages[id]).filter(m=>m?.role==='user'&&m.visible!==false);const last=messages.at(-1);previews[c.id]=(last?.content?.blocks||[]).filter(b=>b.type==='text').map(b=>b.text).join(' ').replace(/\s+/g,' ').slice(0,500)}catch{previews[c.id]=''}}
+ // 预览片段只给“至少属于一个项目”的会话：project.html 被所有项目共用，
+  // 内嵌全部会话既让页面变大，也让删除/重命名任意会话都改写它。
+ const projectsData=JSON.parse(d.getElementById('ceobe-projects-data').textContent);
+ const projects=Array.isArray(projectsData)?projectsData:projectsData.projects||[];
+ const members=new Set(projects.flatMap(p=>p.conversation_ids||[]));
+ const previews={};for(const c of library.conversations){if(!members.has(c.id))continue;try{const raw=JSON.parse(await readFile(join(root,c.conversation_path),'utf8'));const messages=(raw.linear_message_ids||[]).map(id=>raw.messages[id]).filter(m=>m?.role==='user'&&m.visible!==false);const last=messages.at(-1);previews[c.id]=(last?.content?.blocks||[]).filter(b=>b.type==='text').map(b=>b.text).join(' ').replace(/\s+/g,' ').slice(0,500)}catch{previews[c.id]=''}}
  const data=d.createElement('script');data.id='ceobe-project-previews';data.type='application/json';data.textContent=JSON.stringify(previews).replaceAll('<','\\u003c');d.body.append(data);
  for(const use of d.querySelectorAll('main use,#ceobe-project-conversation-row use')){const h=use.getAttribute('href');use.setAttribute('href','./cdn/assets/'+(h.includes('sprites-shell')?'sprites-shell-097001e7.svg':'sprites-core-26c3f2d4.svg')+'#'+h.split('#')[1])}
  for(const name of f.stylesheets){await copyFile(join(root,'official-templates/assets',name),join(base,'assets',name));if(![...d.querySelectorAll('link[rel=stylesheet]')].some(e=>e.getAttribute('href')==='./assets/'+name)){const l=d.createElement('link');l.rel='stylesheet';l.href='./assets/'+name;d.head.append(l)}}

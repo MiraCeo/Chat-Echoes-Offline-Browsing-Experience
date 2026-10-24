@@ -2,10 +2,13 @@ import{projectFiles}from'./project-files-data.js';
 const panel=document.querySelector('[data-project-files]');
 if(panel){
  const id=new URLSearchParams(location.search).get('id'),tabs=[...document.querySelectorAll('main [role=tab]')],panels=tabs.map(t=>document.getElementById(t.getAttribute('aria-controls'))),status=panel.querySelector('[data-project-files-status]');
- const initialProjects=JSON.parse(document.getElementById('ceobe-projects-data').textContent),initialAssets=JSON.parse(document.getElementById('ceobe-assets-data').textContent);
- // 会话清单改由 chats.json 提供（页面里不再内嵌全部会话），拿不到就按空清单显示只读快照。
- let initialChats=[],apiLoaded=false;
- fetch(new URL('chats.json',location.href),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(apiLoaded||initialChats.length||!Array.isArray(d?.chats))return;initialChats=d.chats;render(initialProjects,initialChats,initialAssets,true)}).catch(()=>{});
+ const initialProjects=JSON.parse(document.getElementById('ceobe-projects-data').textContent);
+ // 会话清单与资源索引都改为按需取静态文件（页面里不再内嵌全部会话/全部附件），
+ // 拿不到就按空清单显示只读快照；本地服务可用时 load() 会换成最新数据。
+ let initialChats=[],initialAssets=[],apiLoaded=false;
+ const reseed=()=>{if(!apiLoaded)render(initialProjects,initialChats,initialAssets,true)};
+ fetch(new URL('chats.json',location.href),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(apiLoaded||initialChats.length||!Array.isArray(d?.chats))return;initialChats=d.chats;reseed()}).catch(()=>{});
+ fetch(new URL('assets-index.json',location.href),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(apiLoaded||initialAssets.length||!Array.isArray(d))return;initialAssets=d;reseed()}).catch(()=>{});
  let generation=0;
  function tab(index,push=false){for(const [i,t]of tabs.entries()){t.dataset.state=i===index?'active':'inactive';t.setAttribute('aria-selected',String(i===index));t.tabIndex=i===index?0:-1;panels[i].hidden=i!==index;panels[i].dataset.state=i===index?'active':'inactive'}if(push){const u=new URL(location.href);if(index)u.searchParams.set('tab','files');else u.searchParams.delete('tab');history.pushState(null,'',u)}}
  const requested=()=>['files','sources'].includes(new URLSearchParams(location.search).get('tab'))?1:0;

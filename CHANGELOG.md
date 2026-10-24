@@ -27,6 +27,12 @@
   - 冷缓存、热缓存、缓存清空、缓存损坏四种情况的产出（`assets.html`、`assets-index.json`、506 个
     `public/library-*` 文件）与改造前逐字节一致；
   - 缓存存在 `data/private/asset-library-cache.json`，删除流程会把它带进暂存目录并装回来。
+- **项目页瘦身**：`project.html` 不再内嵌全部会话的预览片段与整份资源索引——
+  预览只给“至少属于一个项目”的会话，资源索引由 `project-sources.js` 改为 fetch `./assets-index.json`。
+  页面 745 KB → **290 KB**；`project-detail` 步骤 2.1s → 1.5s（无项目时 0.1s）；
+  删除或重命名一个不属于任何项目的会话，不再改动 `project.html`。
+- **资源副本清理**：`public/library-assets`、`library-previews`、`library-media` 里不再被索引引用的旧文件会在
+  构建末尾删除（`archive/` 里的原件不受影响）。
 - `npm run library -- --only <id>` 现在会在渲染之后照常装饰这一页。此前它只渲染不装饰，
   重建出来的页面会丢掉侧栏、菜单与书签入口。
 

@@ -144,11 +144,11 @@ try {
   // 顶层 5 页每次都要重建、因此每次都要重做；重命名只应让被改名的那一页额外重做。
   assert.equal(renameDecoration.refreshed, rebuildDecoration.refreshed + 1,
     `重命名只应重做被改名的那一页：${rebuildDecoration.line} → ${renameDecoration.line}`);
-  // assets.html 内嵌资料库索引、project.html 内嵌每个会话的预览片段：来源标题变了它们就该变
-  //（缓存里的资源列表仍然有效，只是重建索引）。
+  // assets.html 内嵌资料库索引，来源会话标题变了它就该变（缓存里的资源列表仍然有效）。
+  // project.html 只内嵌“属于某个项目”的会话预览；夹具里没有项目，所以它不该变。
   const renamed = Object.keys(first).filter(name => first[name] !== baseline[name]).sort();
-  assert.deepEqual(renamed, ['assets.html', 'chats.json', `conversations/${renamedId}.html`, 'project.html'],
-    `重命名只应改动 chats.json、该会话页、资料库索引与项目页预览：${renamed.join(', ')}`);
+  assert.deepEqual(renamed, ['assets.html', 'chats.json', `conversations/${renamedId}.html`],
+    `重命名只应改动 chats.json、该会话页与资料库索引：${renamed.join(', ')}`);
   const renamedItem = JSON.parse(await assetsIndex()).find(item => item.sources.some(source => source.id === renamedId));
   assert.ok(renamedItem, '改名会话的附件应仍在资源库里');
   assert.equal(renamedItem.sources.find(source => source.id === renamedId).title, 'fixture-chat-c 新标题',
@@ -162,17 +162,22 @@ try {
   assert.equal(after[`conversations/${deletedId}.html`], undefined, '被删除会话的页面应当消失');
   assert.notEqual(after['chats.json'], baseline['chats.json'], 'chats.json 应当随删除更新');
   assert.equal(JSON.parse(await readFile(join(root, 'replay', 'chats.json'), 'utf8')).chats.some(chat => chat.id === deletedId), false);
-  // project.html 内嵌每个会话的预览片段、assets.html 内嵌资源索引，少了一个会话它们就该变；会话页与索引页不应变。
-  const changed = Object.keys(baseline).filter(name => ![`conversations/${deletedId}.html`, 'chats.json', 'project.html', 'assets.html'].includes(name) && baseline[name] !== after[name]);
+  // project.html 只内嵌“属于某个项目”的会话预览，夹具里没有项目；assets.html 内嵌资源索引，
+  // 少了一个会话它们是否变化取决于该会话的成员关系，这里没有项目、附件只有一份，所以两者都不该变。
+  const changed = Object.keys(baseline).filter(name => ![`conversations/${deletedId}.html`, 'chats.json', 'assets.html'].includes(name) && baseline[name] !== after[name]);
   assert.deepEqual(changed, [], `删除一个会话不应改写其他页面：${changed.join(', ')}`);
   const changedConversations = Object.keys(after).filter(name => name.startsWith('conversations/') && baseline[name] !== after[name]);
   assert.deepEqual(changedConversations, [], '会话页必须逐字节保持不变');
-  // 被删会话的附件要退出资源库索引，缓存里也不留它的条目。
+  // 被删会话的附件要退出资源库索引、缓存与 public/library-assets（不再被引用的副本会被清掉）。
   const indexAfter = JSON.parse(await assetsIndex());
   assert.equal(indexAfter.length, profiles.length - 1, '被删会话独占的附件应退出资源库');
   assert.equal(indexAfter.some(item => item.sources.some(source => source.id === deletedId)), false, '资源库不应再有被删会话的来源');
   assert.ok(indexAfter.every(item => item.sources.every(source => profiles.some(profile => profile.id === source.id) && source.id !== deletedId)));
   assert.equal(Object.keys((await assetCache()).conversations).includes(deletedId), false, '资源库缓存应清掉被删会话');
+  const copiedAssets = await readdir(join(root, 'replay', 'public', 'library-assets'));
+  const removedName = createHash('sha256').update(fixtures[deletedId].text).digest('hex') + '.txt';
+  assert.equal(copiedAssets.includes(removedName), false, '被删会话的附件副本应被清理');
+  assert.equal(copiedAssets.length, profiles.length - 1, '只剩仍在索引里的附件副本');
 
   // 3. 结构：没有内嵌全部会话的数据块；仍保留一行静态回退与行模板。
   for (const name of (await readdir(join(root, 'replay', 'conversations'))).filter(n => n.endsWith('.html'))) {

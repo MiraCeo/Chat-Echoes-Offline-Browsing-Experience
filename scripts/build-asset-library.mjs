@@ -1,5 +1,5 @@
 import { writeIfChanged } from './page-cache.mjs';
-import { readFile, writeFile, mkdir, cp, stat } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, cp, stat, readdir, rm } from 'node:fs/promises';
 import { join, dirname, basename, resolve, relative } from 'node:path';
 import { createHash } from 'node:crypto';
 import { parseHTML } from 'linkedom';
@@ -66,6 +66,7 @@ export async function buildAssetLibrary(root, library) {
   const previous = await readCache(root);
   const conversations = {}, pages = {};
   const items = new Map();
+  const keep = { assets: new Set(), previews: new Set(), media: new Set() };
   for (const entry of library.conversations) {
     const sourcePath = resolve(root, entry.conversation_path);
     const key = typeof stamps[entry.id] === 'string' ? stamps[entry.id] : '';
@@ -123,6 +124,7 @@ export async function buildAssetLibrary(root, library) {
         catch { item.status = 'unavailable'; continue; }
       }
       item.download = `./library-assets/${assetName}`; item.size = size; item.status = 'downloaded';
+      keep.assets.add(assetName);
       if (item.kind === 'image') item.preview = { kind: 'image', url: item.download };
       if (!item.preview) {
         const filename = (await rememberPage()).get(`file-${resource.key}`);
@@ -144,7 +146,8 @@ export async function buildAssetLibrary(root, library) {
             else e.removeAttribute(attr);
           }
         }
-        for (const [from, to] of media) await cp(from, to);
+        for (const [from, to] of media) { keep.media.add(basename(to)); await cp(from, to); }
+        keep.previews.add(`${id}.html`);
         await writeIfChanged(join(pub, 'library-previews', `${id}.html`), htmlSafeSvg(preview.body.innerHTML));
         item.preview = { kind: 'fragment', url: `./library-previews/${id}.html` };
       }
@@ -169,6 +172,10 @@ export async function buildAssetLibrary(root, library) {
   }
   await writeIfChanged(join(replay, 'assets.html'), '<!DOCTYPE html>\n' + htmlSafeSvg(document.documentElement.outerHTML));
   await writeIfChanged(join(pub, 'assets-index.json'), JSON.stringify(records, null, 2));
+  // 索引会随删除/改名变小；不再被引用的副本不留在 public（进而 dist）里。
+  for (const [dir, names] of [['library-assets', keep.assets], ['library-previews', keep.previews], ['library-media', keep.media]]) {
+    for (const name of await readdir(join(pub, dir))) if (!names.has(name)) await rm(join(pub, dir, name), { force: true });
+  }
   await mkdir(join(root, 'data/private'), { recursive: true });
   await writeIfChanged(cacheFile(root), JSON.stringify({ version: CACHE_VERSION, conversations, pages }));
   console.log(`Asset library: ${records.length} unique resources, ${records.filter(r => r.download).length} verified local files.`);

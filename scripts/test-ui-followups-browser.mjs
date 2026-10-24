@@ -53,6 +53,12 @@ try {
     await settle();
     for (const target of targets) {
       const cap = p.locator(`[data-bookmark-caption="${target.message_id}"]`);
+      // 只在用户看得到的时候断言落位：标注离开视口时布局不会重算（避免强制渲染 content-visibility:auto
+      // 的离屏内容），缩窄后仍带着上一次宽度的 inline 决策。先滚进视口，顺带验证“进入视口会重算”。
+      await cap.scrollIntoViewIfNeeded();
+      await settle();
+      await p.waitForTimeout(80);
+      await settle();
       const g = await cap.evaluate(e => {
         const r = e.getBoundingClientRect(), title = e.querySelector('.ceobe-bookmark-caption-title'), note = e.querySelector('.ceobe-bookmark-caption-note');
         return { mode: e.dataset.bookmarkDisplay, inline: e.hasAttribute('data-bookmark-inline'), width: r.width, x: r.x, right: r.right,

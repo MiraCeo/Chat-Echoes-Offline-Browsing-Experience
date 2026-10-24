@@ -82,6 +82,31 @@ npm run dev -- --host 127.0.0.1 --port 5173
 新增会改变“页面能提供什么”的渲染输入时，要注意这个缓存是按 `library-stamps.json` 的指纹失效的；
 如果新输入不在渲染指纹里，请把它并进渲染指纹或给缓存加版本号。
 
+构建末尾还会清掉 `public/library-assets`／`library-previews`／`library-media` 里不再被索引引用的文件：
+这些是派生副本（原件在 `archive/`），删除或改名会话后不该继续堆在 `public` 与 `dist` 里。
+
+### 项目页的数据来源
+
+`project.html` 被所有项目共用，因此只内嵌“至少属于一个项目”的会话预览（`#ceobe-project-previews`），
+其余数据都按需取：
+
+- 会话清单：`chats.json`（`project-sources.js`）；
+- 资源索引：`assets-index.json`（`project-sources.js`）；
+- 项目本身：`#ceobe-projects-data`。
+
+这样删除或重命名一个不属于任何项目的会话不会改动 `project.html`。给项目页新增内嵌数据前，
+先想清楚它是否真的需要“全部会话”——否则删除任意一个会话都会重写这一页。
+
+### 书签标注的布局范围
+
+书签标注（`.ceobe-bookmark-caption`）的宽度与 inline 决策只对**视口附近**的会话计算
+（`IntersectionObserver` 的 `rootMargin: 400px`），避免读取离屏子节点时强制渲染
+`content-visibility: auto` 的内容。因此：
+
+- 缩窄窗口后，**离屏**标注仍带着上一次宽度的决策；它进入视口时会重新计算，用户看到的是重算后的结果；
+- 断言标注落位的测试要先 `scrollIntoViewIfNeeded()` 再测量（`test-ui-followups-browser.mjs` 就是这么做的），
+  不要断言离屏标注的几何。
+
 ## 打印（PDF）样式约束
 
 - 打印规则写在 `official-templates/assets/print.css`（`media="print"`），屏幕渲染不受影响；
