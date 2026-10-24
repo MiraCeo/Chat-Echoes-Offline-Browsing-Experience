@@ -23,7 +23,7 @@ export async function rebuildDeletionStage(stage,sourceRoot){
  // 复用现有产物与构建指纹：只删掉那个会话的页面，其余页面按指纹跳过渲染，
  // 装饰指纹也一并带过去，没有变化的页面连解析、写盘都省掉。没有这步时暂存目录是空的，等于全量重建。
  if(await exists(join(sourceRoot,'replay')))await cp(join(sourceRoot,'replay'),join(stage,'replay'),{recursive:true});
- for(const name of ['library-stamps.json','decoration-stamps.json']){
+ for(const name of ['library-stamps.json','decoration-stamps.json','asset-library-cache.json']){
   const source=join(sourceRoot,'data/private',name);
   if(await exists(source)){await mkdir(join(stage,'data/private'),{recursive:true});await cp(source,join(stage,'data/private',name))}
  }
@@ -140,7 +140,7 @@ export function createChatStore(root,{rebuild=rebuildDeletionStage}={}){
     const rebuildStart=Date.now();await rebuild(stage,root);rebuildMs=Date.now()-rebuildStart;
     // Durable journal allows fail-closed manual recovery after a process/OS crash.
     await atomic(join(job,'journal.json'),{id:body.id,state:'prepared',paths:[]});
-    const paths=[...(await exists(bookmarkFile)?['data/private/bookmarks.ceobe.json']:[]),...targets.map(dir=>relative(root,dir).replaceAll('\\','/')),'archive/library.ceobe.json',CHAT_INDEX_FILE,'data/private/chats.ceobe.json',...(await exists(join(stage,'data/private/decoration-stamps.json'))?['data/private/decoration-stamps.json']:[]),...(await exists(projectFile)?['data/private/projects.ceobe.json']:[]),'replay'];
+    const paths=[...(await exists(bookmarkFile)?['data/private/bookmarks.ceobe.json']:[]),...targets.map(dir=>relative(root,dir).replaceAll('\\','/')),'archive/library.ceobe.json',CHAT_INDEX_FILE,'data/private/chats.ceobe.json',...(await exists(join(stage,'data/private/decoration-stamps.json'))?['data/private/decoration-stamps.json']:[]),...(await exists(join(stage,'data/private/asset-library-cache.json'))?['data/private/asset-library-cache.json']:[]),...(await exists(projectFile)?['data/private/projects.ceobe.json']:[]),'replay'];
     for(const path of paths){const live=join(root,path),old=join(backup,path),fresh=join(stage,path);const item={path,hadOld:false,installed:false};moved.push(item);const result=await installPath(live,old,fresh);item.hadOld=result.hadOld;item.installed=result.installed;await atomic(join(job,'journal.json'),{id:body.id,state:'committing',paths:moved})}
     committed=true;
     // Success is not returned while raw archives or old generated copies remain.
