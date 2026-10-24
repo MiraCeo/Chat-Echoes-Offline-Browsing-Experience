@@ -65,6 +65,23 @@ npm run dev -- --host 127.0.0.1 --port 5173
   否则改它之后页面不会刷新；改装饰口径（不是脚本内容）时把 `DECORATION_VERSION` 加一；
 - `npm run library -- --only <id>` 会渲染并装饰指定的页面，其余页面不动。
 
+### 资源库按页缓存
+
+`build-asset-library` 原来每次都会读 34 个会话 JSON、解析 34 个页面、把 321 个附件（249 MB）重新复制进
+`public/library-assets/`。现在它按“渲染输入指纹”（`data/private/library-stamps.json` 里的
+`sourceHash:renderer`）缓存两样派生数据：
+
+- 每个会话的 `resources` 列表——命中时不再读会话 JSON；
+- 每个页面能提供的“附件预览模板文件名”——命中时不再解析页面。
+
+缓存写在 `data/private/asset-library-cache.json`（`version` 变化或文件损坏时自动全部重算）；
+附件文件名本身就是内容的 sha256（`assets/<sha256>.<ext>`），所以目标文件已存在就跳过读写；
+`assets-index.json` 与预览片段用 `writeIfChanged`。删除流程会把这个缓存一起复制进暂存目录并装回来，
+所以删除重建也是冷启动以下的 0.5s 级。
+
+新增会改变“页面能提供什么”的渲染输入时，要注意这个缓存是按 `library-stamps.json` 的指纹失效的；
+如果新输入不在渲染指纹里，请把它并进渲染指纹或给缓存加版本号。
+
 ## 打印（PDF）样式约束
 
 - 打印规则写在 `official-templates/assets/print.css`（`media="print"`），屏幕渲染不受影响；
