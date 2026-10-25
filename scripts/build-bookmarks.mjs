@@ -92,19 +92,16 @@ export async function buildBookmarks(root, library, selected = null) {
       let more = section.querySelector('button[aria-label="更多操作"]');
       if (!more) {
         const copy = section.querySelector('[data-testid=copy-turn-action-button]');
-        if (copy) {
-          more = moreExample ? moreExample.cloneNode(true) : copy.cloneNode(true);
-          for (const attr of more.getAttributeNames())
-            if (attr.startsWith('data-') || attr === 'id' || attr === 'title')
-              more.removeAttribute(attr);
-          more.innerHTML = '<span class="flex items-center justify-center h-8 w-8">⋯</span>';
-          copy.parentElement.append(more);
-        } else {
-          more = d.createElement('button');
-          more.textContent = '⋯';
-          more.className = 'text-token-text-secondary rounded-lg h-8 w-8';
-          section.append(more);
-        }
+        // 渲染时会给工具条打 data-ceobe-turn-actions；没有可复制正文的回复连复制按钮都没有，
+        // 所以优先用标记定位，回退到复制按钮的父节点，最后才退回消息尾部新建一个。
+        const bar = section.querySelector('[data-ceobe-turn-actions]') || copy?.parentElement;
+        more = moreExample ? moreExample.cloneNode(true) : copy ? copy.cloneNode(true) : d.createElement('button');
+        for (const attr of more.getAttributeNames())
+          if (attr.startsWith('data-') || attr === 'id' || attr === 'title')
+            more.removeAttribute(attr);
+        more.innerHTML = '<span class="flex items-center justify-center h-8 w-8">⋯</span>';
+        if (!more.className) more.className = 'text-token-text-secondary rounded-lg h-8 w-8';
+        (bar || section).append(more);
       }
       more.dataset.bookmarkMessageMore = t.message_id;
       more.type = 'button';

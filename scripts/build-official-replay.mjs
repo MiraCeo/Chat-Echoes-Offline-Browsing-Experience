@@ -746,6 +746,10 @@ const stripUnsupportedActions = section => {
   const copy = section.querySelector('[data-testid="copy-turn-action-button"]');
   const toolbar = copy?.parentElement;
   if (toolbar && toolbar !== section) {
+    // 工具条标记：书签步骤（build-bookmarks）靠它定位，即使复制按钮被删掉也还在。
+    toolbar.dataset.ceobeTurnActions = '';
+    // 生成图片/图表类回复没有可复制的正文（data-ceobe-copy 为空串），复制按钮本身也是空承诺，一并去掉。
+    if ((copy.getAttribute('data-ceobe-copy') || '').trim() === '') copy.remove();
     for (const child of [...toolbar.children]) {
       if (child === copy || child.contains(copy)) continue;
       if (!isToolbarControl(child)) continue;
@@ -819,14 +823,21 @@ if (!values['preserve-output']) {
   await rm(outputRoot, { recursive: true, force: true });
 }
 const copiedFiles = new Set();
+// 每一页都要把自己会话的附件字节写进 archive-resources：这是“每页自己的”产物，不是共享资源。
+// 它曾经被放在 skip-shared-assets 分支里，导致并行渲染的页面引用了从未拷贝过的文件
+// （34 个会话页里 280 条附件链接指向不存在的文件）。归档文件名是内容哈希，重复写是幂等的；
+// 并发进程写同名文件时用 wx 让后来者跳过，避免互相截断。
+await mkdir(join(outputRoot, 'archive-resources'), { recursive: true });
+// Vite 不会把普通下载链接当资源打包，public 副本让生产构建也带上这些附件。
+await mkdir(join(outputRoot, 'public', 'archive-resources'), { recursive: true });
+for (const [path, bytes] of resourceBytes) {
+  for (const dir of [join(outputRoot, 'archive-resources'), join(outputRoot, 'public', 'archive-resources')]) {
+    await writeFile(join(dir, basename(path)), bytes, { flag: 'wx' })
+      .catch(error => { if (error.code !== 'EEXIST') throw error; });
+  }
+}
 if (!values['skip-shared-assets']) {
 await mkdir(outputAssets, { recursive: true });
-await mkdir(join(outputRoot, 'archive-resources'), { recursive: true });
-for (const [path, bytes] of resourceBytes) await writeFile(join(outputRoot, 'archive-resources', basename(path)), bytes);
-// Vite does not emit plain download anchors as bundled assets. Keep these
-// public copies so the production build retains every archived download too.
-await mkdir(join(outputRoot, 'public', 'archive-resources'), { recursive: true });
-for (const [path, bytes] of resourceBytes) await writeFile(join(outputRoot, 'public', 'archive-resources', basename(path)), bytes);
 await mkdir(outputOfficialAssets, { recursive: true });
 await cp(join(katexDistribution, "katex.min.css"), join(outputAssets, "katex.min.css"));
 await cp(join(katexDistribution, "fonts"), join(outputAssets, "fonts"), { recursive: true });

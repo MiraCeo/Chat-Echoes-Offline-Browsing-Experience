@@ -1,4 +1,5 @@
-import { readFile, writeFile, cp, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, cp, mkdir, rename, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { sheetTableHtml } from './sheet-table.mjs';
 import { join, basename, extname } from 'node:path';
 import { homedir } from 'node:os';
@@ -116,11 +117,26 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
     if (spec.source) {
       assetFolder = key.replace(/[^a-zA-Z0-9_-]/g, '_');
       const preparedRoot = join(assets, assetFolder);
-      await mkdir(preparedRoot, { recursive: true });
-      const result = spawnSync(python, [join(projectRoot, 'scripts/prepare-preview-data.py'), spec.source, preparedRoot, spec.parserKind || kind], { encoding: 'utf8', windowsHide: true });
-      if (result.status !== 0) throw new Error(result.stderr || `Attachment preview preparation failed: ${name}`);
-      console.log(result.stdout.trim());
-      data = JSON.parse(await readFile(join(preparedRoot, 'manifest.json'), 'utf8'));
+      const manifest = join(preparedRoot, 'manifest.json');
+      // 并行渲染时，两个会话可能引用同一个附件（文件夹名来自附件 key），会同时准备同一份预览数据。
+      // 先看有没有现成的 manifest；没有就准备好写到临时目录、再原子改名进目标目录，
+      // 抢输的进程直接复用赢家的结果——不会读到写了一半的文件。
+      if (!existsSync(manifest)) {
+        // 临时目录放在 previews 之外：页面进程会把整个 previews 目录同步进 public/previews，
+        // 中途被改名走的临时目录会让那次复制报 ENOENT。
+        const tempRoot = join(outputRoot, '.preview-tmp', `${assetFolder}.${process.pid}.tmp`);
+        await rm(tempRoot, { recursive: true, force: true });
+        await mkdir(tempRoot, { recursive: true });
+        const result = spawnSync(python, [join(projectRoot, 'scripts/prepare-preview-data.py'), spec.source, tempRoot, spec.parserKind || kind], { encoding: 'utf8', windowsHide: true });
+        if (result.status !== 0) { await rm(tempRoot, { recursive: true, force: true }); throw new Error(result.stderr || `Attachment preview preparation failed: ${name}`); }
+        console.log(result.stdout.trim());
+        try { await rename(tempRoot, preparedRoot); }
+        catch (error) {
+          await rm(tempRoot, { recursive: true, force: true });
+          if (!['EEXIST', 'ENOTEMPTY', 'EPERM', 'EACCES'].includes(error.code)) throw error;
+        }
+      }
+      data = JSON.parse(await readFile(manifest, 'utf8'));
     }
     if (kind === 'pasted-reference') {
       pane.setAttribute('data-ceobe-pasted-reference', '');
@@ -247,6 +263,14 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
   if (!skipSharedAssets) {
     await cp(join(projectRoot, 'scripts/file-previews.css'), join(outputRoot, 'file-previews.css'));
   }
-  await cp(assets,join(outputRoot,'public/previews'),{recursive:true});
+  // public/previews 逐页同步（每页都会把自己准备好的预览数据补进去）。并行渲染时多个进程
+  // 会同时写这个目录，Windows 上偶发 EBUSY/EPERM：短暂重试即可，内容是按页累加的。
+  for (let attempt = 0; ; attempt += 1) {
+    try { await cp(assets, join(outputRoot, 'public/previews'), { recursive: true }); break; }
+    catch (error) {
+      if (!['EBUSY', 'EPERM', 'EACCES', 'ENOTEMPTY'].includes(error.code) || attempt >= 4) throw error;
+      await new Promise(done => setTimeout(done, 120 * (attempt + 1)));
+    }
+  }
   return previewFiles;
 }

@@ -41,7 +41,12 @@ const fixtures = {
 };
 await mkdir(join(source, 'data', 'private'), { recursive: true });
 const root = await mkdtemp(join(source, 'data', 'private', 'sidebar-chat-'));
-const runCapture = args => promisify(execFile)(process.execPath, args, { cwd: root, windowsHide: true, maxBuffer: 16 * 1024 * 1024 });
+// 夹具里的页面串行渲染：并行工作池会让多个进程同时把 replay/previews 同步进 public/previews，
+// Windows 上偶发 EBUSY（既有的构建竞态）。这个测试验证“重建后字节不变”，不需要并发。
+const runCapture = args => promisify(execFile)(process.execPath, args, {
+  cwd: root, windowsHide: true, maxBuffer: 16 * 1024 * 1024,
+  env: { ...process.env, CEOBE_SERIAL_PAGES: '1' },
+});
 const hashFile = async path => createHash('sha256').update(await readFile(join(root, 'replay', path))).digest('hex');
 async function pageHashes() {
   const hashes = {};
