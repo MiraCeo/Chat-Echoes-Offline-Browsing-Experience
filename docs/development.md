@@ -129,6 +129,11 @@ npm run dev -- --host 127.0.0.1 --port 5173
 这样删除或重命名一个不属于任何项目的会话不会改动 `project.html`。给项目页新增内嵌数据前，
 先想清楚它是否真的需要“全部会话”——否则删除任意一个会话都会重写这一页。
 
+页头的项目图标不是按钮，而是 `<span role="img" data-testid="project-modal-trigger">`：官方的图标/颜色菜单
+没有接，同一份选择器已经在「显示项目详情 → 项目设置」里实现（`project-appearance.js`）。
+因此 `project-detail.js` 用 `[data-testid=project-modal-trigger]` 定位这个容器（不要假设它是 `button`），
+标签取自 `#ceobe-project-icons` 里的图标名。
+
 项目页的 composer 只做**逐条导入分享链接**：`link-import.js` 用 `body[data-ceobe-project-detail]`
 判断当前是不是项目页，采集包上传（`/api/archive-package` 没有项目语义）与批量导入提示都只在
 「导入会话」页注入。在项目页加这两类入口前，先确保服务端真的会把结果归到该项目，

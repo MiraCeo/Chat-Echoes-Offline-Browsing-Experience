@@ -12,6 +12,14 @@ export async function buildProjectDetail(root,library){
  const list=m.querySelector('ol');list.dataset.projectConversations='';const row=list.firstElementChild.cloneNode(true);list.replaceChildren();
  const tpl=d.createElement('div');tpl.hidden=true;tpl.id='ceobe-project-conversation-row';tpl.innerHTML=row.outerHTML;d.body.append(tpl);
  const status=d.createElement('p');status.dataset.projectDetailStatus='';status.className='ceobe-project-status';status.setAttribute('role','status');list.after(status);
+ // 页头的项目图标是个官方按钮：点开的是官方的“图标/颜色”菜单，我们没有接它——同一份选择器
+ // 已经在「项目设置」里实现（project-appearance.js）。这里把它降级成非交互容器：图标照常显示，
+ // 但页面上不再出现一个点了没反应、还带“此功能暂未接入”说明的按钮。
+ for(const icon of m.querySelectorAll('button[data-testid=project-modal-trigger]')){
+  const box=d.createElement('span');box.className=icon.className;box.dataset.testid='project-modal-trigger';
+  box.setAttribute('role','img');box.setAttribute('aria-label','项目图标');
+  box.replaceChildren(...icon.childNodes);icon.replaceWith(box);
+ }
  for(const b of m.querySelectorAll('button')){b.type='button';b.setAttribute('aria-disabled','true');b.title='此功能暂未接入本地项目';}
  m.querySelector('[name=project-title]').removeAttribute('aria-label');
  const form=m.querySelector('form');form.dataset.ceobeImportForm='';

@@ -123,6 +123,18 @@ npm run verify:archive      # 只读检查档案结构
 - `public/library-assets`、`library-previews`、`library-media` 里不再被索引引用的旧副本会被清掉
   （只增不减会一直堆到 `dist/` 里）。`archive/` 里的原件不受影响。
 
+**项目页不再有占位按钮**
+
+`build-project-detail` 先把官方 `main` 里所有 button 设成 `aria-disabled` + 「此功能暂未接入本地项目」，
+再由各步骤逐个放开——这是安全网，默认“没接线 = 明显不可用”。实测它最后只剩页头「项目图标」一个，
+而图标/颜色编辑早在「显示项目详情 → 项目设置」里实现，于是：
+
+- 页头图标改成 `<span role="img" aria-label="项目图标：<图标名>">`（保留 class、svg、`data-testid`）：
+  图标照常显示、不再可点、不再有禁用提示；
+- `project-detail.js` 改为用 `[data-testid=project-modal-trigger]` 定位容器并按 `#ceobe-project-icons`
+  写中文标签（它原来直接 `box.closest('button')`，改结构时立刻会抛错，已修）；
+- 现在全站没有带「此功能暂未接入本地项目」的按钮。
+
 **还没做**
 
 - 顶层 5 页每趟都要重建、因此每趟都要重新装饰（约 1.3s）；评估后认为收益小于风险，暂不处理。
