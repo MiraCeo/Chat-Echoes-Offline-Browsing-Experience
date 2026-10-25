@@ -377,7 +377,9 @@ DOM 经多次序列化时使用 `scripts/serialize-html.mjs` 的处理，避免�
   writing-block 正文，已脱敏）；
 - 依赖本地档案的检查（`verify:official-dom`、`test-archived-file-previews.mjs`）不把档案带进仓库：
   前者缺页时会用夹具自己构建，后者按标题在本地档案里找会话、找不到就明确跳过；
-- 新增夹具时同样按上面规则脱敏，并把“这份文件是怎么来的、改了什么”记进 `provenance` 或相邻说明。
+- 新增夹具时同样按上面规则脱敏，并把“这份文件是怎么来的、改了什么”记进 `provenance` 或相邻说明；
+- **二进制素材**（PDF/XLSX/图片/字体/压缩包）由 `.gitattributes` 标成 `binary`：Windows 上 `core.autocrlf=true`
+  会把纯 ASCII 的 PDF 当文本、检出时把 LF 换成 CRLF，PDF 的交叉引用偏移就坏了。新增其他二进制类型时记得补一行。
 
 ## 发布前检查
 

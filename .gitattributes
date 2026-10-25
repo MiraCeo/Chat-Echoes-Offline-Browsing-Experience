@@ -1,0 +1,19 @@
+# 二进制素材必须原样签出：Windows 上 core.autocrlf=true 会把纯 ASCII 的 PDF 当成文本，
+# 检出时把 LF 换成 CRLF，PDF 的交叉引用偏移就失效了。
+*.pdf binary
+*.xlsx binary
+*.docx binary
+*.pptx binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.bmp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.zip binary
