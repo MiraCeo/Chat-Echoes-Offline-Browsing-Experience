@@ -111,6 +111,11 @@ ChatGPT 分享页面及公开资源
 | `/api/projects` | 项目读取与创建 |
 | `/api/projects/move` | 更新聊天的项目归属 |
 | `/api/projects/action` | 重命名、置顶、简介与删除等项目操作 |
+| `/api/library` | 资料库的文件夹（标签）、标签分配与上传记录 |
+| `/api/library/folders` | 新建 / 重命名 / 删除文件夹（只动标签，不动文件） |
+| `/api/library/tags` | 设置一条资源的文件夹（标签） |
+| `/api/library/upload` | 上传文件字节（`application/octet-stream`），写 `data/private/library-files/` |
+| `/api/library/uploads/remove` | 移除上传记录（保留磁盘文件） |
 | `/api/projects/export-zip` | 项目全部聊天的纯文本 ZIP 导出 |
 
 写入由工作区锁协调，项目存储使用原子文件替换。简介保存携带旧值以检测并发冲突，避免静默覆盖其他窗口的更新。

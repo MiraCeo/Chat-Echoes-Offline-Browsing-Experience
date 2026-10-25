@@ -13,6 +13,21 @@
 - 五个后处理步骤改为幂等：`scripts/page-decoration.mjs` 每趟统一清场、资源引用就地更新版本、
   内容没变不写盘。此前每次重建都会重复注入弹窗、模板、样式表与脚本。
 
+### 资料库
+
+- **文件夹当标签**：资料库可以新建、重命名、删除文件夹；一条资源可以同时在多个文件夹里（标签，不是真实目录）。
+  文件夹条上点一下只看该文件夹，搜索也会匹配文件夹名。删除文件夹只删标签，不删资源、不删文件。
+- **上传自己的文件**：一次可选多个；文本类（Markdown/TXT/CSV/JSON…）在预览窗直接显示内容，图片直接显示，
+  其他类型提供下载；同一份内容按 sha256 去重，只留一条记录。
+- 上传的字节写 `data/private/library-files/`，**不进 `archive/`**（那里只放采集来的原始档案）；
+  「从资料库移除」只删记录（两次确认），磁盘文件保留——资源库不删原文件。
+- 数据存在 `data/private/library.ceobe.json`（`kind: ceobe.library`）；接口 `GET /api/library`、
+  `POST /api/library/folders|tags|upload|uploads/remove`，开发与生产预览都加载。
+- 构建把文件夹、标签与上传项写进 `assets-index.json` / `#ceobe-assets-data`，并单独写入 `#ceobe-library-data`；
+  上传副本按内容寻址拷进 `public/library-files/`，不再被引用的副本随构建清理（私有原件不动）。
+  纯静态页面因此仍能按文件夹筛选，只是不能编辑。
+- 测试：`test-library-store.mjs`、`test-library-api.mjs`、`test-library-ui-browser.mjs` 均已加入 `npm test`。
+
 ### 构建
 
 - **页面装饰指纹**：`scripts/decoration-plan.mjs` 按“渲染器/模板 + 项目清单 + 该页会话条目 + 页面字节”算指纹

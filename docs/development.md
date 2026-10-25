@@ -117,6 +117,28 @@ npm run dev -- --host 127.0.0.1 --port 5173
 构建末尾还会清掉 `public/library-assets`／`library-previews`／`library-media` 里不再被索引引用的文件：
 这些是派生副本（原件在 `archive/`），删除或改名会话后不该继续堆在 `public` 与 `dist` 里。
 
+### 资料库的文件夹、标签与上传
+
+资料库的“个人组织”数据在 `data/private/library.ceobe.json`（`kind: ceobe.library`）：
+`folders`（文件夹 = 标签）、`tags`（资源 id → 文件夹 id 列表）、`uploads`（上传记录）。
+上传的字节在 `data/private/library-files/<sha256>.<ext>`，**不进 `archive/`**。
+
+- 语义由用户定案：**文件夹当标签**（一条资源可属于多个）、**上传不进 archive**、**任何路径都不删原文件**。
+  删除文件夹只删标签；「从资料库移除」只删记录。这两条在 `library-store.mjs` 里是硬约束，
+  改动前先读一遍那个文件的顶部注释；
+- 接口在 `scripts/library-store.mjs` 末尾（`libraryMiddleware`），在 `vite.config.mjs` 里同时挂到
+  dev 与 preview：`GET /api/library`、`POST /api/library/folders`、`POST /api/library/tags`、
+  `POST /api/library/upload`（`application/octet-stream` + `?name=&mime=`）、`POST /api/library/uploads/remove`；
+- 构建时 `build-asset-library.mjs` 读取这份数据，把 `folders` 挂到每条记录上，并把上传项并入
+  `assets-index.json` / `#ceobe-assets-data`，文件夹与标签另写进 `#ceobe-library-data`；
+  上传副本拷进 `public/library-files/`（内容寻址，已存在就跳过），不再被引用的副本随其他派生目录一起清掉；
+- 页面加载后会再 fetch `/api/library` 覆盖构建时的快照（服务不可用时退回静态数据，只读）；
+- 预览：图片直接内联；文本类（`kind: 'text'`）由前端取原文件塞进 `<pre>`；其他类型只提供下载。
+
+测试：`test-library-store.mjs`（存储语义、去重、损坏保护、不碰 archive）、
+`test-library-api.mjs`（HTTP 守卫与完整流程、私有/公共副本）、
+`test-library-ui-browser.mjs`（界面，接口全部内存打桩，不写真实数据）。
+
 ### 项目页的数据来源
 
 `project.html` 被所有项目共用，因此只内嵌“至少属于一个项目”的会话预览（`#ceobe-project-previews`），

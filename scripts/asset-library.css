@@ -34,3 +34,35 @@
 .ceobe-sheet-grid tbody th { position: sticky; left: 0; z-index: 1; background: #f9fafb; }
 .ceobe-sheet-grid thead th:first-child { z-index: 3; }
 .ceobe-sheet-grid td[rowspan], .ceobe-sheet-grid td[colspan] { white-space: pre-wrap; vertical-align: top; }
+
+/* 文件夹（当标签用）与上传：只在资料库主体里出现。 */
+.ceobe-asset-folderbar {display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:2px 0 10px}
+.ceobe-asset-folder {font:12px system-ui;padding:5px 10px;border:1px solid #d0d5dd;border-radius:14px;background:#fff;color:#344054;cursor:pointer;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ceobe-asset-folder[aria-pressed="true"] {background:#1f2937;border-color:#1f2937;color:#fff}
+.ceobe-asset-foldertool {font:12px system-ui;padding:5px 10px;border:1px dashed #98a2b3;border-radius:14px;background:transparent;color:#475467;cursor:pointer}
+.ceobe-asset-foldertool:hover {background:#f2f4f7}
+.ceobe-asset-status {font-size:12px;color:#475467;min-height:18px;margin:0 0 6px}
+.ceobe-asset-tagrow {display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%}
+.ceobe-asset-taglabel,.ceobe-asset-taghint {font-size:11px;color:#98a2b3}
+.ceobe-asset-tag {font:11px system-ui;padding:3px 8px;border:1px solid #d0d5dd;border-radius:12px;background:#fff;color:#344054;cursor:pointer}
+.ceobe-asset-tag[aria-pressed="true"] {background:#1f2937;border-color:#1f2937;color:#fff}
+.ceobe-asset-tagmanage {font:11px system-ui;padding:3px 8px;border:1px dashed #98a2b3;border-radius:12px;background:transparent;color:#475467;cursor:pointer}
+.ceobe-asset-remove {font:11px system-ui;padding:3px 8px;border:1px solid #f04438;border-radius:12px;background:#fff;color:#b42318;cursor:pointer}
+.ceobe-asset-remove[data-confirm="1"] {background:#f04438;color:#fff}
+.ceobe-asset-text {margin:0;padding:12px;background:#f9fafb;border:1px solid #eaecf0;border-radius:10px;font:12px/1.6 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;word-break:break-word}
+.ceobe-library-folders {width:min(560px,92vw);padding:0;border:1px solid #ddd;border-radius:14px;background:#fff;color:#111}
+.ceobe-library-folders button,.ceobe-library-folders input {pointer-events:auto!important}
+.ceobe-library-folders::backdrop {background:#0006}
+.ceobe-library-folders>header {display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #ddd}
+.ceobe-library-folders>header h2 {font-size:15px;font-weight:600}
+.ceobe-library-folders>header button {padding:5px 10px;border-radius:14px;background:#eee;color:#333;cursor:pointer}
+.ceobe-library-hint {font-size:12px;color:#667085;line-height:1.6;padding:12px 18px 0}
+.ceobe-library-folders [data-library-folder-list] {display:flex;flex-direction:column;gap:8px;padding:12px 18px;max-height:50vh;overflow:auto}
+.ceobe-library-folder {display:flex;gap:8px;align-items:center}
+.ceobe-library-folder input {flex:1;min-width:0;font:13px system-ui;padding:6px 8px;border:1px solid #d0d5dd;border-radius:8px}
+.ceobe-library-action,.ceobe-library-danger {font:12px system-ui;padding:5px 10px;border-radius:8px;border:1px solid #d0d5dd;background:#fff;color:#344054;cursor:pointer}
+.ceobe-library-danger {border-color:#f04438;color:#b42318}
+.ceobe-library-danger[data-confirm="1"] {background:#f04438;color:#fff}
+.ceobe-library-folders form {display:flex;gap:8px;padding:12px 18px 16px}
+.ceobe-library-folders form input {flex:1;font:13px system-ui;padding:6px 8px;border:1px solid #d0d5dd;border-radius:8px}
+.ceobe-library-folders form button {font:12px system-ui;padding:6px 14px;border-radius:8px;border:1px solid #1f2937;background:#1f2937;color:#fff;cursor:pointer}

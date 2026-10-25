@@ -7,6 +7,34 @@ const dialog = document.querySelector('.ceobe-assets-dialog');
 let filter = 'all', sort = 'date', direction = -1, previousFocus, requestVersion = 0;
 let view = 'list', sourceFilter = 'all', savedFilter = 'all';
 try { if (localStorage.getItem('ceobe.asset.view') === 'grid') view = 'grid'; } catch {}
+
+// —— 文件夹（当标签用）与上传 ——
+// 构建时会把文件夹与标签烘进 #ceobe-library-data；本地服务可用时再用 /api/library 刷新，
+// 这样静态页面照样能按文件夹筛选，只是不能改名/新建/上传。
+let folders = [], folderFilter = 'all', writable = false;
+const tags = new Map();
+const bakedLibrary = (() => { try { return JSON.parse(document.getElementById('ceobe-library-data')?.textContent || '{}'); } catch { return {}; } })();
+if (Array.isArray(bakedLibrary.folders)) folders = bakedLibrary.folders;
+const adoptTags = source => {
+  tags.clear();
+  for (const [id, list] of Object.entries(source || {})) if (Array.isArray(list) && list.length) tags.set(id, new Set(list));
+  if (!source) for (const item of data) if (Array.isArray(item.folders) && item.folders.length) tags.set(item.id, new Set(item.folders));
+  for (const item of data) item.folders = [...(tags.get(item.id) || [])];
+};
+adoptTags(bakedLibrary.tags);
+const uploadRecord = upload => ({
+  id: upload.id, name: upload.name, names: [upload.name], kind: upload.kind || 'file',
+  date: upload.added_at, size: upload.size ?? null, status: 'uploaded', sources: [], upload: true,
+  download: `./library-files/${upload.stored}`, folders: [...(tags.get(upload.id) || [])],
+  preview: upload.kind === 'image' ? { kind: 'image', url: `./library-files/${upload.stored}` }
+    : upload.kind === 'text' ? { kind: 'text', url: `./library-files/${upload.stored}` } : null,
+});
+const mergeUpload = upload => {
+  const record = uploadRecord(upload);
+  const index = data.findIndex(item => item.id === record.id);
+  if (index >= 0) data[index] = { ...data[index], ...record };
+  else data.push(record);
+};
 const fmtSize = n => n == null ? '—' : n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(1)} MB`;
 const fmtDate = value => { const d = new Date(value); return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('zh-CN'); };
 const make = (tag, text, className) => { const e = document.createElement(tag); e.textContent = text; if (className) e.className = className; return e; };
@@ -46,7 +74,8 @@ function render() {
   const shown = data.filter(x => (filter === 'all' || x.kind === filter)
     && (sourceFilter === 'all' || x.sources.some(s => s.title === sourceFilter))
     && (savedFilter === 'all' || (savedFilter === 'saved' ? !!x.download : !x.download))
-    && `${x.name} ${x.names.join(' ')} ${x.sources.map(s => s.title).join(' ')}`.toLocaleLowerCase().includes(term));
+    && (folderFilter === 'all' || tags.get(x.id)?.has(folderFilter))
+    && `${x.name} ${x.names.join(' ')} ${x.sources.map(s => s.title).join(' ')} ${(x.folders || []).map(id => folders.find(f => f.id === id)?.name || '').join(' ')}`.toLocaleLowerCase().includes(term));
   shown.sort((a, b) => direction * (sort === 'name' ? a.name.localeCompare(b.name, 'zh-CN', { numeric: true }) : sort === 'size' ? (a.size ?? -1) - (b.size ?? -1) : String(a.date).localeCompare(String(b.date))) || a.id.localeCompare(b.id));
   grid.classList.toggle('ceobe-asset-grid', view === 'grid');
   // 表头（名称/归档时间/大小）只在列表模式有意义；用文本定位，避免依赖具体类名。
@@ -78,14 +107,28 @@ function render() {
   for (const b of document.querySelectorAll('[data-asset-filter]')) b.setAttribute('aria-pressed', String(b.dataset.assetFilter === filter));
   for (const b of document.querySelectorAll('[data-asset-view]')) b.setAttribute('aria-pressed', String(b.dataset.assetView === view));
   for (const b of document.querySelectorAll('[data-asset-sort]')) { b.setAttribute('aria-pressed', String(b.dataset.assetSort === sort)); b.setAttribute('aria-label', `${b.textContent}，${b.dataset.assetSort === sort ? (direction > 0 ? '升序' : '降序') : '点击排序'}`); }
+  for (const b of document.querySelectorAll('[data-asset-folder]')) b.setAttribute('aria-pressed', String((b.dataset.assetFolder || 'all') === folderFilter));
 }
 async function open(item, button) {
   const version = ++requestVersion; previousFocus = button;
   dialog.querySelector('h2').textContent = item.name;
   const body = dialog.querySelector('[data-asset-preview-body]'); body.textContent = '正在加载预览…';
   const links = dialog.querySelector('footer'); links.replaceChildren(); addLinks(links, item);
+  paintItemFolders(links, item);
   dialog.showModal(); dialog.querySelector('[data-asset-close]').focus();
   if (!item.preview) { body.textContent = item.download ? '此文件类型暂不支持预览。可以下载原文件，或返回来源会话查看。' : '原资源尚未保存到本地。保留文件记录，不提供虚假预览。'; return; }
+  if (item.preview.kind === 'text') {
+    try {
+      const response = await fetch(item.preview.url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const text = await response.text();
+      if (version !== requestVersion || !dialog.open) return;
+      const pre = document.createElement('pre'); pre.className = 'ceobe-asset-text';
+      pre.textContent = text.length > 400000 ? `${text.slice(0, 400000)}\n…（预览截断，可下载原文件）` : text;
+      body.replaceChildren(pre);
+    } catch { if (version === requestVersion) body.textContent = '文本预览加载失败，可下载原文件。'; }
+    return;
+  }
   if (item.preview.kind === 'image') { const img = document.createElement('img'); img.src = item.preview.url; img.alt = item.name; img.onerror = () => { body.textContent = '图片无法预览，可尝试下载原文件。'; }; body.replaceChildren(img); return; }
   try {
     const r = await fetch(item.preview.url); if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -94,6 +137,191 @@ async function open(item, button) {
   } catch { if (version === requestVersion) body.textContent = '预览加载失败。请关闭后重试，或下载原文件。'; }
 }
 function close() { ++requestVersion; dialog.close(); dialog.querySelector('[data-asset-preview-body]').replaceChildren(); previousFocus?.focus(); }
+
+// —— 文件夹（标签）/ 上传的界面 ——
+let folderManager, uploadInput, statusLine, notifyTimer;
+function notify(text) {
+  if (!statusLine) return;
+  statusLine.textContent = text || '';
+  clearTimeout(notifyTimer);
+  if (text) notifyTimer = setTimeout(() => { if (statusLine.textContent === text) statusLine.textContent = ''; }, 8000);
+}
+async function api(path, body) {
+  const response = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+  return payload;
+}
+function adoptFolders(payload) {
+  if (Array.isArray(payload.folders)) folders = payload.folders;
+  adoptTags(payload.tags || {});
+  if (folderFilter !== 'all' && !folders.some(folder => folder.id === folderFilter)) folderFilter = 'all';
+  paintFolderBar();
+  if (folderManager?.open) paintFolderList();
+  render();
+}
+function paintFolderBar() {
+  const bar = document.querySelector('[data-asset-folder-bar]');
+  if (!bar) return;
+  bar.replaceChildren();
+  const all = make('button', '全部', 'ceobe-asset-folder');
+  all.type = 'button'; all.dataset.assetFolder = 'all'; all.setAttribute('aria-pressed', String(folderFilter === 'all'));
+  bar.append(all);
+  for (const folder of folders) {
+    const chip = make('button', folder.name, 'ceobe-asset-folder');
+    chip.type = 'button'; chip.dataset.assetFolder = folder.id;
+    chip.setAttribute('aria-pressed', String(folderFilter === folder.id));
+    chip.title = `只看「${folder.name}」里的资源（${data.filter(item => tags.get(item.id)?.has(folder.id)).length} 个）`;
+    bar.append(chip);
+  }
+  if (writable) {
+    const manage = make('button', '管理文件夹', 'ceobe-asset-foldertool');
+    manage.type = 'button'; manage.dataset.assetFoldersManage = '';
+    const upload = make('button', '上传文件', 'ceobe-asset-foldertool');
+    upload.type = 'button'; upload.dataset.assetUpload = '';
+    bar.append(manage, upload);
+  }
+}
+function paintItemFolders(links, item) {
+  const row = document.createElement('div');
+  row.className = 'ceobe-asset-tagrow';
+  row.dataset.assetItemFolders = item.id;
+  row.append(make('span', '文件夹', 'ceobe-asset-taglabel'));
+  if (!folders.length) row.append(make('span', '还没有文件夹', 'ceobe-asset-taghint'));
+  for (const folder of folders) {
+    const chip = make('button', folder.name, 'ceobe-asset-tag');
+    chip.type = 'button';
+    chip.dataset.assetTag = folder.id; chip.dataset.assetTagItem = item.id;
+    chip.setAttribute('aria-pressed', String(Boolean(tags.get(item.id)?.has(folder.id))));
+    row.append(chip);
+  }
+  if (writable) {
+    const manage = make('button', '管理文件夹', 'ceobe-asset-tagmanage');
+    manage.type = 'button'; manage.dataset.assetFoldersManage = '';
+    row.append(manage);
+  }
+  links.append(row);
+  if (item.upload && writable) {
+    const remove = make('button', '从资料库移除', 'ceobe-asset-remove');
+    remove.type = 'button'; remove.dataset.assetRemoveUpload = item.id;
+    links.append(remove);
+  }
+}
+async function toggleTag(assetId, folderId) {
+  const item = data.find(entry => entry.id === assetId);
+  if (!item) return;
+  const previous = new Set(tags.get(assetId) || []);
+  const next = new Set(previous);
+  if (next.has(folderId)) next.delete(folderId); else next.add(folderId);
+  tags.set(assetId, next); item.folders = [...next];
+  for (const chip of dialog.querySelectorAll(`[data-asset-tag-item="${assetId}"][data-asset-tag="${folderId}"]`)) chip.setAttribute('aria-pressed', String(next.has(folderId)));
+  render();
+  try { adoptFolders(await api('/api/library/tags', { assetId, folders: [...next] })); }
+  catch (error) { tags.set(assetId, previous); item.folders = [...previous]; render(); notify(`标签保存失败：${error.message}`); }
+}
+async function removeUpload(button) {
+  const id = button.dataset.assetRemoveUpload;
+  if (button.dataset.confirm !== '1') {
+    button.dataset.confirm = '1'; button.textContent = '再点一次确认移除';
+    setTimeout(() => { if (button.isConnected) { button.dataset.confirm = ''; button.textContent = '从资料库移除'; } }, 5000);
+    return;
+  }
+  try {
+    const payload = await api('/api/library/uploads/remove', { id });
+    data = data.filter(item => item.id !== id);
+    tags.delete(id);
+    close(); adoptFolders(payload);
+    notify('已从资料库移除这条记录；磁盘上的文件保留。');
+  } catch (error) { notify(`移除失败：${error.message}`); }
+}
+function folderManagerDialog() {
+  if (folderManager) return folderManager;
+  folderManager = document.createElement('dialog');
+  folderManager.className = 'ceobe-library-folders';
+  folderManager.dataset.libraryFolders = '';
+  folderManager.innerHTML = '<header><h2>管理文件夹</h2><button type="button" data-library-close aria-label="关闭">关闭 ×</button></header>'
+    + '<p class="ceobe-library-hint">文件夹就是标签：一条资源可以同时在多个文件夹里。删除文件夹只删标签，不会删除任何文件。</p>'
+    + '<div data-library-folder-list></div>'
+    + '<form data-library-folder-create><input data-library-name maxlength="60" aria-label="新文件夹名称" placeholder="新文件夹名称"><button type="submit">新建</button></form>';
+  document.body.append(folderManager);
+  folderManager.addEventListener('cancel', event => { event.preventDefault(); folderManager.close(); });
+  folderManager.querySelector('[data-library-close]').addEventListener('click', () => folderManager.close());
+  folderManager.querySelector('[data-library-folder-create]').addEventListener('submit', async event => {
+    event.preventDefault();
+    const input = folderManager.querySelector('[data-library-name]');
+    const name = input.value.trim();
+    if (!name) return;
+    try { adoptFolders(await api('/api/library/folders', { action: 'create', name })); input.value = ''; notify(`已新建文件夹「${name}」`); }
+    catch (error) { notify(`新建失败：${error.message}`); }
+  });
+  return folderManager;
+}
+function paintFolderList() {
+  const list = folderManager?.querySelector('[data-library-folder-list]');
+  if (!list) return;
+  list.replaceChildren();
+  if (!folders.length) { list.append(make('p', '还没有文件夹。', 'ceobe-library-hint')); return; }
+  for (const folder of folders) {
+    const row = document.createElement('div');
+    row.className = 'ceobe-library-folder';
+    row.dataset.libraryFolder = folder.id;
+    const input = document.createElement('input');
+    input.value = folder.name; input.maxLength = 60; input.setAttribute('aria-label', '文件夹名称');
+    const rename = make('button', '重命名', 'ceobe-library-action'); rename.type = 'button';
+    const remove = make('button', '删除', 'ceobe-library-danger'); remove.type = 'button';
+    rename.addEventListener('click', async () => {
+      try { adoptFolders(await api('/api/library/folders', { action: 'rename', id: folder.id, name: input.value })); notify('文件夹已重命名'); }
+      catch (error) { notify(`重命名失败：${error.message}`); }
+    });
+    remove.addEventListener('click', async () => {
+      if (remove.dataset.confirm !== '1') {
+        remove.dataset.confirm = '1'; remove.textContent = '确认删除';
+        setTimeout(() => { if (remove.isConnected) { remove.dataset.confirm = ''; remove.textContent = '删除'; } }, 5000);
+        return;
+      }
+      try { adoptFolders(await api('/api/library/folders', { action: 'delete', id: folder.id })); notify('文件夹已删除；文件与原有标签之外的内容都没动。'); }
+      catch (error) { notify(`删除失败：${error.message}`); }
+    });
+    row.append(input, rename, remove);
+    list.append(row);
+  }
+}
+function openFolderManager() {
+  const manager = folderManagerDialog();
+  paintFolderList();
+  if (!manager.open) manager.showModal();
+  manager.querySelector('[data-library-name]')?.focus();
+}
+async function uploadFiles(files) {
+  if (!files?.length) return;
+  let done = 0;
+  const failed = [];
+  for (const file of files) {
+    try {
+      const query = `?name=${encodeURIComponent(file.name)}&mime=${encodeURIComponent(file.type || '')}`;
+      const response = await fetch(`/api/library/upload${query}`, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: file });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || `HTTP ${response.status}`);
+      mergeUpload(payload.upload);
+      done += 1;
+    } catch (error) { failed.push(`${file.name}：${error.message}`); }
+  }
+  render();
+  notify(done && !failed.length ? `已上传 ${done} 个文件` : done ? `已上传 ${done} 个，${failed.length} 个失败（${failed[0]}）` : `上传失败：${failed[0] || '没有选择文件'}`);
+}
+async function syncLibrary() {
+  try {
+    const response = await fetch('/api/library', { cache: 'no-store' });
+    if (!response.ok) return;
+    const payload = await response.json();
+    writable = Boolean(payload.writable);
+    // 服务端可能比静态构建新：先补上传记录，再套标签。
+    for (const upload of payload.uploads || []) mergeUpload(upload);
+    adoptFolders({ folders: payload.folders || [], tags: payload.tags || {} });
+    paintFolderBar();
+    render();
+  } catch { /* 纯静态：保持构建时的文件夹数据 */ }
+}
 document.addEventListener('ceobe:project-files',e=>{if(!projectMode)return;if(dialog.open)close();data=e.detail.items;if(grid)render()});
 function buildControls() {
   if (!grid || document.querySelector('[data-asset-advanced]')) return;
@@ -149,6 +377,33 @@ function buildControls() {
   bar.append(sourceLabel, savedLabel, viewWrap);
   grid.parentElement.insertBefore(bar, grid);
 
+  // 文件夹筛选、状态行、上传入口只在真正的资料库里出现（项目文件视图不共用这些）。
+  if (!projectMode) {
+    const folderBar = document.createElement('div');
+    folderBar.className = 'ceobe-asset-folderbar';
+    folderBar.dataset.assetFolderBar = '';
+    folderBar.setAttribute('role', 'group');
+    folderBar.setAttribute('aria-label', '按文件夹筛选');
+    grid.parentElement.insertBefore(folderBar, bar);
+
+    statusLine = document.createElement('p');
+    statusLine.className = 'ceobe-asset-status';
+    statusLine.dataset.libraryStatus = '';
+    statusLine.setAttribute('role', 'status');
+    grid.parentElement.insertBefore(statusLine, bar);
+
+    uploadInput = document.createElement('input');
+    uploadInput.type = 'file'; uploadInput.multiple = true; uploadInput.hidden = true;
+    uploadInput.dataset.assetUploadInput = '';
+    uploadInput.addEventListener('change', () => {
+      const files = [...(uploadInput.files || [])];
+      uploadInput.value = '';
+      uploadFiles(files);
+    });
+    document.body.append(uploadInput);
+    paintFolderBar();
+  }
+
   sourceSelect.addEventListener('change', () => { sourceFilter = sourceSelect.value; render(); });
   savedSelect.addEventListener('change', () => { savedFilter = savedSelect.value; render(); });
 
@@ -163,12 +418,18 @@ function buildControls() {
 }
 buildControls();
 search?.addEventListener('input', render);
+if (!projectMode) syncLibrary();
 document.addEventListener('ceobe:asset-preview',e=>{const item=data.find(x=>x.id===e.detail?.id);if(item)open(item,e.detail.opener)});
 document.addEventListener('click', event => {
   const target = event.target.closest('button'); if (!target) return;
   if (target.dataset.assetFilter) { filter = target.dataset.assetFilter; render(); }
   if (target.dataset.assetView) { view = target.dataset.assetView; try { localStorage.setItem('ceobe.asset.view', view); } catch {} render(); }
   if (target.dataset.assetSort) { direction = sort === target.dataset.assetSort ? -direction : target.dataset.assetSort === 'name' ? 1 : -1; sort = target.dataset.assetSort; render(); }
+  if (target.dataset.assetFolder !== undefined) { folderFilter = target.dataset.assetFolder || 'all'; render(); }
+  if (target.dataset.assetFoldersManage !== undefined) openFolderManager();
+  if (target.dataset.assetUpload !== undefined) uploadInput?.click();
+  if (target.dataset.assetTag && target.dataset.assetTagItem) toggleTag(target.dataset.assetTagItem, target.dataset.assetTag);
+  if (target.dataset.assetRemoveUpload) removeUpload(target);
   if (target.dataset.assetOpen) open(data.find(x => x.id === target.dataset.assetOpen), target);
   if (target.hasAttribute('data-asset-close') || (dialog.contains(target) && target.hasAttribute('data-ceobe-close-preview'))) close();
   if (dialog.contains(target) && target.hasAttribute('data-ceobe-sheet-tab')) {

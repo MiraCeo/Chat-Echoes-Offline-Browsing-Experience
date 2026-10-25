@@ -4,6 +4,7 @@ import { join, dirname, basename, resolve, relative } from 'node:path';
 import { createHash } from 'node:crypto';
 import { parseHTML } from 'linkedom';
 import { readArchivedResource } from './archive-resources.mjs';
+import { createLibraryStore } from './library-store.mjs';
 import { htmlSafeSvg } from './serialize-html.mjs';
 import { prepareLocalSidebar } from './local-sidebar.mjs';
 const hash = value => createHash('sha256').update(value).digest('hex').slice(0, 24);
@@ -155,8 +156,34 @@ export async function buildAssetLibrary(root, library) {
   }
   // Index contains only display metadata and local URLs, never raw signed URLs.
   const records = [...items.values()];
+  // 资料库的个人组织数据：文件夹（当标签用）、每条资源的标签、以及用户上传的文件（不进 archive/）。
+  const libraryStore = createLibraryStore(join(root, 'data/private/library.ceobe.json'), { filesDir: join(root, 'data/private/library-files') });
+  const personal = await libraryStore.list();
+  for (const record of records) record.folders = personal.tags[record.id] || [];
+  const uploadKeep = new Set();
+  await mkdir(join(pub, 'library-files'), { recursive: true });
+  for (const upload of personal.uploads) {
+    const download = `./library-files/${upload.stored}`;
+    const target = join(pub, 'library-files', upload.stored);
+    try { await stat(target); }
+    catch {
+      // 原始字节在 data/private/library-files/，这里只是给静态站点放一份可下载的副本。
+      try { await cp(join(root, 'data/private/library-files', upload.stored), target); }
+      catch { continue; }
+    }
+    uploadKeep.add(upload.stored);
+    records.push({
+      id: upload.id, name: upload.name, names: [upload.name], kind: upload.kind || 'file',
+      date: upload.added_at, size: upload.size ?? null, status: 'uploaded', sources: [], upload: true,
+      download, folders: personal.tags[upload.id] || [],
+      preview: upload.kind === 'image' ? { kind: 'image', url: download } : upload.kind === 'text' ? { kind: 'text', url: download } : null,
+    });
+  }
   const json = document.createElement('script'); json.type = 'application/json'; json.id = 'ceobe-assets-data';
   json.textContent = JSON.stringify(records).replaceAll('<', '\\u003c'); document.body.append(json);
+  const personalJson = document.createElement('script'); personalJson.type = 'application/json'; personalJson.id = 'ceobe-library-data';
+  personalJson.textContent = JSON.stringify({ folders: personal.folders, tags: personal.tags }).replaceAll('<', '\\u003c');
+  document.body.append(personalJson);
   const rowTemplate = document.createElement('template'); rowTemplate.id = 'ceobe-asset-row-template'; rowTemplate.innerHTML = frozen.row; document.body.append(rowTemplate);
   const dialog = document.createElement('dialog'); dialog.className = 'ceobe-assets-dialog'; dialog.setAttribute('aria-labelledby', 'ceobe-asset-title');
   dialog.innerHTML = '<header><h2 id="ceobe-asset-title"></h2><button type="button" data-asset-close aria-label="关闭预览">关闭 ×</button></header><div data-asset-preview-body></div><footer data-asset-preview-links></footer>';
@@ -173,10 +200,11 @@ export async function buildAssetLibrary(root, library) {
   await writeIfChanged(join(replay, 'assets.html'), '<!DOCTYPE html>\n' + htmlSafeSvg(document.documentElement.outerHTML));
   await writeIfChanged(join(pub, 'assets-index.json'), JSON.stringify(records, null, 2));
   // 索引会随删除/改名变小；不再被引用的副本不留在 public（进而 dist）里。
-  for (const [dir, names] of [['library-assets', keep.assets], ['library-previews', keep.previews], ['library-media', keep.media]]) {
+  // 上传文件同理：副本可以清，data/private/library-files/ 里的原件永远不动。
+  for (const [dir, names] of [['library-assets', keep.assets], ['library-previews', keep.previews], ['library-media', keep.media], ['library-files', uploadKeep]]) {
     for (const name of await readdir(join(pub, dir))) if (!names.has(name)) await rm(join(pub, dir, name), { force: true });
   }
   await mkdir(join(root, 'data/private'), { recursive: true });
   await writeIfChanged(cacheFile(root), JSON.stringify({ version: CACHE_VERSION, conversations, pages }));
-  console.log(`Asset library: ${records.length} unique resources, ${records.filter(r => r.download).length} verified local files.`);
+  console.log(`Asset library: ${records.length} unique resources (${records.filter(r => r.upload).length} uploaded), ${records.filter(r => r.download).length} verified local files.`);
 }

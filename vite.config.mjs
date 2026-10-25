@@ -8,6 +8,7 @@ import { markdownExportMiddleware } from './scripts/markdown-export-api.mjs';
 import { projectExportMiddleware } from './scripts/project-export-api.mjs';
 import { localImportMiddleware } from './scripts/local-import-api.mjs';
 import { openFolderMiddleware } from './scripts/open-folder-api.mjs';
+import { libraryMiddleware } from './scripts/library-store.mjs';
 
 const replayRoot = resolve('replay');
 const conversationRoot = resolve(replayRoot, 'conversations');
@@ -21,10 +22,11 @@ const bookmarkApi = bookmarksMiddleware(projectRoot);
 const markdownApi = markdownExportMiddleware(projectRoot);
 const zipApi=projectExportMiddleware(projectRoot);
 const openFolderApi=openFolderMiddleware(projectRoot);
+const libraryApi=libraryMiddleware(projectRoot);
 const localProjects = {
   name: 'ceobe-local-projects',
-  configureServer(server) { server.middlewares.use(openFolderApi); server.middlewares.use(bookmarkApi); server.middlewares.use(zipApi); server.middlewares.use(projectApi); server.middlewares.use(chatApi); server.middlewares.use(markdownApi); server.middlewares.use(localImportMiddleware(projectRoot)); },
-  configurePreviewServer(server) { server.middlewares.use(openFolderApi); server.middlewares.use(bookmarkApi); server.middlewares.use(zipApi); server.middlewares.use(projectApi); server.middlewares.use(chatApi); server.middlewares.use(markdownApi); server.middlewares.use(localImportMiddleware(projectRoot,{mode:'production'})); },
+  configureServer(server) { server.middlewares.use(openFolderApi); server.middlewares.use(bookmarkApi); server.middlewares.use(zipApi); server.middlewares.use(projectApi); server.middlewares.use(chatApi); server.middlewares.use(markdownApi); server.middlewares.use(libraryApi); server.middlewares.use(localImportMiddleware(projectRoot)); },
+  configurePreviewServer(server) { server.middlewares.use(openFolderApi); server.middlewares.use(bookmarkApi); server.middlewares.use(zipApi); server.middlewares.use(projectApi); server.middlewares.use(chatApi); server.middlewares.use(markdownApi); server.middlewares.use(libraryApi); server.middlewares.use(localImportMiddleware(projectRoot,{mode:'production'})); },
 };
 export default defineConfig({
   plugins: [localProjects],

@@ -7,7 +7,11 @@ try {
   const page = await browser.newPage({ viewport: { width: 1092, height: 935 }, deviceScaleFactor: 1.5 });
   const errors = [], failures = [];
   page.on('pageerror', e => errors.push(e.message));
-  page.on('response', r => { if (r.status() >= 400) failures.push(`${r.status()} ${r.url()}`); });
+  // 生产预览（dist）没有本地服务，资料库页会去请求 /api/library 再降级；这类 404 属预期。
+  page.on('response', r => {
+    const api = new URL(r.url()).pathname.startsWith('/api/');
+    if (r.status() >= 400 && !(process.env.CEOBE_TEST_DIST && api)) failures.push(`${r.status()} ${r.url()}`);
+  });
   let origin = process.env.CEOBE_TEST_URL || 'http://127.0.0.1:5173';
   if (process.env.CEOBE_TEST_DIST) {
     origin = 'http://ceobe.test';

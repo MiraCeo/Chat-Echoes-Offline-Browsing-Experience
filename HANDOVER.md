@@ -53,6 +53,8 @@ npm run verify:archive      # 只读检查档案结构
 - 侧栏由浏览器渲染：页面里没有全部会话的 `<li>`，也没有 `#ceobe-chat-catalog`；删改一个会话不再改写其他页面；
 - 只读回放的界面只保留能用的操作：消息工具条只有「复制（有正文时）+ 更多操作 + 编辑书签」，
   编辑消息／评价回复／分享／切换模型／图片悬浮层都不再渲染（渲染时裁剪，见第 4 节「只读回放的操作裁剪」）；
+- 资料库可以自建文件夹（当标签用，一条资源可属多个）并上传自己的文件；
+  上传字节在 `data/private/library-files/`，不进 `archive/`，任何路径都不删原文件；
 - 附件随页拷贝：并行渲染的每一页都写自己会话的附件字节，`replay/archive-resources` 与 `dist` 都是 321 个文件，
   附件链接 0 失效（此前并行渲染只拷第一页，295 条链接里 280 条失效）。
 
@@ -127,6 +129,22 @@ npm run verify:archive      # 只读检查档案结构
   - 结果：`project.html` 745 KB → **290 KB**；删除/重命名一个**不属于任何项目**的会话不再改动它。
 - `public/library-assets`、`library-previews`、`library-media` 里不再被索引引用的旧副本会被清掉
   （只增不减会一直堆到 `dist/` 里）。`archive/` 里的原件不受影响。
+
+**资料库：文件夹当标签，上传不进 archive**
+
+用户定的三条语义：**文件夹当标签**（一条资源可属多个）、**上传不进 `archive/`**、**不删原文件**。
+
+- 数据在 `data/private/library.ceobe.json`（`kind: ceobe.library`，字段 `folders` / `tags` / `uploads`），
+  上传字节在 `data/private/library-files/<sha256>.<ext>`；两者都不在 `archive/` 里，档案红线不受影响；
+- `scripts/library-store.mjs` 负责存储与 HTTP 接口（`GET /api/library`、`folders`、`tags`、`upload`、
+  `uploads/remove`），挂在 `vite.config.mjs` 的 dev 与 preview 上；写入走工作区锁 + 原子替换，
+  损坏文件只报错不覆盖；
+- 删除文件夹只删标签；「从资料库移除」只删记录，**磁盘文件保留**（测试里逐条断言过）；
+- 构建时 `build-asset-library.mjs` 把 `folders` 挂到每条记录、把上传项并进索引，
+  文件夹与标签另写一份 `#ceobe-library-data`；上传副本内容寻址拷进 `public/library-files/`，
+  随派生目录一起清理（私有原件不动）；页面再 fetch `/api/library` 覆盖构建快照，服务不在时退回静态只读；
+- 界面：文件夹筛选条、`管理文件夹` 对话框（新建/重命名/两次确认删除）、预览窗里的标签开关、
+  `上传文件`（多选，文本类直接以 `<pre>` 预览）。
 
 **项目页不再有占位按钮**
 
