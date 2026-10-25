@@ -195,7 +195,7 @@ node scripts/test-copy-content.mjs
 
 | 范围 | 主要入口（位于 `scripts/`） |
 |---|---|
-| 书签与个人备注 | `test-bookmarks-store.mjs`、`test-bookmarks-browser.mjs`；聊天删除整体验证另见 `test-chat-actions-store.mjs` |
+| 书签与个人备注 | `test-bookmarks-store.mjs`、`test-bookmarks-browser.mjs`（后者自书签面板停靠后失效，见 `TODO.md` 已知限制）；聊天删除整体验证另见 `test-chat-actions-store.mjs` |
 | 正文内联组件（引用／文件／链接） | `test-genui-inline-components.mjs`：解析 `metadata.genui_components` 的字符区间与无元数据时的标记扫描、官方引用模板渲染、无模板组件的降级，以及复制／导出文本不含原始标记 |
 | 官方 DOM 快照工具 | `test-official-dom-snapshot.mjs`：输出目录约束（拒绝 `archive/` 与 `data/private/` 之外）、结构签名不含正文、样式族配对、类漂移分类、离线 `--compare-only` 与无参数拒绝执行 |
 | 归档只增不改 | `test-archive-guard.mjs`：写入前 dry-run 计划、路径必须落在 `<归档根>/<会话 ID>/<时间戳>`、拒绝覆盖既有快照、符号链接不得把写入带出归档目录，以及采集入口确实调用了守卫 |
