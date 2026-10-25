@@ -46,6 +46,6 @@ for (const path of [
     `${path} must consume the template package instead of original snapshots`);
 }
 for (const name of ['技术部-开发组-加分题.pdf', '票据收集情况.xlsx']) {
-  await access(join(root, 'fixtures', 'chatgpt-share', '6a9849f6-3bec-83ee-b032-618d95fc0917', 'preview-inputs', name));
+  await access(join(root, 'fixtures', 'chatgpt-share', '11111111-1111-4111-8111-111111111111', 'preview-inputs', name));
 }
 console.log(`Official template package verified: ${pkg.manifest.templates.length} templates and an empty reusable shell.`);

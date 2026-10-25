@@ -13,6 +13,19 @@
 - 五个后处理步骤改为幂等：`scripts/page-decoration.mjs` 每趟统一清场、资源引用就地更新版本、
   内容没变不写盘。此前每次重建都会重复注入弹窗、模板、样式表与脚本。
 
+### 仓库与许可
+
+- 仓库按 **MIT** 公开（新增 `LICENSE`，`package.json` 的 `license` 字段同步；`private: true` 保留，只用于挡 `npm publish`）。
+- **测试夹具脱敏**：`fixtures/` 里的会话去掉了本机绝对路径、Windows 用户名、真实附件与真实分享 id；
+  那份含 81 名学生姓名/学号的表格换成了同形状的合成数据，11 MB 的真实 PDF 换成了 7 页示例；
+  真实分享 id 旋转成中性 id，无法再从仓库拼回原链接。改动依据与新的字节数记进
+  `preview-inputs/粘贴的文本.provenance.json` 的 `redaction` 字段。
+- `official-templates/templates.json` 里夹带的一段 writing-block 正文（含同一批路径）一并脱敏。
+- 依赖本地档案的两项检查改为自足或不误报：`verify:official-dom` 缺页时用夹具自行构建并跳过未归档字节的断言；
+  `test-archived-file-previews.mjs` 按标题在本地档案里找会话，找不到就明确跳过。
+- README 增加「许可与素材来源」：说明代码许可以及 `official-templates/`、`official-assets/` 不属于 MIT 授权，
+  并声明与 OpenAI 无隶属关系。
+
 ### 资料库
 
 - **文件夹当标签**：资料库可以新建、重命名、删除文件夹；一条资源可以同时在多个文件夹里（标签，不是真实目录）。

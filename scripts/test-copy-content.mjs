@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { messageCopyContent } from './copy-controls.mjs';
 import { conversationToMarkdownView } from './conversation-to-markdown-view.mjs';
 const document = parseHTML('<html></html>').document;
-const conversation = JSON.parse(readFileSync('fixtures/chatgpt-share/6a9849f6-3bec-83ee-b032-618d95fc0917/conversation.ceobe.json', 'utf8'));
+const conversation = JSON.parse(readFileSync('fixtures/chatgpt-share/11111111-1111-4111-8111-111111111111/conversation.ceobe.json', 'utf8'));
 const copies = conversationToMarkdownView(conversation).filter(m => m.role === 'assistant').map(m => messageCopyContent(m.parts, document));
 const chart = copies.find(c => c.text.includes('题目分值分布'));
 assert.ok(chart.text.includes('210') && chart.text.includes('30') && chart.text.includes('24'));

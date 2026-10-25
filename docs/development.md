@@ -363,6 +363,22 @@ DOM 经多次序列化时使用 `scripts/serialize-html.mjs` 的处理，避免�
 
 除外观外，还应覆盖键盘导航、Tab／Escape、取消后的焦点恢复、菜单翻转与短视口滚动。不要通过强制点击绕过真实用户无法命中的按钮来宣称修复成功。
 
+## 公开仓库的夹具与素材
+
+仓库按 MIT 公开（见 `LICENSE`），因此提交的内容必须是可公开的：
+
+- **测试夹具已脱敏**（`fixtures/chatgpt-share/11111111-1111-4111-8111-111111111111/`）：
+  本机绝对路径与 Windows 用户名换成了 `user` / `Project` 占位，真实附件换成了同形状的合成内容
+  （PDF 仍 7 页、XLSX 仍是 81 行 × 6 列 + 23 行汇总，状态分布不变），真实分享 id 已旋转成中性 id，
+  因此无法从仓库拼回原链接；改动的依据与新的字节数记在
+  `preview-inputs/粘贴的文本.provenance.json` 的 `redaction` 字段；
+- `official-templates/`、`official-assets/` 是**公开页面**的 HTML／CSS／SVG 快照，只为离线渲染同一份分享内容，
+  **不随 MIT 授权**；新增快照前先确认里没有正文、个人路径与真实资源地址（`templates.json` 曾夹带过一段
+  writing-block 正文，已脱敏）；
+- 依赖本地档案的检查（`verify:official-dom`、`test-archived-file-previews.mjs`）不把档案带进仓库：
+  前者缺页时会用夹具自己构建，后者按标题在本地档案里找会话、找不到就明确跳过；
+- 新增夹具时同样按上面规则脱敏，并把“这份文件是怎么来的、改了什么”记进 `provenance` 或相邻说明。
+
 ## 发布前检查
 
 收尾时按顺序跑一遍，全部通过再打标签或分发：

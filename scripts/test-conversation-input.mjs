@@ -30,7 +30,7 @@ assert.ok(turns[4].querySelector('.ceobe-code-block'));
 assert.equal(htmlMessageKind({ role: 'assistant', recipient: 'python', content: { type: 'code', blocks: [] } }), 'tool_call');
 assert.equal(htmlMessageKind({ role: 'assistant', recipient: 'all', channel: 'final', content: { type: 'text', blocks: [] } }), 'document');
 assert.equal(htmlMessageKind({ role: 'assistant', content: { type: 'reasoning_recap', blocks: [] } }), 'activity');
-document = build('fixtures/chatgpt-share/6a9849f6-3bec-83ee-b032-618d95fc0917/conversation.ceobe.json');
+document = build('fixtures/chatgpt-share/11111111-1111-4111-8111-111111111111/conversation.ceobe.json');
 assert.equal(document.querySelector('section[data-testid="conversation-turn-1"] a[href="https://example.com"]')?.textContent, 'https://example.com');
 for (const internalText of ['This code was redacted.', 'fast|site:help.openai.com', 'from PIL import Image, ImageChops', '附件尚未关联本地资源：']) {
   assert.equal(document.body.textContent.includes(internalText), false, `Internal/fallback text leaked: ${internalText}`);

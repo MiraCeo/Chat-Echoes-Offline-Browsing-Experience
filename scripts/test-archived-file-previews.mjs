@@ -1,10 +1,21 @@
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
 import { readFile, access } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { parseHTML } from 'linkedom';
 
-const id = '6a9849f6-3bec-83ee-b032-618d95fc0917';
-const document = parseHTML(await readFile(`replay/conversations/${id}.html`, 'utf8')).document;
+// 这一项验证“真实档案里的附件”渲染出来的预览（PDF/DOCX/两个 XLSX）。公开仓库不带档案，
+// 所以按标题在本地档案里找这次会话；找不到就明确跳过，而不是失败。
+const libraryPath = 'archive/library.ceobe.json';
+const entry = existsSync(libraryPath)
+  ? JSON.parse(await readFile(libraryPath, 'utf8')).conversations.find(item => item.title === '分支 · 测试消息')
+  : null;
+const page = entry ? `replay/conversations/${entry.id}.html` : '';
+if (!page || !existsSync(page)) {
+  console.log('SKIP archived file previews: 本地档案里没有「分支 · 测试消息」的阅读页（公开仓库不含档案）。');
+  process.exit(0);
+}
+const document = parseHTML(await readFile(page, 'utf8')).document;
 assert.equal(document.querySelector('template[data-ceobe-preview]'), null);
 const previewFiles = new Map();
 for (const opener of document.querySelectorAll('[data-ceobe-open-preview][data-ceobe-preview-file]')) {

@@ -19,10 +19,10 @@ FIXTURE = (
     ROOT
     / "fixtures"
     / "chatgpt-share"
-    / "6a9849f6-3bec-83ee-b032-618d95fc0917"
+    / "11111111-1111-4111-8111-111111111111"
     / "share.html"
 )
-SOURCE_URL = "https://chatgpt.com/share/6a9849f6-3bec-83ee-b032-618d95fc0917"
+SOURCE_URL = "https://chatgpt.com/share/11111111-1111-4111-8111-111111111111"
 
 
 class ChatGptShareImporterAcceptanceTests(unittest.TestCase):

@@ -1,6 +1,7 @@
 {
   "name": "ceobe",
   "version": "1.0.2",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,7 +12,7 @@
     "import": "node scripts/import-markdown.mjs",
     "import:share": "python scripts/import-chatgpt-share.py",
     "replay": "node scripts/build-official-replay.mjs",
-    "replay:sample": "npm run replay -- --input fixtures/chatgpt-share/6a9849f6-3bec-83ee-b032-618d95fc0917/conversation.ceobe.json --sample-assets",
+    "replay:sample": "npm run replay -- --input fixtures/chatgpt-share/11111111-1111-4111-8111-111111111111/conversation.ceobe.json --sample-assets",
     "verify:replay": "node scripts/verify-replay.mjs",
     "verify:library": "node scripts/test-library-browser.mjs",
     "verify:official-dom": "node scripts/verify-official-message-dom.mjs",
