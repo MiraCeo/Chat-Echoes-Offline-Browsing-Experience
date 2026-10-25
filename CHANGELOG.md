@@ -25,6 +25,11 @@
   `test-archived-file-previews.mjs` 按标题在本地档案里找会话，找不到就明确跳过。
 - README 增加「许可与素材来源」：说明代码许可以及 `official-templates/`、`official-assets/` 不属于 MIT 授权，
   并声明与 OpenAI 无隶属关系。
+- **历史脱敏重写（2026-10-26）**：仓库此前是公开的，历史里还留着脱敏前的旧夹具与早先保存的页面
+  （`测试消息/`、`图表/`、`文件/`、`新界面/`）。现在这些路径已从**全部历史**移除，
+  `12782` / `KeJianBa` 等字样也替换为占位；提交数与作者/提交时间保持不变，但**所有旧 SHA 失效**
+  （正文里不再引用旧 hash）。历史里的旧对象在 GitHub 侧仍可能被缓存一段时间，
+  需要彻底清除时只能让 GitHub 回收或删库重建。
 
 ### 资料库
 
@@ -97,7 +102,7 @@
   计算布局，离屏标注会保留上一次宽度的决策（进入视口时重算），旧断言比较的是用户看不到的状态。
 - `test-library-browser.mjs` 第 56 行的既有失败：悬停到没有回复文本的目录项时，上一条的详情卡在展开状态（37px）。
   `prompt-rail.js` 现在会收起旧详情，测试改为对比“带详情”的条目，并补了一条“悬停无详情条目应收起”的回归断言。
-- `test-chat-actions-store.mjs` 不再断言删除后 `dist/index.html` 存在（`440cc8e` 起写操作只标记 `dist` 过期）。
+- `test-chat-actions-store.mjs` 不再断言删除后 `dist/index.html` 存在（`eeedad0` 起写操作只标记 `dist` 过期）。
 - `build-chat-actions` 的置顶按钮 `aria-label` 改为只取档案标题：此前它读取 anchor 上已有的 `aria-label`，
   同一页“首次装饰”和“再次装饰”结果不同，重新渲染后页面就会变。
 
