@@ -426,6 +426,20 @@ DOM 经多次序列化时使用 `scripts/serialize-html.mjs` 的处理，避免�
 
 既有桌面基线主要为 1092×935 或 1028×908 CSS 像素，DPR 1.5。尺寸和锚点基线应以对应冻结模板、布局元数据与专项测试为准，而不是不断复制到 README。
 
+### README 截图
+
+README 里的四张图由仓库自带的隔离演示夹具生成，不采集真实聊天：
+
+```powershell
+node scripts/make-readme-fixture.mjs     # 造 3 段合成对话 + 1 个项目 + 1 条书签 + 3 个附件，构建到 data/private/readme-shot
+node scripts/shoot-readme.mjs            # 起一个静态服务（带最小 API 桩）截图到 docs/assets/
+```
+
+- 夹具用 `data/private/readme-shot` 作根目录，`archive/` 里只有合成数据；截图脚本只服务该目录的 `replay/`，
+  并用 `/api/capabilities`、`/api/chats`、`/api/projects`、`/api/bookmarks`、`/api/library` 的桩让页面表现为“本地可用”；
+- 截图参数：1440×900、DPR 1.5、浅色、隐藏滚动条；改完文案或界面后重跑这两条命令即可换图；
+- 不要把真实档案截图提交到 `docs/assets/`。
+
 除外观外，还应覆盖键盘导航、Tab／Escape、取消后的焦点恢复、菜单翻转与短视口滚动。不要通过强制点击绕过真实用户无法命中的按钮来宣称修复成功。
 
 ## 公开仓库的夹具与素材

@@ -18,6 +18,19 @@ CEOBE 面向希望长期保留对话资料的人。它将分享链接中的聊�
 - **留下重点与想法**：为消息添加书签、快速回到原文，并保存独立的个人备注；标题与备注不改写聊天。
 - **带走文本**：将单条聊天另存为 Markdown，或把一个项目内的聊天打包成 ZIP。
 
+## 界面
+
+| 阅读：公式、代码、表格按官方页面还原 | 资料库：附件、来源会话与文件夹 |
+| --- | --- |
+| <img src="docs/assets/readme-reader.png" width="470" alt="阅读页：公式与消息工具条"> | <img src="docs/assets/readme-library.png" width="470" alt="资料库：附件列表与文件夹筛选"> |
+
+| 项目：按主题分组，一键另存为 ZIP | 导入：粘贴公开分享链接 |
+| --- | --- |
+| <img src="docs/assets/readme-project.png" width="470" alt="项目页：会话列表与导入入口"> | <img src="docs/assets/readme-import.png" width="470" alt="导入页：粘贴分享链接"> |
+
+> 截图来自仓库自带的**隔离演示夹具**（`scripts/make-readme-fixture.mjs` 生成的合成对话），不含任何真实聊天；
+> 需要重新生成时运行 `node scripts/make-readme-fixture.mjs && node scripts/shoot-readme.mjs`。
+
 ## 快速开始
 
 当前主要在 **Windows + Edge** 环境验证，建议使用 **Node.js 24.x** 和 **Python 3.11 或更新版本**。
