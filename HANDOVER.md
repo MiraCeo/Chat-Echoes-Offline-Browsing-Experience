@@ -46,6 +46,9 @@ npm run verify:archive      # 只读检查档案结构
 ## 3. 已经完成的关键能力
 
 - 分享链接归档（`archive-share.mjs`）、批量导入、扩展 ZIP 导入、失败不落盘（`--keep-failed` 才保留）；
+- 批量抓取有限流/熔断：1.5s 间隔、每 40 条休息 30s、连续 3 次 429/503 或失败率 ≥60% 停整批，
+  前端把未处理的链接留在输入框（`import-throttle.mjs`）；
+- 来源通过 `sources/registry.mjs` 分派：归档目录、Python 导入器、URL 与 id 校验都不再写死在调用方；
 - 冻结官方 DOM + DIL 渲染（两栏卡片、按钮/单选组中性样式、部分不支持组件不再整条回退）；
 - Markdown 导出带时间线（下载通道与新抓取的 `conversation.md`），并升级为 Obsidian-ready：
   frontmatter（title/chat_id/url/project/created/updated/model/tags）、`$`/`$$` 数学、文末 `## Sources`；

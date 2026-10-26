@@ -5,21 +5,24 @@ import { spawnSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
 import { downloadResources, resourceMatches } from './archive-resources.mjs';
 import { exportConversationMarkdown } from './export-conversation-markdown.mjs';
+import { parseRetryAfter } from './import-throttle.mjs';
 import { resolveShareResources } from './resolve-share-resources.mjs';
+import { requireSource } from './sources/registry.mjs';
 import { assertSnapshotTarget, formatSnapshotPlan, planSnapshot } from './archive-guard.mjs';
 
 const { values, positionals } = parseArgs({ allowPositionals: true, options: { 'archive-root': { type: 'string' }, 'skip-library': { type: 'boolean', default: false }, 'keep-failed': { type: 'boolean', default: false } } });
 if (positionals.length !== 1) throw new Error('Usage: npm run archive:share -- <https://chatgpt.com/share/id>');
 const url = new URL(positionals[0]);
-if (url.protocol !== 'https:' || url.hostname !== 'chatgpt.com' || url.username || url.password || !/^\/share\/[\w-]+\/?$/.test(url.pathname)) throw new Error('Expected a public ChatGPT share URL');
+// 站点差异都集中在 sources/registry：这里只问“哪个来源认得这个链接”。
+const source = requireSource(url);
 url.search = ''; url.hash = '';
-const shareId = url.pathname.split('/')[2];
+const shareId = source.shareId(url);
 const capturedAt = new Date().toISOString();
 // 导入耗时分解：每步记一次，结束时打印，便于回答"几分钟花在哪"。
 const timing = { started: Date.now(), marks: [] };
 const mark = name => { timing.marks.push([name, Date.now() - timing.started]); };
 // Dry run first: the plan is printed and the target must be a fresh snapshot inside the archive.
-const snapshotRoot = resolve(values['archive-root'] || 'archive/chatgpt-share');
+const snapshotRoot = resolve(values['archive-root'] || source.archiveRoot);
 const plan = planSnapshot({ shareId, capturedAt, snapshotRoot });
 await assertSnapshotTarget(plan.dir, { snapshotRoot });
 console.log(formatSnapshotPlan(plan));
@@ -62,12 +65,20 @@ const discard = async error => {
   try { await rmdir(dirname(folder)); } catch { /* 非空或被占用则保留 */ }
   return new Error(`${error.message}（未保留快照；加 --keep-failed 可保留原始页面便于排查）`);
 };
+// 被限流时不留快照，并把 Retry-After 带回去（批量导入据此暂停整批，见 local-import-api）。
+if (response.status === 429 || response.status === 503) {
+  const retryAfter = parseRetryAfter(response.headers.get('retry-after'));
+  const error = await discard(new Error(`RATE_LIMITED retryAfter=${retryAfter}`));
+  throw new Error(error
+    ? `${error.message}（分享页限流，建议 ${Math.max(1, Math.ceil(retryAfter / 60))} 分钟后再试）`
+    : `RATE_LIMITED retryAfter=${retryAfter}`);
+}
 if (!response.ok) {
   const error = await discard(new Error(`HTTP ${response.status}`));
   if (error) throw error;
   throw new Error(`HTTP ${response.status}; response preserved in ${folder}`);
 }
-const run = spawnSync(process.env.CEOBE_PYTHON || 'python', ['scripts/import-chatgpt-share.py', join(folder, 'raw', 'share.html'),
+const run = spawnSync(process.env.CEOBE_PYTHON || 'python', [source.importer, join(folder, 'raw', 'share.html'),
   '--output', join(folder, 'conversation.ceobe.json'), '--source-url', url.href], { encoding: 'utf8', windowsHide: true });
 if (run.status !== 0) {
   const failure = new Error(run.stderr || String(run.error || 'Import failed'));

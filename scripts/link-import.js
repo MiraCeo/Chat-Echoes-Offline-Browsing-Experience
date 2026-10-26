@@ -231,6 +231,7 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
       }
       setBusy(true);
       const results = [];
+      let stopped = null;
       try {
         for (const [index, link] of links.entries()) {
           showStatus(`正在导入第 ${index + 1} / ${links.length} 条…`, 'busy');
@@ -240,6 +241,11 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
               body: JSON.stringify({ url: link, requestId: requestId(link) }),
             });
             const result = await response.json().catch(() => null);
+            // 服务端触发限流/熔断时整批暂停：剩下的链接留在输入框里，稍后原样重试即可。
+            if (response.status === 429 && result?.stop) {
+              stopped = { index, retryAfter: Number(result.retryAfter) || 0 };
+              break;
+            }
             if (!response.ok || !result?.ok) {
               const detail = String(result?.error || '').replace(/\s+/g, ' ').trim();
               throw new Error(detail ? `${detail}（HTTP ${response.status}）` : `HTTP ${response.status}`);
@@ -257,6 +263,14 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
       }
       const done = results.filter(item => item.ok);
       const failed = results.filter(item => !item.ok);
+      if (stopped) {
+        const remaining = links.slice(stopped.index);
+        input.textContent = remaining.join('\n');
+        updateButton();
+        const wait = stopped.retryAfter ? `建议 ${Math.max(1, Math.ceil(stopped.retryAfter / 60))} 分钟后再试。` : '稍后再试。';
+        showStatus(`批量导入已暂停：成功 ${done.length} 条，${remaining.length} 条未处理（${wait}未处理的链接已留在输入框里）。`, 'error');
+        return;
+      }
       const total = done.reduce((sum, item) => sum + (Number(item.result.messageCount) || 0), 0);
       showStatus(`批量导入完成：成功 ${done.length} 条${failed.length ? `，失败 ${failed.length} 条` : ''}${done.length ? `，共归档 ${total} 条记录` : ''}。`,
         failed.length ? 'error' : 'success');

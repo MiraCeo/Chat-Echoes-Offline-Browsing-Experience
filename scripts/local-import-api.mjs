@@ -5,6 +5,8 @@ import {randomUUID} from 'node:crypto';
 import {spawn} from 'node:child_process';
 import {acquireMutation} from './workspace-mutation.mjs';
 import {assertSafeTree} from './chat-store.mjs';
+import {createThrottle} from './import-throttle.mjs';
+import {findSource} from './sources/registry.mjs';
 const bad=(message,status=400)=>Object.assign(new Error(message),{status});
 const summarize=log=>{
  const lines=String(log||'').split('\n').map(l=>l.trim()).filter(Boolean);
@@ -24,7 +26,7 @@ export async function publishProduction(root){
   if(moved)await rm(backup,{recursive:true,force:true}).catch(()=>{});
  }finally{await rm(stage,{recursive:true,force:true}).catch(()=>{})}
 }
-export function localImportMiddleware(root,{mode='development',archive=url=>runLocal(root,['scripts/archive-share.mjs',url,'--skip-library']),rebuild=()=>runLocal(root,['scripts/build-library.mjs']),publish=()=>publishProduction(root)}={}){
+export function localImportMiddleware(root,{mode='development',archive=url=>runLocal(root,['scripts/archive-share.mjs',url,'--skip-library']),rebuild=()=>runLocal(root,['scripts/build-library.mjs']),publish=()=>publishProduction(root),throttle=createThrottle()}={}){
  root=resolve(root);
  return async(req,res,next)=>{
   const path=req.url.split('?')[0];if(!['/api/capabilities','/api/archive-share','/api/archive-package'].includes(path))return next();
@@ -55,14 +57,33 @@ if(!/^application\/json(?:;|$)/i.test(req.headers['content-type']||''))throw bad
    let size=0;const chunks=[];for await(const b of req){size+=b.length;if(size>4096)throw bad('请求内容过大',413);chunks.push(b)}
    let body;try{body=JSON.parse(Buffer.concat(chunks).toString('utf8'))}catch{throw bad('无效 JSON')}
    let url;try{url=new URL(body?.url)}catch{throw bad('请输入公开的 ChatGPT 分享链接')}
-   if(url.protocol!=='https:'||url.hostname!=='chatgpt.com'||url.port||url.username||url.password||!/^\/share\/[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}\/?$/i.test(url.pathname))throw bad('请输入公开的 ChatGPT 分享链接');url.search='';url.hash='';
+   const source=findSource(url);
+   if(!source||!source.isValidId(source.shareId(url)))throw bad(source?.message||'请输入公开的 ChatGPT 分享链接');url.search='';url.hash='';
    if(typeof body.requestId!=='string'||!/^[a-f0-9-]{36}$/i.test(body.requestId))throw bad('缺少有效的导入请求标识，请刷新后重试');
+   // 限流闸门放在拿工作区锁之前：等待间隔时不占着锁。
+   const rateLimited=gate=>{const retry=Math.max(0,Math.round(Number(gate.retryAfter)||0));res.setHeader('Retry-After',String(retry));return send(429,{
+     error:(gate.reason==='failure-ratio'?'最近多次导入失败，已暂停本批（避免继续触发风控）。':'分享页限流，已暂停本批导入。')
+       +(retry?`建议 ${Math.max(1,Math.ceil(retry/60))} 分钟后再试。`:''),
+     stop:true,reason:gate.reason,retryAfter:retry})};
+   const gate=await throttle.beforeRequest();if(gate?.stop)return rateLimited({reason:gate.reason,retryAfter:(gate.retryAfterMs||0)/1000});
    release=await acquireMutation(root);const dir=join(root,'data/private/import-jobs');await mkdir(dir,{recursive:true});file=join(dir,body.requestId+'.json');
    if(await exists(file)){record=JSON.parse(await readFile(file,'utf8'));if(record.url!==url.href)throw bad('请求标识与链接不一致',409);if(record.state==='complete')return send(200,record.result);if(record.state==='capturing')throw bad('上次归档状态未确认，请先检查本地导入记录，不会重复抓取',409)}
    else record={url:url.href,state:'new',created_at:new Date().toISOString()};
-   if(!record.captured){record.state='capturing';await atomic(file,record);try{await archive(url.href)}catch(e){record.state='capture-failed';await atomic(file,record);throw e}record.captured=true;record.state='captured';await atomic(file,record)}
+   if(!record.captured){
+    record.state='capturing';await atomic(file,record);
+    try{await archive(url.href);throttle.afterResponse({status:200})}
+    catch(e){
+     const marker=/RATE_LIMITED retryAfter=(\d+)/i.exec(String(e.message||''));
+     const decision=throttle.afterResponse({status:marker?429:422,retryAfterSeconds:marker?Number(marker[1]):0});
+     record.state='capture-failed';await atomic(file,record);
+     // 被限流：本条没有归档，整批就此暂停，剩下的链接留给下次。
+     if(marker)return rateLimited({stop:decision?.stop===true,reason:'rate-limit',retryAfter:Number(marker[1])});
+     throw e;
+    }
+    record.captured=true;record.state='captured';await atomic(file,record);
+   }
    record.state='publishing';await atomic(file,record);await rebuild();
-   const id=url.pathname.split('/')[2],library=JSON.parse(await readFile(join(root,'archive/library.ceobe.json'),'utf8')),entry=library.conversations?.find(c=>c.id===id);if(!entry)throw Error('归档已保存，但索引中没有该会话');
+   const id=source.shareId(url),library=JSON.parse(await readFile(join(root,'archive/library.ceobe.json'),'utf8')),entry=library.conversations?.find(c=>c.id===id);if(!entry)throw Error('归档已保存，但索引中没有该会话');
    if(mode==='production')await publish();
    const result={ok:true,shareId:id,title:entry.title,messageCount:entry.message_count,turnCount:entry.turn_count,userTurnCount:entry.user_turn_count,assistantTurnCount:entry.assistant_turn_count,resourceCounts:entry.resource_counts,page:'/conversations/'+id+'.html'};
    record.state='complete';record.result=result;await atomic(file,record);return send(200,result);

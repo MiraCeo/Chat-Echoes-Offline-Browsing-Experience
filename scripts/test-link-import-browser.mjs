@@ -77,7 +77,22 @@ try {
     assert.match(await status.innerText(), /2 个资源未保存/);
     assert.equal(requests, 2);
     assert.equal(await input.getAttribute('contenteditable'), 'true');
-    console.log('PASS: empty state, invalid URL, plain-text paste, duplicate prevention, retry, partial-resource summary, avatar and viewport.');
+    // 限流：服务端返回 429 + stop 时整批暂停，未处理的链接留在输入框里。
+    let limitCalls = 0;
+    await page.route('**/api/archive-share', async route => {
+      limitCalls++;
+      await route.fulfill({ status: 429, contentType: 'application/json', headers: { 'Retry-After': '120' }, body: JSON.stringify({ error: '分享页限流，已暂停本批导入。建议 2 分钟后再试。', stop: true, reason: 'rate-limit', retryAfter: 120 }) });
+    });
+    const second = valid.replace(/[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}/i, '22222222-2222-4222-8222-222222222222');
+    await input.fill(`${valid}\n${second}`);
+    await page.locator('[data-ceobe-import-form]').evaluate(form => form.requestSubmit());
+    await page.locator('[data-ceobe-import-status]').filter({ hasText: '已暂停' }).waitFor({ timeout: 15000 });
+    assert.equal(limitCalls, 1, 'the batch must stop after the first rate-limited response');
+    assert.equal((await input.innerText()).trim(), `${valid}\n${second}`, 'unprocessed links stay in the input, in order');
+    assert.match(await status.innerText(), /2 条未处理/);
+    assert.match(await status.innerText(), /2 分钟后再试/);
+    assert.equal(await submit.isDisabled(), false, 'the form is usable again for the retry');
+    console.log('PASS: empty state, invalid URL, plain-text paste, duplicate prevention, retry, partial-resource summary, rate-limit stop, avatar and viewport.');
   }
   assert.deepEqual(errors, [], 'No uncaught browser errors');
   console.log('PASS: browser runtime error check.');

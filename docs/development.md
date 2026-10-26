@@ -193,6 +193,31 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 部分历史 `capture-*` 工具仍假定有特定原始输入。它们用于手工模板迁移，不是正常构建的前置步骤；重新运行前需要重新提供获授权的参考网页。
 
+## 批量抓取的限流与熔断
+
+`scripts/import-throttle.mjs` 是纯策略模块（可注入时钟与 sleep），`local-import-api.mjs` 在
+`/api/archive-share` 上使用一个进程级实例：
+
+- 抓取前 `beforeRequest()`：与上一次至少间隔 1.5s；每 40 次强制休息 30s；超过 1000 次直接停；
+- 抓取后 `afterResponse({status})`：429/503 记“被限流”，**连续 3 次**就熔断；
+  任意状态下最近 10 条失败率 ≥60% 也熔断（404 之类算失败但不算限流）；
+- 熔断后接口返回 `429 + {stop:true, reason, retryAfter}` 和 `Retry-After` 头，前端据此**暂停整批**
+  并把未处理的链接留在输入框；
+- `archive-share.mjs` 遇到 429/503 会删掉空快照并以 `RATE_LIMITED retryAfter=N` 失败，
+  接口靠这个标记区分“被限流”与“普通失败”（普通失败仍是 500，可原样重试）。
+
+调参：`CEOBE_IMPORT_MIN_INTERVAL_MS` 覆盖最小间隔；测试用 `createThrottle({minIntervalMs:0, ...})` 注入。
+
+## 站点适配层
+
+`scripts/sources/registry.mjs` 是唯一的“站点知识”入口，`archive-share.mjs` 与
+`local-import-api.mjs` 都通过它分派：
+
+- 每个来源声明 `id / label / message / archiveRoot / importer / match(url) / shareId(url) / isValidId(id)`；
+- 目前只有 `chatgpt-share`（`archive/chatgpt-share`、`scripts/import-chatgpt-share.py`）；
+- 加新站点时：在注册表里加一个 descriptor + 一个 Python 导入器，**不要**在调用方写 `hostname === …`；
+  `test-sources-registry.mjs` 会检查两个调用方确实从注册表导入、且没有硬编码 host 判断。
+
 ## Markdown 导出
 
 三个入口共用一套规则，区别只在“要不要附件”：
@@ -258,6 +283,8 @@ node scripts/test-copy-content.mjs
 | 已有项目图标／颜色 | `test-project-appearance.mjs`、`test-project-appearance-browser.mjs` |
 | 项目文件（沿用原 sources 测试文件名） | `test-project-sources.mjs`、`test-project-sources-browser.mjs`、`test-project-sources-template.mjs` |
 | MD／ZIP 导出 | `test-markdown-export.mjs`（下载通道的 frontmatter/数学/来源）、`test-markdown-vault.mjs`（纯函数：frontmatter、代码感知的数学转换、引用去重）、`test-export-markdown-cli.mjs`（`npm run export:md` 的附件、同名冲突、wikilink、`--no-assets`）、`test-markdown-save-browser.mjs`、`test-project-export.mjs` |
+| 批量抓取的限流 | `test-import-throttle.mjs`（间隔/休息/次数上限/连续 429/失败率熔断）、`test-import-throttle-api.mjs`（429 + stop + Retry-After、熔断后不再抓取）、`test-link-import-browser.mjs`（前端暂停整批并保留链接） |
+| 站点适配层 | `test-sources-registry.mjs`：匹配/拒绝、严格 id、未知来源报错，以及两个调用方确实走注册表 |
 | 菜单、图片与导出界面 | `test-reader-ui-browser.mjs`、`test-project-more.mjs` |
 | 项目内置顶与标题空间 | `test-project-pinned-browser.mjs` |
 | 响应式书签、最近聊天键盘及项目提示 | `test-ui-followups-browser.mjs`；支持 `CEOBE_TEST_DIST=1` 和 `CEOBE_TEST_HEADED=1`，书签为内存夹具、API 只读 |

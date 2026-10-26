@@ -31,6 +31,18 @@
   （正文里不再引用旧 hash）。历史里的旧对象在 GitHub 侧仍可能被缓存一段时间，
   需要彻底清除时只能让 GitHub 回收或删库重建。
 
+### 抓取与来源
+
+- **批量抓取限流/熔断**：两次抓取至少间隔 1.5s、每 40 条休息 30s、最多 1000 次；
+  连续 3 次 429/503 或最近 10 条失败率 ≥60% 时停掉整批，接口返回 `429 + stop + Retry-After`，
+  前端提示「批量导入已暂停」并把**未处理的链接留在输入框**。被限流的那条不留空快照，
+  导入任务记为 `capture-failed` 以便原样重试；普通失败仍是 500（可重试）。
+- **站点适配层**：新增 `scripts/sources/registry.mjs`，`archive-share.mjs` 与 `local-import-api.mjs`
+  改为通过注册表分派（来源、归档目录、Python 导入器、URL 校验、严格 id 校验）；
+  目前只有 `chatgpt-share`，加 Claude 等站点只需登记一个 descriptor + 一个导入器。
+- 测试：`test-import-throttle.mjs`、`test-import-throttle-api.mjs`、`test-sources-registry.mjs`
+  已加入 `npm test`；`test-link-import-browser.mjs` 补了“暂停整批并保留链接”的浏览器断言。
+
 ### 导出
 
 - **Markdown 变 Obsidian-ready**（下载通道与 CLI）：文件头加 YAML frontmatter
