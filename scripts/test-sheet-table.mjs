@@ -25,8 +25,8 @@ const sheet = {
 const html = sheetTableHtml(sheet, 0);
 
 // 合并：左上角带 colspan/rowspan，被覆盖的单元格不出现。
-assert.match(html, /<td colspan="3"/, 'A1 应带 colspan=3');
-assert.match(html, /<td rowspan="2" colspan="2"/, 'A5 应同时带 rowspan 与 colspan');
+assert.match(html, /<td[^>]*colspan="3"/, 'A1 应带 colspan=3');
+assert.match(html, /<td[^>]*rowspan="2" colspan="2"/, 'A5 应同时带 rowspan 与 colspan');
 assert.equal((html.match(/<td/g) || []).length, 18 - 2 - 3, '被合并覆盖的 5 个单元格不应渲染');
 
 // 数字格式后的文本原样输出。
@@ -44,4 +44,29 @@ assert.match(sheetTableHtml(sheet, 1), /hidden/, '后续工作表默认隐藏');
 assert.match(html, />A<\/th>.*>B<\/th>.*>C<\/th>/s, '列字母表头');
 assert.match(html, /<th scope="row">1<\/th>/, '行号列');
 
-console.log('Sheet table: 合并区域、格式化文本、转义、隐藏与表头均符合预期。');
+// 每个单元格与表头都带真实列序号：点选高亮（sheet-grid.js）靠它对上表头。
+assert.match(html, /<th data-col="0"/, '表头应带 data-col');
+assert.match(html, /<td data-col="1"[^>]*>1,234\.50/, '单元格应带 data-col');
+assert.match(html, /<td data-col="0"[^>]*colspan="3"/, '合并单元格仍要带起始列序号');
+
+// 原表里隐藏的行列：照常渲染，但标出来，避免读者以为没隐藏。
+const hiddenSheet = { ...sheet, hiddenRows: [2], hiddenCols: [3] };
+const hiddenHtml = sheetTableHtml(hiddenSheet, 0);
+assert.match(hiddenHtml, /<tr[^>]*data-sheet-hidden=""[^>]*title="原表里这一行是隐藏的"/, '隐藏行要有标记');
+assert.match(hiddenHtml, /<th data-col="2"[^>]*data-sheet-hidden=""[^>]*title="原表里这一列是隐藏的"/, '隐藏列的表头要有标记');
+assert.match(hiddenHtml, /<td data-col="2"[^>]*data-sheet-hidden=""/, '隐藏列里的单元格也要标出来');
+
+// 大表截断：只渲染给定的行，并在 caption 里说明原表规模。
+const bigSheet = {
+  name: '大表', widths: [80, 80], heights: [20, 20],
+  rows: [[{ value: 'A1', color: '#111', fill: '#fff', size: 14, bold: false, italic: false, align: 'left', wrap: false },
+          { value: 'B1', color: '#111', fill: '#fff', size: 14, bold: false, italic: false, align: 'left', wrap: false }],
+         [null, null].map(() => ({ value: 'x', color: '#111', fill: '#fff', size: 14, bold: false, italic: false, align: 'left', wrap: false }))],
+  truncated: { totalRows: 700, totalCols: 5 },
+};
+const bigHtml = sheetTableHtml(bigSheet, 0);
+assert.match(bigHtml, /<caption[^>]*>仅预览前 2 行 × 2 列（原表 700 行 × 5 列）；完整内容请下载原文件。<\/caption>/, '截断要有 caption 说明');
+assert.equal((bigHtml.match(/<td/g) || []).length, 4, '只渲染给定的行');
+assert.ok(!sheetTableHtml(sheet, 0).includes('<caption'), '没截断时不要 caption');
+
+console.log('Sheet table: 合并区域、格式化文本、转义、隐藏行列、截断说明、列序号与表头均符合预期。');

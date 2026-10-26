@@ -35,3 +35,12 @@ html[data-ceobe-accurate-turn-layout] section[data-testid^="conversation-turn-"]
 .ceobe-sheet-grid thead th { position: sticky; top: 0; height: 20px; z-index: 2; }
 .ceobe-sheet-grid tr > th:first-child { position: sticky; left: 0; min-width: 40px; width: 40px; }
 .ceobe-sheet-grid thead th:first-child { z-index: 3; }
+/* 鍙琛ㄦ牸锛氶€変腑琛屽垪楂樹寒銆侀殣钘忚鍒楁爣鐏般€佺缉鏀炬潯 */
+.ceobe-sheet-grid [data-sheet-hidden] { opacity: .45; }
+.ceobe-sheet-grid [data-sheet-picked] { outline: 2px solid #4c8bed; outline-offset: -2px; background: #eef4ff !important; }
+.ceobe-sheet-grid [data-sheet-band] { background: #e8f0fe; }
+.ceobe-sheet-grid thead th[data-sheet-band] { color: #1a56db; }
+.ceobe-sheet-zoom { display: flex; gap: 6px; align-items: center; justify-content: flex-end; padding: 0 0 8px; font-size: 12px; color: #667085; }
+.ceobe-sheet-zoom button { pointer-events: auto !important; font: 12px system-ui; min-width: 26px; padding: 2px 8px; border: 1px solid #d0d5dd; border-radius: 8px; background: #fff; color: #344054; cursor: pointer; }
+.ceobe-sheet-zoom button:hover { background: #f2f4f7; }
+.ceobe-sheet-zoom [data-sheet-zoom-label] { min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; }

@@ -1,4 +1,5 @@
 const replayRoot=new URL(location.pathname.includes('/conversations/')?'../':'./',location.href);
+import { enhanceSheetGrids } from './sheet-grid.js';
 const host = document.querySelector('[data-side-pane-shell-host]');
 const dock = host?.lastElementChild;
 let opener;
@@ -79,6 +80,7 @@ document.addEventListener('click', async event => {
       return;
     }
     dock.replaceChildren(template.content.cloneNode(true));
+    enhanceSheetGrids(dock);
     dock.style.removeProperty('width');
     dock.classList.add('ceobe-preview-dock');
     host.setAttribute('data-side-pane-shell-open', '');

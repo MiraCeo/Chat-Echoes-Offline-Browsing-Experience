@@ -1,10 +1,15 @@
 """Read one archived attachment and produce disposable replay preview data."""
 import json
+import os
 import sys
 import zipfile
 from html import escape
 from pathlib import Path
 from xml.etree import ElementTree
+
+# 只读预览的规模上限：整表会变成静态 HTML，太大就拖慢资料库页。
+MAX_SHEET_ROWS = int(os.environ.get('CEOBE_SHEET_MAX_ROWS') or 500)
+MAX_SHEET_COLS = int(os.environ.get('CEOBE_SHEET_MAX_COLS') or 60)
 
 source, output = map(Path, sys.argv[1:3])
 kind = sys.argv[3]
@@ -55,9 +60,11 @@ def display_value(cell):
 
 if kind == 'xlsx':
     from openpyxl import load_workbook
-    from openpyxl.utils import get_column_letter
+    from openpyxl.utils import get_column_letter, column_index_from_string
     book = load_workbook(source, data_only=True)
     for sheet in book:
+        total_rows = sheet.max_row or 0
+        total_cols = sheet.max_column or 0
         rows = []
         for row in sheet:
             rows.append([{
@@ -69,11 +76,21 @@ if kind == 'xlsx':
                 'wrap': bool(cell.alignment.wrap_text),
                 'size': float(cell.font.sz or 11) * 4 / 3,
             } for cell in row])
+        # 只读预览要截断：整表写进静态片段，几千行就会拖慢资料库。
+        rows = [row[:MAX_SHEET_COLS] for row in rows[:MAX_SHEET_ROWS]]
+        truncated = {'totalRows': total_rows, 'totalCols': total_cols} if (total_rows > len(rows) or total_cols > MAX_SHEET_COLS) else None
+        # 原表里被隐藏的行/列照常渲染但标灰，读者不会误以为它们没被隐藏。
+        hidden_rows = [row for row, dimension in sheet.row_dimensions.items() if getattr(dimension, 'hidden', False)]
+        hidden_cols = [column_index_from_string(letter) for letter, dimension in sheet.column_dimensions.items()
+                       if getattr(dimension, 'hidden', False) and str(letter).isalpha()]
+        columns = min(total_cols, MAX_SHEET_COLS)
         data['sheets'].append({
             'name': sheet.title, 'rows': rows,
-            'widths': [round((sheet.column_dimensions[get_column_letter(c)].width or 13) * 7 + 5) for c in range(1, sheet.max_column + 1)],
-            'heights': [round((sheet.row_dimensions[r].height or sheet.sheet_format.defaultRowHeight or 15) * 4 / 3) for r in range(1, sheet.max_row + 1)],
+            'widths': [round((sheet.column_dimensions[get_column_letter(c)].width or 13) * 7 + 5) for c in range(1, columns + 1)],
+            'heights': [round((sheet.row_dimensions[r].height or sheet.sheet_format.defaultRowHeight or 15) * 4 / 3) for r in range(1, len(rows) + 1)],
             'merges': [[r.min_row, r.min_col, r.max_row, r.max_col] for r in sheet.merged_cells.ranges],
+            'hiddenRows': hidden_rows, 'hiddenCols': hidden_cols,
+            **({'truncated': truncated} if truncated else {}),
         })
     book.close()
 

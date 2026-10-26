@@ -54,6 +54,7 @@ npm run verify:archive      # 只读检查档案结构
   frontmatter（title/chat_id/url/project/created/updated/model/tags）、`$`/`$$` 数学、文末 `## Sources`；
   `npm run export:md -- --all --out <目录>` 连同附件一起导出（可选 wikilink）；
 - 失效引用说明：沙箱/本机链接标「未归档」、缺失图片占位、缺失附件逐条说明、会话顶部缺口清单、索引「未归档附件」列；
+- XLSX 只读预览：合并/样式/数字格式保留，大表截断到 500 行 × 60 列并注明原表规模，点单元格高亮行列、可缩放；
 - 构建：增量页面渲染（内容哈希指纹）、五个后处理步骤合并一趟、页面渲染 4 并发；
 - 后处理**幂等**：同一份数据重建后页面逐字节一致（`scripts/page-decoration.mjs` 统一清场 + 就地更新资源引用 + 内容没变不写盘）；
 - 删除：支持分享与本地采集两种归档、Windows 占用回退（复制 + 剪枝）、写操作不再重建 `dist`（改为标记过期）；

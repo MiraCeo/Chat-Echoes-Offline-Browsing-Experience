@@ -56,6 +56,18 @@
 - 测试：`test-markdown-vault.mjs`（纯函数）、`test-export-markdown-cli.mjs`（CLI 全流程）、
   `test-markdown-export.mjs` 扩充为“下载通道带 frontmatter/数学”的断言。
 
+### 表格预览
+
+- **大表截断**：XLSX 只读预览最多渲染 500 行 × 60 列（`CEOBE_SHEET_MAX_ROWS` / `CEOBE_SHEET_MAX_COLS` 可调），
+  超出时表格上方注明“仅预览前 N 行 × M 列（原表 X 行 × Y 列），完整内容请下载原文件”，资料库不再被大表拖慢。
+- **读得更顺手**：点单元格高亮所在行与列（再点取消），预览右上角新增 50%–200% 缩放条（重置回 100%）；
+  原表里隐藏的行列照常显示但变淡并带提示。
+- 单元格与表头带 `data-col`（真实列序号），合并单元格也能对上行列高亮。
+- 修复：`build-file-previews` 在“首页没有任何附件”时会跳过共享脚本复制，导致 `file-previews.js` / `sheet-grid.js`
+  没有更新（预览里的表格增强失效）。共享脚本现在在函数开头复制。
+- 测试：`test-sheet-table.mjs` 扩充（隐藏/截断/列序号）、新增 `test-sheet-truncation.mjs`（真跑 Python 截断 700 行）、
+  `test-sheet-grid-browser.mjs`（会话页与资料库两处入口的选中与缩放）。
+
 ### 资料库
 
 - **文件夹当标签**：资料库可以新建、重命名、删除文件夹；一条资源可以同时在多个文件夹里（标签，不是真实目录）。

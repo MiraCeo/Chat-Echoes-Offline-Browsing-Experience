@@ -191,6 +191,8 @@ export async function buildAssetLibrary(root, library) {
   for (const filename of frozen.stylesheets) {
     const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = `./assets/${filename}`; document.head.append(link);
   }
+  // sheet-grid.js 由 asset-library.js 相对导入，必须一起放到 replay 根目录。
+  await cp(join(root, 'scripts/sheet-grid.js'), join(replay, 'sheet-grid.js'));
   for (const name of ['asset-library.js', 'asset-library.css']) {
     const content = await readFile(join(root, 'scripts', name)); await writeFile(join(replay, name), content);
     const node = document.createElement(name.endsWith('.js') ? 'script' : 'link');

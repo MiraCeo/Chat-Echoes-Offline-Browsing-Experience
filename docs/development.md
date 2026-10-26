@@ -193,6 +193,25 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 部分历史 `capture-*` 工具仍假定有特定原始输入。它们用于手工模板迁移，不是正常构建的前置步骤；重新运行前需要重新提供获授权的参考网页。
 
+## 附件预览里的表格
+
+XLSX 走“构建期解析 + 静态片段”的只读路线，分三段：
+
+| 阶段 | 文件 | 职责 |
+|---|---|---|
+| 解析 | `prepare-preview-data.py` | openpyxl 读值/样式，按 `CEOBE_SHEET_MAX_ROWS`（默认 500）与 `CEOBE_SHEET_MAX_COLS`（60）截断，导出 `truncated`、`hiddenRows`、`hiddenCols` |
+| 渲染 | `sheet-table.mjs` | 合并区域 → `rowspan/colspan`；每个 `<td>`/表头带 `data-col`；隐藏行列加 `data-sheet-hidden`；截断时输出 `<caption>` 说明 |
+| 交互 | `sheet-grid.js` | 点单元格高亮所在行列（`data-sheet-picked` / `data-sheet-band`）、50%–200% 缩放条 |
+
+- `sheet-grid.js` 由 `asset-library.js` 与 `file-previews.js` **相对导入**，所以两个构建脚本都要把它复制到 `replay/`
+  （`build-asset-library.mjs` 单独 cp；`build-file-previews.mjs` 在函数开头、`if (!specs.length) return` 之前复制，
+  否则首页没有附件时就不会拷）；
+- 侧栏预览里的按钮默认 `pointer-events:none`，缩放按钮必须在 CSS 里显式 `pointer-events:auto !important`，
+  否则会被判定“被遮挡”点不到；
+- 预览片段有两处消费者（会话页的侧栏、资料库的弹窗），改结构要同时验证；
+- 测试：`test-sheet-table.mjs`（合并/格式/转义/隐藏/截断/列序号）、`test-sheet-truncation.mjs`（真跑 Python 截断 700 行）、
+  `test-sheet-grid-browser.mjs`（两处入口的选中与缩放）。
+
 ## 批量抓取的限流与熔断
 
 `scripts/import-throttle.mjs` 是纯策略模块（可注入时钟与 sleep），`local-import-api.mjs` 在
@@ -285,6 +304,7 @@ node scripts/test-copy-content.mjs
 | MD／ZIP 导出 | `test-markdown-export.mjs`（下载通道的 frontmatter/数学/来源）、`test-markdown-vault.mjs`（纯函数：frontmatter、代码感知的数学转换、引用去重）、`test-export-markdown-cli.mjs`（`npm run export:md` 的附件、同名冲突、wikilink、`--no-assets`）、`test-markdown-save-browser.mjs`、`test-project-export.mjs` |
 | 批量抓取的限流 | `test-import-throttle.mjs`（间隔/休息/次数上限/连续 429/失败率熔断）、`test-import-throttle-api.mjs`（429 + stop + Retry-After、熔断后不再抓取）、`test-link-import-browser.mjs`（前端暂停整批并保留链接） |
 | 站点适配层 | `test-sources-registry.mjs`：匹配/拒绝、严格 id、未知来源报错，以及两个调用方确实走注册表 |
+| XLSX 只读表格 | `test-sheet-table.mjs`、`test-sheet-truncation.mjs`、`test-sheet-grid-browser.mjs` |
 | 菜单、图片与导出界面 | `test-reader-ui-browser.mjs`、`test-project-more.mjs` |
 | 项目内置顶与标题空间 | `test-project-pinned-browser.mjs` |
 | 响应式书签、最近聊天键盘及项目提示 | `test-ui-followups-browser.mjs`；支持 `CEOBE_TEST_DIST=1` 和 `CEOBE_TEST_HEADED=1`，书签为内存夹具、API 只读 |

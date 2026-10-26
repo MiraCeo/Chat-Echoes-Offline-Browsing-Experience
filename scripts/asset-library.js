@@ -1,3 +1,5 @@
+import { enhanceSheetGrids } from './sheet-grid.js';
+
 const projectMode=!!document.querySelector('[data-project-files]');
 let data = projectMode?(window.ceobeProjectFiles||[]):JSON.parse(document.getElementById('ceobe-assets-data').textContent);
 const grid = document.querySelector('[data-ceobe-asset-rows]');
@@ -134,6 +136,7 @@ async function open(item, button) {
     const r = await fetch(item.preview.url); if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const text = await r.text(); if (version !== requestVersion || !dialog.open) return;
     body.innerHTML = text;
+    enhanceSheetGrids(body);
   } catch { if (version === requestVersion) body.textContent = '预览加载失败。请关闭后重试，或下载原文件。'; }
 }
 function close() { ++requestVersion; dialog.close(); dialog.querySelector('[data-asset-preview-body]').replaceChildren(); previousFocus?.focus(); }

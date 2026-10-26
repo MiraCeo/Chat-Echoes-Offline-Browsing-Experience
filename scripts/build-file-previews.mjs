@@ -61,6 +61,13 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
   const templateAssets = join(assets, 'templates');
   await mkdir(assets, { recursive: true });
   await mkdir(templateAssets, { recursive: true });
+  // 共享脚本与样式与页面无关，先复制：第一张页面可能一个附件都没有，不能因此漏拷
+  // （漏拷时页面会引用旧版本或直接 404，预览里的表格增强就失效了）。
+  if (!skipSharedAssets) {
+    await cp(join(projectRoot, 'scripts/file-previews.js'), join(outputRoot, 'file-previews.js'));
+    await cp(join(projectRoot, 'scripts/file-previews.css'), join(outputRoot, 'file-previews.css'));
+    await cp(join(projectRoot, 'scripts/sheet-grid.js'), join(outputRoot, 'sheet-grid.js'));
+  }
   const candidates = [process.env.CEOBE_PYTHON, 'python', join(homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe')].filter(Boolean);
   const sampleRoot = join(sourceRoot, 'preview-inputs');
   const sampleSpecs = [
@@ -255,14 +262,8 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
     }
   }
   const script = document.createElement('script'); script.type = 'module'; script.src = './file-previews.js'; document.body.append(script);
-  // 这两个文件与页面无关，只由第一个页面进程拷贝（public/previews 仍需逐页同步，见下）。
-  if (!skipSharedAssets) {
-    await cp(join(projectRoot, 'scripts/file-previews.js'), join(outputRoot, 'file-previews.js'));
-  }
+  // 共享脚本与样式已在函数开头复制（第一张页面可能没有任何附件）。
   const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = './file-previews.css'; document.head.append(css);
-  if (!skipSharedAssets) {
-    await cp(join(projectRoot, 'scripts/file-previews.css'), join(outputRoot, 'file-previews.css'));
-  }
   // public/previews 逐页同步（每页都会把自己准备好的预览数据补进去）。并行渲染时多个进程
   // 会同时写这个目录，Windows 上偶发 EBUSY/EPERM：短暂重试即可，内容是按页累加的。
   for (let attempt = 0; ; attempt += 1) {

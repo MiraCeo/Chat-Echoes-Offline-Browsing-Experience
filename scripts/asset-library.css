@@ -29,13 +29,13 @@
 @media(max-width:1100px){[data-ceobe-asset-main] [data-page-table-list-header],.ceobe-asset-row{grid-template-columns:minmax(130px,1fr) 84px 64px 140px!important;gap:8px!important}}
 @media(max-width:700px){[data-ceobe-asset-main] [data-page-table-list-header],.ceobe-asset-row{grid-template-columns:minmax(120px,1fr) 110px!important}.ceobe-asset-row>[role=gridcell]:nth-child(2),.ceobe-asset-row>[role=gridcell]:nth-child(3),[data-asset-sort=date],[data-asset-sort=size]{display:none!important}}
 
-/* 电子表格预览：冻结表头行与行号列，长表滚动时仍能定位。 */
+/* 鐢靛瓙琛ㄦ牸棰勮锛氬喕缁撹〃澶磋涓庤鍙峰垪锛岄暱琛ㄦ粴鍔ㄦ椂浠嶈兘瀹氫綅銆?*/
 .ceobe-sheet-grid thead th { position: sticky; top: 0; z-index: 2; background: #f9fafb; }
 .ceobe-sheet-grid tbody th { position: sticky; left: 0; z-index: 1; background: #f9fafb; }
 .ceobe-sheet-grid thead th:first-child { z-index: 3; }
 .ceobe-sheet-grid td[rowspan], .ceobe-sheet-grid td[colspan] { white-space: pre-wrap; vertical-align: top; }
 
-/* 文件夹（当标签用）与上传：只在资料库主体里出现。 */
+/* 鏂囦欢澶癸紙褰撴爣绛剧敤锛変笌涓婁紶锛氬彧鍦ㄨ祫鏂欏簱涓讳綋閲屽嚭鐜般€?*/
 .ceobe-asset-folderbar {display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:2px 0 10px}
 .ceobe-asset-folder {font:12px system-ui;padding:5px 10px;border:1px solid #d0d5dd;border-radius:14px;background:#fff;color:#344054;cursor:pointer;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ceobe-asset-folder[aria-pressed="true"] {background:#1f2937;border-color:#1f2937;color:#fff}
@@ -66,3 +66,12 @@
 .ceobe-library-folders form {display:flex;gap:8px;padding:12px 18px 16px}
 .ceobe-library-folders form input {flex:1;font:13px system-ui;padding:6px 8px;border:1px solid #d0d5dd;border-radius:8px}
 .ceobe-library-folders form button {font:12px system-ui;padding:6px 14px;border-radius:8px;border:1px solid #1f2937;background:#1f2937;color:#fff;cursor:pointer}
+/* 鍙琛ㄦ牸锛氶€変腑琛屽垪楂樹寒銆侀殣钘忚鍒楁爣鐏般€佺缉鏀炬潯 */
+.ceobe-sheet-grid [data-sheet-hidden] { opacity: .45; }
+.ceobe-sheet-grid [data-sheet-picked] { outline: 2px solid #4c8bed; outline-offset: -2px; background: #eef4ff !important; }
+.ceobe-sheet-grid [data-sheet-band] { background: #e8f0fe; }
+.ceobe-sheet-grid thead th[data-sheet-band] { color: #1a56db; }
+.ceobe-sheet-zoom { display: flex; gap: 6px; align-items: center; justify-content: flex-end; padding: 0 0 8px; font-size: 12px; color: #667085; }
+.ceobe-sheet-zoom button { pointer-events: auto !important; font: 12px system-ui; min-width: 26px; padding: 2px 8px; border: 1px solid #d0d5dd; border-radius: 8px; background: #fff; color: #344054; cursor: pointer; }
+.ceobe-sheet-zoom button:hover { background: #f2f4f7; }
+.ceobe-sheet-zoom [data-sheet-zoom-label] { min-width: 42px; text-align: center; font-variant-numeric: tabular-nums; }
