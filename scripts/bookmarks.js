@@ -752,11 +752,13 @@ document.addEventListener('pointerdown', (e) => {
   if (!menu.hidden && !menu.contains(e.target) && !menuTrigger?.contains(e.target)) closeMenu();
   // An overlay panel does cover text, so it is transient by contract: any click outside it (or
   // Escape, handled below) puts the reading view back. A docked panel never covers text, so it stays.
+  // 编辑器是本功能自己的弹窗：从列表点进去编辑、再点“取消”应该回到列表，而不是连列表一起收掉。
   if (
     listDialog.open &&
     scope === 'current' &&
     listDialog.dataset.bookmarkPanelMode === 'overlay' &&
     !listDialog.contains(e.target) &&
+    !editor.contains(e.target) &&
     !e.target.closest('.ceobe-bookmark-rail')
   )
     listDialog.close();

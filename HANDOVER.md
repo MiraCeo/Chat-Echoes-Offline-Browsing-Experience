@@ -213,6 +213,9 @@ npm run verify:archive      # 只读检查档案结构
 
 **已解决（保留记录）**
 
+- `test-bookmarks-browser.mjs` 自书签面板停靠后失效：overlay 面板“点外面就收起”的守卫把编辑器弹窗也当成了外面，
+  点「取消」会连列表一起关掉。现在 `!editor.contains(e.target)` 把编辑器排除在外（取消回到列表），
+  在正文里点一下仍会收起面板；测试里把“目录跳转后面板还在”改成按 overlay 契约容忍收起，已加进 `npm test`；
 - `test-chat-actions-store.mjs` 原本断言删除后 `dist/index.html` 存在，与 `eeedad0`「写操作不再重建 dist」冲突；
   已改为断言 `replay` 干净、`dist` 保持原样并写入 `data/private/dist-stale.json`；
 - 生成图片/图表类回复没有可复制正文，复制按钮却是空的（`data-ceobe-copy` 空串，19 页共 44 个）：

@@ -344,7 +344,9 @@ try {
       ) < 2,
     turnId,
   );
-  await list.locator('[data-bookmark-close]').click();
+  // overlay 模式的面板是“临时”的：在正文里跳转（目录属于正文）会把它收起——这是代码里写明的契约，
+  // 所以这里不假设面板还开着，开着才点关闭。
+  if (await list.isVisible()) await list.locator('[data-bookmark-close]').click();
   assert.equal(
     await p.locator('main').evaluate((e) => parseFloat(getComputedStyle(e).paddingLeft)),
     0,
