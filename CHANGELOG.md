@@ -31,6 +31,19 @@
   （正文里不再引用旧 hash）。历史里的旧对象在 GitHub 侧仍可能被缓存一段时间，
   需要彻底清除时只能让 GitHub 回收或删库重建。
 
+### 导出
+
+- **Markdown 变 Obsidian-ready**（下载通道与 CLI）：文件头加 YAML frontmatter
+  （`title / chat_id / url / project / created / updated / model / tags`，只写已知字段）；
+  公式从 `\( \)`/`\[ \]` 转成 `$…$`/`$$…$$`（代码块与行内代码不动、货币 `$` 转义）；
+  文末自动生成 `## Sources`（网页引用去重后编号）。
+- **新增 `npm run export:md`**：`--all` / `--id <会话>` + `--out <目录>`，写 `<标题>.md` 并把附件复制进
+  `<out>/attachments/`，正文链接改成相对路径；`--link-style wikilink` 输出 `![[文件名]]`；
+  同名附件内容不同时自动加内容哈希后缀；`--no-assets` 等价纯文本导出。只读 `archive/`，只写 `--out`。
+- 归档快照里的 `conversation.md` 口径不变（不加 frontmatter），避免改动既有快照语义。
+- 测试：`test-markdown-vault.mjs`（纯函数）、`test-export-markdown-cli.mjs`（CLI 全流程）、
+  `test-markdown-export.mjs` 扩充为“下载通道带 frontmatter/数学”的断言。
+
 ### 资料库
 
 - **文件夹当标签**：资料库可以新建、重命名、删除文件夹；一条资源可以同时在多个文件夹里（标签，不是真实目录）。

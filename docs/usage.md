@@ -182,7 +182,29 @@ Windows 快捷键：`Ctrl+K` 搜索（标题和正文），`Ctrl+Shift+S` 开关
 
 阅读顶部或聊天菜单的“另存为 MD”生成 `当前聊天标题.md`。
 
-保留正文、代码、公式和表格等文本表达；图片、附件和普通链接转为可读文字，不复制资源文件。代码示例中的链接语法保持原样。
+- 文件以 **YAML frontmatter** 开头：`title / chat_id / url / project / created / updated / model / tags`
+  （只写真正知道的字段，例如没有归入项目就不写 `project`）；
+- 公式定界符从官方的 `\( \)` / `\[ \]` 转成 Obsidian 认识的 `$…$` / `$$…$$`（代码块与行内代码里的内容不动，
+  货币写法 `$5` 会转义成 `\$5`）；
+- 文末自动生成 `## Sources`：把网页引用按去重后的顺序列成编号链接；没有引用时不生成这一节；
+- 保留正文、代码、公式和表格等文本表达；图片、附件和普通链接转为可读文字，不复制资源文件；
+  代码示例中的链接语法保持原样。
+
+需要**连同附件一起**导出（Obsidian 可直接打开）时用命令行版本：
+
+```powershell
+npm run export:md -- --all --out D:\vault\ceobe              # 整个档案库
+npm run export:md -- --id <会话 ID> --out D:\vault\ceobe      # 只导一条
+npm run export:md -- --all --out D:\vault\ceobe --no-assets   # 只要文本
+npm run export:md -- --all --out D:\vault\ceobe --link-style wikilink
+```
+
+- 每条聊天写成 `<标题>.md`，附件复制到 `<out>/attachments/`，正文里的链接改成相对路径
+  （`--link-style wikilink` 时改成 `![[文件名]]`，适合 Obsidian）；
+- 同名附件不会互相覆盖：内容不同时后一个会带上内容哈希后缀；
+- 标题重复时会自动编号；`--no-assets` 等价于“纯文本”，不写附件链接也不复制文件；
+- 只读 `archive/`，只往 `--out` 写；`--all` 会跳过不存在的会话并在结束时列出写出的文件。
+
 
 ### 单条聊天：PDF
 

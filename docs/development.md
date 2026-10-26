@@ -193,6 +193,24 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 部分历史 `capture-*` 工具仍假定有特定原始输入。它们用于手工模板迁移，不是正常构建的前置步骤；重新运行前需要重新提供获授权的参考网页。
 
+## Markdown 导出
+
+三个入口共用一套规则，区别只在“要不要附件”：
+
+| 入口 | 模块 | 输出 |
+|---|---|---|
+| 阅读页“另存为 MD” | `markdown-export-api.mjs` → `export-conversation-markdown.mjs` | 单文件、纯文本（`textOnly`），带 frontmatter/数学/来源 |
+| `npm run export:md` | `export-markdown-cli.mjs` | `<out>/<标题>.md` + `<out>/attachments/`，可选 wikilink |
+| 归档快照里的 `conversation.md` | `archive-share.mjs` / `import-share-package.mjs` | 保持原格式（不加 frontmatter），避免改动既有快照口径 |
+
+- `scripts/markdown-vault.mjs` 是不碰文件系统的纯函数集合：`buildFrontmatter`（只写已知字段）、
+  `convertMath`（`\( \)`/`\[ \]` → `$…$`/`$$…$$`，代码块与行内代码保护、货币 `$` 转义）、
+  `collectSources`（`grouped_webpages` / `url` / `sources_footnote` 去重）、`buildSourcesSection`；
+- 导出选项默认关闭，只有下载通道与 CLI 打开（`frontmatter`/`math`/`sources`），所以旧调用方与测试口径不变；
+- CLI 只读 `archive/`：附件复制到 `out/attachments/`，正文里的 `assets/…` 换成相对路径；
+  同名附件内容不同时自动加内容哈希后缀，`--no-assets` 等价纯文本；
+- 改这里的格式会让下载、批量导出与测试同时变化，先补 `test-markdown-vault.mjs` 的用例再动实现。
+
 ## 测试策略
 
 ### 基础回归
@@ -239,7 +257,7 @@ node scripts/test-copy-content.mjs
 | 项目简介 | `test-project-description.mjs`、`test-project-description-browser.mjs` |
 | 已有项目图标／颜色 | `test-project-appearance.mjs`、`test-project-appearance-browser.mjs` |
 | 项目文件（沿用原 sources 测试文件名） | `test-project-sources.mjs`、`test-project-sources-browser.mjs`、`test-project-sources-template.mjs` |
-| MD／ZIP 导出 | `test-markdown-export.mjs`、`test-markdown-save-browser.mjs`、`test-project-export.mjs` |
+| MD／ZIP 导出 | `test-markdown-export.mjs`（下载通道的 frontmatter/数学/来源）、`test-markdown-vault.mjs`（纯函数：frontmatter、代码感知的数学转换、引用去重）、`test-export-markdown-cli.mjs`（`npm run export:md` 的附件、同名冲突、wikilink、`--no-assets`）、`test-markdown-save-browser.mjs`、`test-project-export.mjs` |
 | 菜单、图片与导出界面 | `test-reader-ui-browser.mjs`、`test-project-more.mjs` |
 | 项目内置顶与标题空间 | `test-project-pinned-browser.mjs` |
 | 响应式书签、最近聊天键盘及项目提示 | `test-ui-followups-browser.mjs`；支持 `CEOBE_TEST_DIST=1` 和 `CEOBE_TEST_HEADED=1`，书签为内存夹具、API 只读 |

@@ -2,6 +2,7 @@ import { parseHTML } from 'linkedom';
 import { markdownTextOnly } from './markdown-text-only.mjs';
 import { conversationToMarkdownView } from './conversation-to-markdown-view.mjs';
 import { messageCopyContent } from './copy-controls.mjs';
+import { buildFrontmatter, buildSourcesSection, collectSources, convertMath, isoLocal } from './markdown-vault.mjs';
 
 const pad2 = value => String(value).padStart(2, '0');
 // 本地时区的 YYYY-MM-DD HH:mm:ss；时间来自消息自身的 created_at（epoch 秒）。
@@ -23,10 +24,23 @@ const demoteHeadings = (text, levels = 2) => {
   }).join('\n');
 };
 
-export function exportConversationMarkdown(conversation, {textOnly=false, timestamps=false} = {}) {
+export function exportConversationMarkdown(conversation, {textOnly=false, timestamps=false, frontmatter=false, math=false, sources=false, project=''} = {}) {
   const { document } = parseHTML('<html><body></body></html>');
-  const output = [`# ${conversation.title.replace(/[\r\n]/g, ' ')}`, '',
-    textOnly ? '> 纯文本 Markdown：仅包含当前阅读分支，不包含附件或外部资源。' : '> 本文件为当前阅读分支的 Markdown 副本；完整消息树、内部记录和原始字段保留在 conversation.ceobe.json。', ''];
+  const output = [];
+  if (frontmatter) {
+    const block = buildFrontmatter({
+      title: conversation.title,
+      chatId: conversation.id,
+      url: conversation.source?.url,
+      project,
+      created: isoLocal(conversation.created_at ?? conversation.metadata?.create_time),
+      updated: isoLocal(conversation.updated_at ?? conversation.metadata?.update_time),
+      model: conversation.metadata?.default_model_slug,
+    });
+    if (block) output.push(block.trimEnd(), '');
+  }
+  output.push(`# ${conversation.title.replace(/[\r\n]/g, ' ')}`, '',
+    textOnly ? '> 纯文本 Markdown：仅包含当前阅读分支，不包含附件或外部资源。' : '> 本文件为当前阅读分支的 Markdown 副本；完整消息树、内部记录和原始字段保留在 conversation.ceobe.json。', '');
   const turns = conversationToMarkdownView(conversation);
   // "第 N 段" markers: the outline stays the same, but a reader can search a turn number or see it
   // while scrolling. Counted per assistant reply, so one Q&A is one 段.
@@ -52,6 +66,7 @@ export function exportConversationMarkdown(conversation, {textOnly=false, timest
     for (const part of parts) {
       const prefix = `ref-${part.id.replace(/[^a-zA-Z0-9-]/g, '')}-`;
       let text = messageCopyContent([part], document, prefix).text;
+      if (math) text = convertMath(text);
       if (turn.role === 'assistant') text = demoteHeadings(text);
       const partResources = (conversation.resources || []).filter(resource => resource.message_ids.includes(part.id));
       if (textOnly) { output.push(markdownTextOnly(text, partResources).trim(), ''); continue; }
@@ -82,6 +97,10 @@ export function exportConversationMarkdown(conversation, {textOnly=false, timest
       exchange += 1;
 
     }
+  }
+  if (sources) {
+    const section = buildSourcesSection(collectSources(conversation));
+    if (section) output.push(section);
   }
   return textOnly ? markdownTextOnly(output.join('\n')) : output.join('\n');
 }
