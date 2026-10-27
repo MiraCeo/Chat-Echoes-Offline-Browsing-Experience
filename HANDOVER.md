@@ -16,14 +16,17 @@ CEOBE（Chat Echoes Offline Browsing Experience）：把 ChatGPT 的公开分享
 
 ```
 HEAD        （见 git log -1；包含“侧栏客户端渲染”“后处理幂等”“页面装饰指纹”“资源库按页缓存”
-             “项目页瘦身”“消息操作裁剪”“附件随页拷贝”“搜索语法与索引标签”“官方格式 JSON 导出”）
+             “项目页瘦身”“消息操作裁剪”“附件随页拷贝”“搜索语法与索引标签”“官方格式 JSON 导出”
+             “装饰指纹修复/方向记录”）
 标签        v1.0.0 / v1.0.1 / v1.0.2（本地）
-归档        34 个分享会话 / 42 个快照，约 920 MB；chatgpt-web 采集为 0
-磁盘        replay/ 约 1.1 GB（页面 + 附件 + 资源库副本）、dist/ 约 730 MB
-附件        321 个本地文件（replay/archive-resources 与 public 副本、dist 一致），附件链接 0 失效
-页面        39 页；巡检 0 问题；npm test / npm run check / npm run build 全绿
-构建        全量约 80–105s（34 页重渲染，4 并发）；数据没变时 13–15s（系统缓存热）/ 23–25s（冷缓存或磁盘繁忙），只重做 5/39 页、页面字节不变
+归档        35 个分享会话 / 43 个快照，约 934 MB；chatgpt-web 采集为 0
+磁盘        replay/ 约 1.09 GB（页面 + 附件 + 资源库副本）、dist/ 约 731 MB
+附件        323 个本地文件（replay/archive-resources 与 public 副本、dist 一致），附件链接 0 失效
+页面        40 页；巡检 0 问题；npm test / npm run check / npm run build 全绿
+构建        全量约 80–105s（35 页重渲染，4 并发）；数据没变时 13–15s（系统缓存热）/ 23–25s（冷缓存或磁盘繁忙），
+             只重做 5/40 页、页面字节不变；换首页或导入后为 5–6/40 页、约 19–25s（修复前为 40/40、107–118s）
 删除        重建部分约 15s＋档案复制约 1s（原为 52.5s）；会话页逐字节不变
+导出        官方 JSON 63.9 MB（35 会话；可选附件 323 个文件／254.3 MB）；Markdown 走 export:md
 侧栏        浏览器按 replay/chats.json 渲染；每页只剩“当前会话一行 + 行模板”，不再内嵌全部会话
 历史        2026-10-26 做过一次脱敏重写：旧夹具与「测试消息/」「图表/」「文件/」「新界面/」从全部
              历史移除、本机用户名替换为占位；提交时间保持不变，但**旧 SHA 全部失效**
@@ -72,7 +75,7 @@ npm run verify:archive      # 只读检查档案结构
 - 附件随页拷贝：并行渲染的每一页都写自己会话的附件字节，`replay/archive-resources` 与 `dist` 都是 321 个文件，
   附件链接 0 失效（此前并行渲染只拷第一页，295 条链接里 280 条失效）。
 
-## 4. 侧栏、搜索与 JSON 导出（已完成）
+## 4. 侧栏、搜索、导出与构建修复（已完成）
 
 **目标**：新会话的增删不再重写每一页。
 
@@ -220,8 +223,8 @@ npm run verify:archive      # 只读检查档案结构
 
 | 项目 | 结果 |
 |---|---|
-| 索引规模 | 3028 条 turn、705 条带 kinds；6.96 MB → 7.01 MB（+41 KB） |
-| 同数据两次重建 | 39 页与 `search-index.json` 逐字节一致；第二次 `Decorations: 5 of 39`；只有 `chats.json` 的 `generated_at` 不同 |
+| 索引规模 | 3068 条 turn、715 条带 kinds（表格 320、附件 346、图片 223、代码 108）；34 会话加 kinds 时 6.96 → 7.01 MB（+41 KB），当前 35 会话 7.11 MB |
+| 同数据两次重建 | 40 页与 `search-index.json` 逐字节一致；第二次 `Decorations: 5 of 40`；只有 `chats.json` 的 `generated_at` 不同 |
 | 解析器单测 | `scripts/test-search-query.mjs`：引号短语、排除、A/B、字段与比较符、折叠/高亮切片、旧查询兼容 |
 | 浏览器测试 | `scripts/test-sidebar-controls.mjs` 追加语法断言并通过：命中数、原文大小写高亮、空态文案 |
 
@@ -241,18 +244,33 @@ npm run verify:archive      # 只读检查档案结构
 
 | 项目 | 结果 |
 |---|---|
-| 真实档案 34 会话 | `conversations.json` 64.6 MB、消息 11137、节点 11171、隐藏 2689；约 6 秒（`--no-assets`） |
-| 附件 | 332 条资源 → 321 个文件／249.3 MB，约 7 秒；153 个缺失（146 unresolved、7 failed） |
-| 逐条校验 | 11171 个节点、11137 条消息的 `content.raw`／`author`／`metadata` 与归档逐字段一致；`current_node` 回溯顺序 34/34 等于 `linear_message_ids` |
+| 真实档案 35 会话 | `conversations.json` 63.9 MB、消息 11304、节点 11339、隐藏 2734；约 6 秒（`--no-assets`） |
+| 附件 | 334 条资源 → 323 个文件／254.3 MB，约 7 秒；154 个缺失（未下载） |
+| 逐条校验 | 11339 个节点、11304 条消息的 `content.raw`／`author`／`metadata` 与归档逐字段一致；`current_node` 回溯顺序 35/35 等于 `linear_message_ids` |
 | 确定性 | 真实档案导出两次，`conversations.json` 与 `manifest.json` 均逐字节一致；清单 sha256 与 payload 相符 |
 | 单测 | `scripts/test-export-json.mjs`（顺序/分支、降级、附件、清单、`--no-assets`/`--compact`/`--id`、CLI 全流程），已进 `npm test` |
 
 口径要点：`raw_payload` 与原始 HTML 不导出，因此 JSON 导出**不能替代归档备份**；缺失附件只计数、不伪造
 `file-service://` 链接；重命名过的聊天用当前显示标题，原标题写进 `ceobe.original_title`。
 
+**装饰指纹精度修复（本轮完成）**
+
+- **现象**：导入一个新会话后重建 118s，日志 `Decorations: 40 of 40`（本应只有 5 个顶层页 + 新页）。
+- **根因**：`replay/projects.html`（以及 `project.html`）从 `import.html` 改出来，内嵌着首页会话那一行
+  （标题、链接、置顶/菜单文案）。导入会换首页 → projects.html 字节变化 → `decoration-plan.mjs` 把整份
+  projects.html 当全站共享输入 → 所有页面的装饰指纹一起失效。装饰是幂等的，所以那次 107s 里页面字节
+  一个都没变，纯属重做。
+- **修复**：共享输入改成 `data/private/projects.ceobe.json`（其他页面真正依赖的项目数据）；
+  `DECORATION_VERSION` 升到 2 做一次性全量刷新（页面字节不变）。
+- **证据**：换首页 40/40 → 5/40，107.7s / 118s → 19.1–22.2s，35 个会话页逐字节不变；
+  `scripts/test-decoration-plan.mjs` 锁住精度（换首页只动 5 个顶层页、项目数据变化才全量、单页改动
+  只重做该页、指纹损坏回退全量），已加入 `npm test`。
+
 ## 5. 已知问题
 
 - 删除会话仍不是“秒级”：重建约 15s，另有档案复制与安装回写；页面本身已经不再重写（见第 4 节）；
+- 导入仍包含匿名解析/下载资源与重建。本次导入 118s 里约 90s 是全量装饰（根因已修：换首页 40/40 → 5/40、
+  107–118s → 19–22s）；修复后的新导入尚未重新计时，预计仍在几十秒量级；
 - 官方安全检查拦下的资源匿名拿不到，缺口清单里标「获取失败」；
 - 指向作者本机的图片永远没有字节，显示「图片未归档」占位；
 - 单文件 HTML 导出仍是实验性（助手侧图片未内嵌）；
@@ -290,7 +308,7 @@ npm run verify:archive      # 只读检查档案结构
 ## 6. 文档索引
 
 - [项目介绍](README.md) · [使用指南](docs/usage.md) · [开发指南](docs/development.md) · [架构说明](docs/architecture.md)
-- [变更记录](CHANGELOG.md) · [后续计划](TODO.md) · [同类项目与后续方向](docs/ecosystem.md) · [交接 Prompt](HANDOVER-PROMPT.md)（可直接粘给新的会话）
+- [变更记录](CHANGELOG.md) · [后续计划](TODO.md) · [同类项目与后续方向](docs/ecosystem.md) · [产品方向记录](docs/direction.md) · [交接 Prompt](HANDOVER-PROMPT.md)（可直接粘给新的会话）
 - 构建细节：`docs/development.md` 的「发布前检查」「端口」「写入测试必须隔离」三节；
   "为什么慢 / 为什么回退"的过程记录在本文件第 7 节。
 

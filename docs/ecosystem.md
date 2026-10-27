@@ -48,11 +48,17 @@ README）。这里记录**调研结论、可以借的设计、以及已经定下
 
 - 已落地：查询解析（引号短语、`-` 排除、`/` 任一、`title:`、`from:`、`created:`、`messages:`）与 `has:`；
   实现为 `scripts/search-query.mjs`（纯函数，浏览器与 Node 共用），索引每条 turn 增加 `kinds`；
-- 实测：34 会话 / 3028 条 turn 中 705 条带 `kinds`，索引 6.96 MB → 7.01 MB（+41 KB，远低于本节原先 1–2 MB 的估算）；
+- 实测：当前 35 个会话 / 3068 条 turn 中 715 条带 `kinds`；索引 7.11 MB（34 会话、尚未加 `kinds` 时
+  6.96 MB，加标签本身约 +41 KB，远低于本节原先 1–2 MB 的估算）；
 - 验收：`scripts/test-search-query.mjs` 解析器单测 + `scripts/test-sidebar-controls.mjs` 浏览器断言
   （命中数、命中高亮、空结果文案），均已通过。
 
-### 方向 2：档案 MCP server（已批准，待开工）
+### 方向 2：档案 MCP server（已评估、暂不做）
+
+**结论（2026-10-28）**：MCP 是「对外接口」而不是产品内核。`export:json` 与 `search-index.json`
+已经覆盖跨工具访问；真正缺的是检索质量与时间线，而 MCP 不提供这些；接云客户端还会形成持续的正文
+外发面。等将来有检索／记忆内核后，再做一个只读、本地、默认关闭的薄适配层（`search_history` /
+`read_conversation_context`）。讨论依据见 [direction.md](direction.md) 第五节。下面是原始方案，保留备查。
 
 - 只读 stdio server，数据源直接读 `archive/`（`library.ceobe.json` + `conversation.ceobe.json`），不写、不联网；
 - 工具草案：`search_conversations(query, limit)`、`list_conversations()`、`read_conversation(id|title, range?)`、
@@ -66,9 +72,9 @@ README）。这里记录**调研结论、可以借的设计、以及已经定下
 已落地：`scripts/export-conversation-json.mjs`（纯映射）+ `scripts/export-json-cli.mjs`（`npm run export:json`）。
 两个小决定按作者口径定为：**独立命令**、**附件默认复制**（`--no-assets` 关闭）；单个 `--id` 写对象，
 `--all`／多个 `--id` 写数组。验收（`test-export-json.mjs`）：mapping 顺序 == `linear_message_ids`、
-`content.raw` 逐字节一致、`current_node` 可达、缺 `nodes` 降级、两次导出逐字节一致；真实档案 34 会话、
-11171 节点、11137 消息逐条校验 0 差异。实测 `conversations.json` 64.6 MB，附件 321 个文件／249.3 MB
-（332 条资源去重，153 个缺失），整体约 7 秒。
+`content.raw` 逐字节一致、`current_node` 可达、缺 `nodes` 降级、两次导出逐字节一致；真实档案 35 会话、
+11339 节点、11304 消息逐条校验 0 差异。实测 `conversations.json` 63.9 MB，附件 323 个文件／254.3 MB
+（334 条资源去重，154 个缺失），整体约 7 秒。
 
 **为什么便宜**：档案里的 `nodes`（真实会话 727 个节点，`{id, parent_id, children, message_id, raw}`）与官方
 `mapping` 一一对应；`messages[*].content.raw` 就是 OpenAI 内容对象；`current_node_id` 对应 `current_node`。

@@ -4,6 +4,17 @@
 
 ## 未发布（本轮）
 
+### 构建与文档
+
+- **装饰指纹精度修复**：`decoration-plan.mjs` 的共享输入从整份 `replay/projects.html` 改为
+  `data/private/projects.ceobe.json`。前者从 `import.html` 改出来、内嵌首页会话那一行，导入新会话
+  （换首页）会让 40/40 页全部重做装饰；修复后换首页只重做 5 个顶层页，实测 107–118s → 19–22s，
+  35 个会话页字节不变。`DECORATION_VERSION` 升到 2（一次性全量刷新，页面字节不变），
+  新增 `scripts/test-decoration-plan.mjs` 锁住精度并已加入 `npm test`。
+- **新增 [docs/direction.md](docs/direction.md)**：整理 2026-10-26/27 长对话后半段关于 CEOBE 的方向讨论。
+- **MCP 改为已评估、暂不做**：口径见 `TODO.md` 第三节与 `docs/direction.md` 第五节；`docs/ecosystem.md`
+  方向 2 同步标注，原方案保留备查。
+
 ### 官方格式 JSON 导出
 
 - 新增 `npm run export:json`（`scripts/export-conversation-json.mjs` + `scripts/export-json-cli.mjs`）：
@@ -14,8 +25,8 @@
   线性顺序、隐藏消息、资源本地相对路径与导入报告；`raw_payload` 不导出。
 - 确定性：不写墙钟时间、附件内容寻址、同一输入两次导出逐字节一致；`manifest.json` 记录格式版本、
   会话／消息／节点／隐藏消息数、附件复制／缺失／跳过数与 payload 的 sha256。
-- 实测（真实档案 34 会话）：`conversations.json` 64.6 MB、消息 11137、节点 11171、隐藏 2689；
-  带附件另 249.3 MB／321 个文件（332 条资源去重），整体约 7 秒；153 个资源缺失（146 unresolved、7 failed）。
+- 实测（真实档案 35 会话）：`conversations.json` 63.9 MB、消息 11304、节点 11339、隐藏 2734；
+  带附件另 254.3 MB／323 个文件（334 条资源去重），整体约 7 秒；154 个资源缺失（未下载）。
 - 测试：新增 `scripts/test-export-json.mjs`（mapping 顺序与分支、`content.raw` 逐字节、`current_node` 可达、
   降级分支、附件内容寻址、manifest 计数、`--no-assets`／`--compact`／`--id`、CLI 全流程、两次导出一致），
   已加入 `npm test`。
@@ -29,8 +40,9 @@
   `title:` 只筛标题、`from:`／`has:` 只筛正文、只有排除词时不列正文。
 - 兼容旧查询：无法识别的 `字段:值`、裸负数（`-1`）、URL 都按普通文本；`\/` 表示字面斜杠。
 - `replay/public/search-index.json` 每条 turn 新增 `kinds`（`code`／`table`／`image`／`attachment`／`audio`，
-  固定顺序、无标签时为空数组），由阅读页可见内容决定；34 个会话 3028 条 turn 里 705 条带标签
-  （表格 313、附件 343、图片 222、代码 106），索引只增约 41 KB（6.96 → 7.01 MB），不是调研时估的 1–2 MB。
+  固定顺序、无标签时为空数组），由阅读页可见内容决定；当前 35 个会话 3068 条 turn 里 715 条带标签
+  （表格 320、附件 346、图片 223、代码 108），加 `kinds` 时索引只增约 41 KB（34 会话时 6.96 → 7.01 MB；
+  当前 35 会话 7.11 MB）。
 - 高亮改为按原文切片：折叠（NFKC + 小写）用逐码点位置映射，全角字母／连字命中时标在原文对应的字上，
   且一条命中里所有出现位置都会高亮；标题与正文都走同一套切片，不解析 HTML。
 - 弹窗新增一行语法提示；空结果文案在语法查询时给出可执行建议（去掉 `-排除`、减少 `from:`／`has:` 条件）。

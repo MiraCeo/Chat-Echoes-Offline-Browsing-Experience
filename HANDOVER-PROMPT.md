@@ -6,11 +6,14 @@
 先读这些文件，再动手：
 
 1. `HANDOVER.md` —— 当前状态、能力清单、已知问题、过程记录（**先读这个**）；
-2. `TODO.md` —— 还没做的事：第二节是**已批准、待开工**的四个方向（搜索语法、JSON 导出、MCP、扩展补齐），
-   第三/四节是已评估与明确不做的范围，别自己开工；
-3. `docs/ecosystem.md` —— 同类项目调研（36 个仓库）、可借的设计、四个方向的完整口径与验收方式；
-4. `docs/development.md` —— 构建流程、每页产物与并发渲染的坑、端口、发布前检查、测试怎么选；
-5. `CHANGELOG.md` —— 已交付内容；`docs/usage.md` / `docs/architecture.md` 是面向使用与数据流的说明。
+2. `TODO.md` —— 还没做的事：第二节是**已批准、待开工**项（当前只剩扩展补齐），
+   第一/三/四节是待拍板、已评估与明确不做的范围，别自己开工；
+3. `docs/ecosystem.md` —— 同类项目调研（36 个仓库）、可借的设计、四个方向的完整口径与验收方式
+   （MCP 已改为“已评估、暂不做”）；
+4. `docs/direction.md` —— 2026-10-28 的方向讨论：两种记忆、两种时间线、数据契约、AI 模块的位置；
+   时间线 v1 等仍在待拍板；
+5. `docs/development.md` —— 构建流程、每页产物与并发渲染的坑、装饰指纹的共享输入、端口、发布前检查、测试怎么选；
+6. `CHANGELOG.md` —— 已交付内容；`docs/usage.md` / `docs/architecture.md` 是面向使用与数据流的说明。
 
 ## 两条红线（违反即回退）
 
@@ -28,10 +31,13 @@ XLSX 只读预览（大表截断 500×60、点选高亮行列、缩放、隐藏�
 `created:`、`messages:`；索引带 `kinds`；解析器单测 `test-search-query.mjs` 已进 `npm test`）、
 **官方格式 JSON 导出**（`npm run export:json`：`mapping` 由 `nodes` 生成、`content.raw` 原样透传、
 缺 `nodes` 降级、附件内容寻址、两次导出逐字节一致；单测 `test-export-json.mjs` 已进 `npm test`）、
+**装饰指纹精度修复**（共享输入改为项目数据文件；换首页 40/40 → 5/40、107–118s → 19–22s；
+`test-decoration-plan.mjs` 已进 `npm test`）、
+**方向记录与 MCP 归档**（`docs/direction.md`；MCP 已评估、暂不做）、
 README 四张脱敏截图（`scripts/make-readme-fixture.mjs` + `scripts/shoot-readme.mjs`）、
 远端仓库删库重建 + 本地旧对象清理（`pre-rewrite.bundle` 与 `refs/codex/*` 已删，`.git` 3.77 MiB）。
 
-基线：34 个分享会话 / 42 个快照 / 14704 条消息、39 页巡检 0 问题；
+基线：35 个分享会话 / 43 个快照 / 14871 条消息、40 页巡检 0 问题；
 `npm test`（含书签与表格两套浏览器测试）、`npm run check`、`npm run build` 全绿；
 数据没变时重建 13–15s、只重做 5/39 页、页面字节不变。
 

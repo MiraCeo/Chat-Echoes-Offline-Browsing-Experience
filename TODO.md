@@ -7,20 +7,23 @@
 
 ## 一、需要你决定或提供材料
 
-（目前没有需要你拍板的开发项。四个已批准、待开工的方向见第二节；口径与调研依据在
-[docs/ecosystem.md](docs/ecosystem.md)。）
+- **时间线 v1 是否开工**（建议先做不依赖 AI 的「历史档案时间线」：按消息时间聚合、可跳转；
+  约 1–2 天）：背景、两种时间线的区别、三类时间的坑与验收方式都在
+  [docs/direction.md](docs/direction.md)。讨论记录里还包含「事件／观点时间线」与 AI 记忆的候选路线，
+  都未批准。
+- 其余已批准项的验收口径在 [docs/ecosystem.md](docs/ecosystem.md)。
 
 ## 二、已批准、待开工（2026-10-27 定）
 
-按建议顺序排列，逐项的范围、参考项目与验收方式都在 [docs/ecosystem.md](docs/ecosystem.md)：
-
-1. **档案 MCP server**（约 1–2 天）：只读 stdio，工具 `search_conversations` / `list_conversations` /
-   `read_conversation` / `archive_stats`，数据源直接读 `archive/`，查询语法复用 `scripts/search-query.mjs`。
-2. **采集扩展补齐**（约 1–2 天）：扩展直接 `POST /api/archive-package`、`chatgpt.com/share/*` 页面内
+1. **采集扩展补齐**（约 1–2 天）：扩展直接 `POST /api/archive-package`、`chatgpt.com/share/*` 页面内
    “发送到 CEOBE”按钮、采集包加 `format`/`version` 握手、书签小工具兜底。现状见 `extension/README.md`。
 
 ## 三、已评估、暂不做
 
+- **档案 MCP server**（2026-10-28 定）：原计划只读 stdio、四个检索工具；评估后认为它是「对外接口」而不是
+  产品内核——`export:json` 与 `search-index.json` 已覆盖跨工具访问，真正缺的是检索质量与时间线；
+  且接云客户端是持续的正文外发面。将来若有检索／记忆内核，再做只读薄适配层。口径见
+  [docs/direction.md](docs/direction.md) 第五节；
 - **顶层 5 页每趟都重建**（首页/导入/资料库/项目/项目详情，约 1.3s）：要给每个 builder 加输入指纹，
   收益小于风险；
 - **`bookmarks` 步骤未并入统一的后处理缓存**：同一份 DOM 多次解析会让 SVG `<title>` 的转义发生变化、

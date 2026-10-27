@@ -87,8 +87,13 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 没有变化的页面不该被重新装饰——这是删除/重命名一个会话仍然要几十秒的主要原因。
 
-- `scripts/decoration-plan.mjs` 给每个页面算指纹：`装饰口径版本号 + 渲染器与模板指纹 + replay/projects.html +
-  这一页的会话条目（id/标题/page；顶层页面用首页会话）+ 页面当前字节`；
+- `scripts/decoration-plan.mjs` 给每个页面算指纹：`装饰口径版本号 + 渲染器与模板指纹 +
+  项目数据文件（data/private/projects.ceobe.json）+ 这一页的会话条目（id/标题/page；顶层页面用首页会话）+
+  页面当前字节`；
+- **不要把 `replay/projects.html` 当共享输入**：它从 `import.html` 改出来，里面内嵌首页会话那一行
+  （标题、链接、置顶/菜单文案）；导入一个新会话会换首页，于是整页哈希变化，40/40 页全部重做。
+  2026-10-28 修过一次：换首页从 40/40 页、107–118s 降到 5/40 页、约 20s，35 个会话页字节不变；
+  `test-decoration-plan.mjs` 锁住这条精度；
 - 页面字节同时包含“渲染结果”和“上一轮装饰结果”，因此重新渲染过、会话内容变了、或有人手改过这一页，
   都会自动重做；指纹存在 `data/private/decoration-stamps.json`，删除流程会把它带进暂存目录再装回来；
 - 五个装饰步骤都接受可选的页面清单（`buildChatMenu(root, library, pageCache, pages)` 等），
@@ -335,7 +340,7 @@ node scripts/test-copy-content.mjs
 | 连续调整宽度、离屏旁注与精确跳转 | `test-bookmark-resize-browser.mjs`（`npm run test:bookmarks:browser`）；在临时目录构建隔离副本（`bookmark-browser-fixture.mjs` + `fixtures/browser/bookmark-conversations.mjs`，100／500 条消息、20／100 条书签），不依赖本地 5173，不读写使用者归档；支持 `CEOBE_TEST_DIST=1` 与 `CEOBE_TEST_HEADED=1`，检查布局／样式重算次数、懒滚动、精确跳转与面板开关 |
 | 阅读边缘：书签面板停靠与上次阅读位置 | `test-reader-margin-browser.mjs`（`npm run test:reader-margins`）；在临时目录构建隔离副本（同一夹具，120／60 条消息、24／12 条书签），检查 1440→420 各宽度下展开或收起面板都不移动、不压缩正文，留白足够时停靠在正文左侧、不足时改为短浮层且点击别处即收起，空列表收缩为一行提示，以及按聊天恢复阅读位置的精确跳转、从头阅读、清除与只保存 ID＋偏移；全程只读 GET，不依赖本地 5173，不读写使用者归档；支持 `CEOBE_TEST_DIST=1` 与 `CEOBE_TEST_HEADED=1` |
 | 侧栏、搜索与整理 | `test-sidebar-controls.mjs`（标题与正文搜索、语法查询、片段高亮、页内精确跳转与跨页哈希跳转，新查询把结果列表送回顶部、后台刷新保留焦点与位置；正文索引和 `/api/chats` 均为只读夹具）、`test-search-query.mjs`（搜索语法：引号短语、排除、`A/B`、`title:`／`from:`／`has:`／`created:`／`messages:`、折叠与高亮切片）、`test-search-index.mjs`（索引只含可见提问／回复／代码，排除推理、隐藏上下文、引用与附件名；`kinds` 标签覆盖代码、表格、图片与附件）、`test-sidebar-polish.mjs`、`test-chat-organizer.mjs` |
-| 侧栏客户端渲染（删除不改页面） | `test-sidebar-client-render.mjs`：在临时目录真实复制运行时 + 三份夹具会话，跑真实构建与真实删除流程；断言“数据不变时重建逐字节一致”“删除一个会话后其余页面哈希不变、只有被删页面消失”“页面里没有 `#ceobe-chat-catalog`、保留一行静态回退与行模板”。不读写使用者归档 |
+| 侧栏客户端渲染（删除不改页面） | `test-sidebar-client-render.mjs`：在临时目录真实复制运行时 + 三份夹具会话，跑真实构建与真实删除流程；断言“数据不变时重建逐字节一致”“删除一个会话后其余页面哈希不变、只有被删页面消失”“页面里没有 `#ceobe-chat-catalog`、保留一行静态回退与行模板”。不读写使用者归档；`test-decoration-plan.mjs` 锁住装饰指纹的精度（换首页只重做 5 个顶层页、项目数据变化才全量、单页改动只重做该页、指纹损坏回退全量） |
 | 导入与发布 | `test-local-import-api.mjs`、`test-production-import.mjs`、`test-link-import-browser.mjs` |
 | 离线资源 | `test-offline-resources.mjs` |
 

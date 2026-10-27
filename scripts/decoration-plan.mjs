@@ -4,7 +4,8 @@ import { dirname, join } from 'node:path';
 
 // 每页装饰输入的版本号：装饰输入的含义变了（不只是脚本内容变了）就 +1，强制全部页面重做。
 // 脚本/模板内容本身由 build-library 的渲染器指纹覆盖，这里只标记“口径”变化。
-const DECORATION_VERSION = 1;
+// v2：共享输入从 projects.html 换成 project 数据文件（见下面 decorationPlan 的注释）。
+const DECORATION_VERSION = 2;
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex').slice(0, 16);
 
@@ -27,7 +28,11 @@ export async function decorationPlan(root, { renderer, library, homeId }) {
   let previous = { pages: {} };
   try { previous = JSON.parse(await readFile(pagesPath(root), 'utf8')); } catch { /* 首次构建或文件损坏：全部重做 */ }
   const comparable = previous?.version === DECORATION_VERSION && previous.pages && typeof previous.pages === 'object';
-  const projects = hash(await readFile(join(replay, 'projects.html'), 'utf8').catch(() => ''));
+  // 共享输入只放“项目数据”，不要放 projects.html 本身：那个页面是从 import.html 改出来的，
+  // 里面内嵌着首页会话那一行（标题、链接、置顶/菜单文案）。导入一个新会话会让首页变化，
+  // 于是整份 projects.html 的哈希变化，所有页面的装饰指纹一起失效——实测一次导入 40/40 页
+  // 全量重做，光装饰就多花约 100 秒。项目数据文件才是其他页面真正依赖的输入。
+  const projects = hash(await readFile(join(root, 'data/private/projects.ceobe.json'), 'utf8').catch(() => ''));
   const shared = hash(`${DECORATION_VERSION}|${renderer}|${projects}`);
   const entries = new Map(library.conversations.map(entry => [entry.id, entry]));
   const idOf = page => {
