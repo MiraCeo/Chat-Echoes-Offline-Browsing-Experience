@@ -33,6 +33,9 @@
 
 ### 文档
 
+- **远端仓库已删除重建**：脱敏前的旧提交与旧文件（真实 PDF、学生名单、原始对话）在 GitHub 上一律 404；
+  新仓库沿用同一 URL、原描述与 PUBLIC 可见性、默认分支 `main`，历史只含当前干净提交（`e3c5b2d`）。
+  本地备份：`data/private/clean-backup.bundle`（可还原）、`pre-rewrite.bundle`（旧历史，可删）。
 - README 增加四张界面截图（阅读页、资料库、项目页、导入页），全部来自 `scripts/make-readme-fixture.mjs`
   生成的隔离演示夹具（三段合成对话 + 一个项目 + 一条书签 + 三个附件），不含任何真实聊天；
   `scripts/shoot-readme.mjs` 负责起静态服务（带最小 API 桩）并截图到 `docs/assets/`。
