@@ -34,8 +34,13 @@
 ### 文档
 
 - **远端仓库已删除重建**：脱敏前的旧提交与旧文件（真实 PDF、学生名单、原始对话）在 GitHub 上一律 404；
-  新仓库沿用同一 URL、原描述与 PUBLIC 可见性、默认分支 `main`，历史只含当前干净提交（`e3c5b2d`）。
-  本地备份：`data/private/clean-backup.bundle`（可还原）、`pre-rewrite.bundle`（旧历史，可删）。
+  新仓库沿用同一 URL、原描述与 PUBLIC 可见性、默认分支 `main`。本地随后删掉了 `pre-rewrite.bundle`
+  与两个 `refs/codex/*` 检查点并 `gc`（`.git` 17.28 MiB → 3.77 MiB），只保留
+  `data/private/clean-backup.bundle` 作为干净历史的还原点。
+- **新增 [docs/ecosystem.md](docs/ecosystem.md)**：GitHub 同类项目调研（36 个仓库）、可借鉴的设计与
+  “不要学”的清单，以及四个已批准方向（搜索语法、JSON 导出、MCP、扩展补齐）的口径与验收方式；
+  `TODO.md` 增加“已批准、待开工”一节、Claude 分享适配标为明确不做，`HANDOVER-PROMPT.md` 同步重写，
+  新的会话可以直接按这两份文件接手。
 - README 增加四张界面截图（阅读页、资料库、项目页、导入页），全部来自 `scripts/make-readme-fixture.mjs`
   生成的隔离演示夹具（三段合成对话 + 一个项目 + 一条书签 + 三个附件），不含任何真实聊天；
   `scripts/shoot-readme.mjs` 负责起静态服务（带最小 API 桩）并截图到 `docs/assets/`。

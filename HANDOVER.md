@@ -237,7 +237,7 @@ npm run verify:archive      # 只读检查档案结构
 ## 6. 文档索引
 
 - [项目介绍](README.md) · [使用指南](docs/usage.md) · [开发指南](docs/development.md) · [架构说明](docs/architecture.md)
-- [变更记录](CHANGELOG.md) · [后续计划](TODO.md) · [交接 Prompt](HANDOVER-PROMPT.md)（可直接粘给新的会话）
+- [变更记录](CHANGELOG.md) · [后续计划](TODO.md) · [同类项目与后续方向](docs/ecosystem.md) · [交接 Prompt](HANDOVER-PROMPT.md)（可直接粘给新的会话）
 - 构建细节：`docs/development.md` 的「发布前检查」「端口」「写入测试必须隔离」三节；
   "为什么慢 / 为什么回退"的过程记录在本文件第 7 节。
 

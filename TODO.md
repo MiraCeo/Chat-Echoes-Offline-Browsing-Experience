@@ -7,9 +7,26 @@
 
 ## 一、需要你决定或提供材料
 
-（目前没有需要你拍板的开发项。）
+（目前没有需要你拍板的开发项。四个已批准、待开工的方向见第二节；口径与调研依据在
+[docs/ecosystem.md](docs/ecosystem.md)。）
 
-## 二、已评估、暂不做
+## 二、已批准、待开工（2026-10-27 定）
+
+按建议顺序排列，逐项的范围、参考项目与验收方式都在 [docs/ecosystem.md](docs/ecosystem.md)：
+
+1. **阅读器搜索语法**（约 1 天）：`"精确短语"`、`-排除`、`A/B`（任一）、`title:`、`from:`、`created:`、
+   `messages:`；再给 `search-index.json` 的每条 turn 加 `kinds`（code/table/image/attachment）以支持 `has:`。
+   验收：解析器单测 + 浏览器测试（命中数与高亮）。
+2. **官方格式 JSON 导出**（约 0.5–1 天）：新增 `npm run export:json`，输出
+   `conversations.json`（`mapping` 由 `nodes` 生成、`message.content` 用 `content.raw` 原样透传）+
+   `attachments/` + `manifest.json`。两个小决定待定：独立命令（建议）还是并入 `export:md --format json`；
+   附件默认是否复制（建议默认复制、`--no-assets` 关闭）。
+3. **档案 MCP server**（约 1–2 天）：只读 stdio，工具 `search_conversations` / `list_conversations` /
+   `read_conversation` / `archive_stats`，数据源直接读 `archive/`。
+4. **采集扩展补齐**（约 1–2 天）：扩展直接 `POST /api/archive-package`、`chatgpt.com/share/*` 页面内
+   “发送到 CEOBE”按钮、采集包加 `format`/`version` 握手、书签小工具兜底。现状见 `extension/README.md`。
+
+## 三、已评估、暂不做
 
 - **顶层 5 页每趟都重建**（首页/导入/资料库/项目/项目详情，约 1.3s）：要给每个 builder 加输入指纹，
   收益小于风险；
@@ -18,16 +35,18 @@
 - **内联附件引用胶囊**（554 个，其中 211 个因为附件未归档只显示「附件」）：按方案 A 保留为引用标记，
   它们内部是 `tabindex="-1"` 的按钮，不进 Tab 序、点了也没有行为。
 
-## 三、明确不做
+## 四、明确不做
 
 - 云端共享、AI 记忆、AI 续聊；登录态采集路线（已删除，只保留「分享链接 → ZIP → 本地导入」）；
+- **Claude 分享适配**（2026-10-27 定案）：作者暂无 Claude 使用需求，也无法提供研发所需的样本素材，
+  因此**明确不考虑**——不是“待素材”。技术上可行（`claude.ai/share/…` 内嵌公开 JSON 快照），口径变了再重开；
 - 把附件资源打进 MD 导出（MD／项目 ZIP 保持纯文本语义）；
 - 把本地项目简介当 AI 指令，或混进聊天导出；
 - 把原始参考网页或私人捕获重新引入构建依赖；
 - 手机版 PDF 的应用内入口（`--mobile` 保留为命令行选项）；
 - 官方 Export Data 导入：导出链接只发到账号绑定的邮箱，拿不到那个 ZIP；设置页也确认只有“发邮件”一种交付方式。
 
-## 四、已定案（只记录，不需要动作）
+## 五、已定案（只记录，不需要动作）
 
 - **DIL 控件外观**：维持方案 B——`assets/dil-controls.css` 在控件作用域内定义中性 token，不引入官方 root
   主题变量；纯图标按钮（图标为装饰节点、文本为空）继续用 `:empty` 隐藏，不改成禁用态；
@@ -41,7 +60,7 @@
 - **资料库的语义**（用户定案）：文件夹**当标签用**（一条资源可属多个）、上传的文件**不进 `archive/`**
   （放 `data/private/library-files/`）、**任何路径都不删原文件**——删文件夹只删标签，移除上传只删记录。
 
-## 五、已知限制
+## 六、已知限制
 
 - 部分分享页资源被官方安全检查拦下（`safety_check_failed`），匿名无法获取，报告如实记为 unresolved；
 - 会话正文里指向作者本机的图片（`图片/…`、`*_files/…`）永远拿不到字节，阅读时显示「图片未归档」占位；
