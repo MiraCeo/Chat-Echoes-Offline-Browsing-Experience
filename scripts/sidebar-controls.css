@@ -15,3 +15,5 @@ html:not([data-ceobe-sidebar-collapsed=true]) #stage-sidebar-tiny-bar{visibility
 [data-ceobe-search] .F_cuGW_resultRow:focus-visible{outline:2px solid var(--text-primary);outline-offset:-2px}
 [data-ceobe-search] .F_cuGW_resultRow:hover{background-color:var(--interactive-bg-secondary-hover)}
 [data-ceobe-search] .F_cuGW_resultSubtitle,[data-ceobe-search] .F_cuGW_resultDate{pointer-events:none}
+/* 搜索语法提示：与官方头的左留白对齐（--spacing×6 = 24px），一行放不下时省略而不是换行撑高弹窗。 */
+[data-ceobe-search] .ceobe-search-hint{margin:0;padding:0 24px 8px;font-size:var(--text-footnote-regular,.8125rem);line-height:1.4;color:var(--text-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}

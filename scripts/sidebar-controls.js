@@ -1,3 +1,4 @@
+import { normalize, parseQuery, chatMatches, titleHit, bodyScoped, turnMatches, titleHighlights, bodyHighlights, titleParts, bodyParts, emptyCopy } from './search-query.mjs';
 (() => {
  document.addEventListener('click',e=>{const button=e.target.closest('[data-ceobe-project-new]');if(!button)return;e.preventDefault();e.stopPropagation();document.dispatchEvent(new CustomEvent('ceobe:open-project',{detail:{opener:button}}))},true);
  const sidebar=document.getElementById('stage-slideover-sidebar'),rail=document.getElementById('stage-sidebar-tiny-bar'),panel=document.querySelector('[data-ceobe-sidebar-panel]'),dialog=document.querySelector('[data-ceobe-search]');if(!sidebar||!rail||!panel||!dialog)return;
@@ -7,9 +8,9 @@
  // 会话清单不再内嵌到每一页（那会让删除会话改写全部页面）：先按静态 chats.json 播种，
  // 本地服务可用时 refresh() 会换成最新数据。
  fetch(new URL('chats.json',root),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(data=>{if(catalog.length||!Array.isArray(data?.chats))return;catalog=data.chats;if(!dialog.hidden)render();if(!recentPopup.hidden)renderRecent()}).catch(()=>{});
- const bodySection=dialog.querySelector('[data-ceobe-search-body]'),bodyList=bodySection.querySelector('ol'),bodyHeading=bodySection.querySelector('h3'),currentChat=document.body.dataset.readerChatId||null;let index=null,indexState='idle',indexPromise=null;let lastQuery=null,forceTop=true;
+ const bodySection=dialog.querySelector('[data-ceobe-search-body]'),bodyList=bodySection.querySelector('ol'),bodyHeading=bodySection.querySelector('h3'),currentChat=document.body.dataset.readerChatId||null;let index=null,indexState='idle',indexPromise=null,indexHasKinds=false;let lastQuery=null,forceTop=true;
  const recentPopup=document.querySelector('[data-ceobe-rail-recent]'),recentTrigger=document.querySelector('[data-ceobe-recent-trigger]'),recentMenu=recentPopup.querySelector('[role=menu]'),recentList=recentMenu.querySelector('ul'),recentLayout=JSON.parse(recentPopup.dataset.layout);let recentGeneration=0,recentEditing=false,recentCloseRequested=false;
- const normal=s=>String(s||'').normalize('NFKC').toLocaleLowerCase().trim();
+ const normal=normalize;
  const visible=e=>e&&e.isConnected&&e.checkVisibility();
  function closeMenus(){for(const event of ['ceobe:close-chat-menu','ceobe:close-project-more','ceobe:close-organizer','ceobe:close-rail-recent'])document.dispatchEvent(new Event(event))}
  function setCollapsed(collapsed,focus=false,persist=true){
@@ -27,50 +28,57 @@
  // after a longer previous list the first new hits would otherwise stay scrolled out of view.
  // The official scroller is named; the ancestor walk keeps the reset working if that ever changes.
  const resultScrollers=()=>{const out=new Set([dialog]);for(const start of [list,bodyList])for(let e=start;e&&e!==document.body;e=e.parentElement){if(/(auto|scroll)/.test(getComputedStyle(e).overflowY))out.add(e)}const named=dialog.querySelector('.F_cuGW_resultsScroller');if(named)out.add(named);return [...out]};
- // Body search: one build-time record per rendered turn (replay/public/search-index.json), loaded on first open, matched with the same NFKC folding as titles.
+ // Body search: one build-time record per rendered turn (replay/public/search-index.json), loaded on first open.
+ // Text is folded once here (same NFKC folding as titles); `kinds` feeds the has: syntax.
  function loadIndex(){
   if(indexPromise)return indexPromise;indexState='loading';
   return indexPromise=(async()=>{
    try{const r=await fetch(new URL('search-index.json',root),{cache:'no-cache'}),data=await r.json();if(!r.ok||data.kind!=='ceobe.search-index'||!Array.isArray(data.conversations))throw Error();
-    index=new Map(data.conversations.filter(c=>c&&typeof c.id==='string').map(c=>[c.id,(Array.isArray(c.turns)?c.turns:[]).filter(t=>t&&typeof t.message_id==='string'&&typeof t.text==='string').map(t=>({...t,key:normal(t.text)}))]));indexState='ready'}
+    const byChat=new Map();indexHasKinds=false;
+    for(const c of data.conversations){
+     if(!c||typeof c.id!=='string'||byChat.has(c.id))continue;
+     const turns=(Array.isArray(c.turns)?c.turns:[]).filter(t=>t&&typeof t.message_id==='string'&&typeof t.text==='string').map(t=>({...t,key:normal(t.text),kinds:Array.isArray(t.kinds)?t.kinds:[]}));
+     if(turns.some(t=>t.kinds.length))indexHasKinds=true;
+     byChat.set(c.id,turns);
+    }
+    index=byChat;indexState='ready'}
    catch{indexState='failed';indexPromise=null}
    if(!dialog.hidden)render();
   })();
  }
- function mark(el,text,query,cls){
-  const pos=query?text.toLocaleLowerCase().indexOf(query):-1;el.replaceChildren();
-  if(pos<0||text.slice(pos,pos+query.length).toLocaleLowerCase()!==query){el.textContent=text;return}
-  const hit=document.createElement('span');hit.className=cls;hit.textContent=text.slice(pos,pos+query.length);el.append(text.slice(0,pos),hit,text.slice(pos+query.length));
+ // 命中片段按原文切片渲染：普通文字直接当文本节点，命中段用官方高亮类包一层（不解析 HTML）。
+ function fillParts(el,parts,cls){
+  el.replaceChildren();
+  for(const part of parts){
+   if(!part.hit){el.append(document.createTextNode(part.text));continue}
+   const hit=document.createElement('span');hit.className=cls;hit.textContent=part.text;el.append(hit);
+  }
  }
- function snippet(turn,query){
-  // Prefer the original casing; fall back to the folded text when the match only exists after NFKC folding (full-width letters, ligatures).
-  let source=turn.text,pos=source.toLocaleLowerCase().indexOf(query);
-  if(pos<0||source.slice(pos,pos+query.length).toLocaleLowerCase()!==query){source=turn.key;pos=source.indexOf(query)}
-  const start=Math.max(0,pos-24),end=Math.min(source.length,pos+query.length+160);
-  return {before:(start>0?'…':'')+source.slice(start,pos),match:source.slice(pos,pos+query.length),after:source.slice(pos+query.length,end)+(end<source.length?'…':'')};
- }
- function occurrences(key,query){let n=0,i=key.indexOf(query);while(i>=0){n++;i=key.indexOf(query,i+query.length)}return n}
  function render(){
   // A background catalog/index refresh must not steal keyboard focus from a result the user has already arrowed to.
   const active=document.activeElement,focused=active&&dialog.contains(active)&&active.matches('ol a')?{chat:active.dataset.searchChatId,message:active.dataset.searchMessageId||''}:null;
-  const query=normal(input.value),seen=new Set(),chats=catalog.filter(c=>c&&typeof c.id==='string'&&typeof c.title==='string'&&!seen.has(c.id)&&seen.add(c.id)),matches=chats.filter(c=>!query||normal(c.title).includes(query));
+  // 查询是语法，不是子串：解析一次，标题、正文、时间/轮数各自判断；signature 决定“内容变了没有”。
+  const parsed=parseQuery(input.value),signature=parsed.signature,hasQuery=Boolean(input.value.trim());
   // The effective query is the whole result set, so it also decides when to return to the top.
-  let restore=focused;const queryChanged=query!==lastQuery||forceTop;forceTop=false;
+  let restore=focused;const queryChanged=signature!==lastQuery||forceTop;forceTop=false;
   const keepTops=queryChanged?null:resultScrollers().map(s=>s.scrollTop);
-  list.replaceChildren();bodyList.replaceChildren();dialog.querySelector('[data-ceobe-search-empty]')?.remove();heading.textContent=(query?'搜索结果':'最近聊天')+(offline?'（离线索引）':'');clear.hidden=divider.hidden=!input.value;
-  for(const c of matches){const row=document.getElementById('ceobe-search-row').content.firstElementChild.cloneNode(true),a=row.querySelector('a');a.href=new URL('conversations/'+encodeURIComponent(c.id)+'.html',root).href;a.dataset.searchChatId=c.id;mark(row.querySelector('.F_cuGW_resultTitleText'),c.title,query,'F_cuGW_titleHighlight');list.append(row)}
+  const seen=new Set(),chats=catalog.filter(c=>c&&typeof c.id==='string'&&typeof c.title==='string'&&!seen.has(c.id)&&seen.add(c.id)).filter(c=>chatMatches(parsed,c)),matches=chats.filter(c=>titleHit(parsed,c));
+  const titleNeedles=titleHighlights(parsed),needles=bodyHighlights(parsed);
+  list.replaceChildren();bodyList.replaceChildren();dialog.querySelector('[data-ceobe-search-empty]')?.remove();heading.textContent=(hasQuery?'搜索结果':'最近聊天')+(offline?'（离线索引）':'');clear.hidden=divider.hidden=!input.value;
+  for(const c of matches){const row=document.getElementById('ceobe-search-row').content.firstElementChild.cloneNode(true),a=row.querySelector('a');a.href=new URL('conversations/'+encodeURIComponent(c.id)+'.html',root).href;a.dataset.searchChatId=c.id;fillParts(row.querySelector('.F_cuGW_resultTitleText'),titleParts(c.title,titleNeedles),'F_cuGW_titleHighlight');list.append(row)}
   // Body hits follow the catalog order, so deleted chats or a stale index never produce dead links.
   const hits=[];let total=0;
-  if(query&&index)for(const c of chats)for(const turn of index.get(c.id)||[]){if(!turn.key.includes(query))continue;total++;if(hits.length<BODY_LIMIT)hits.push({c,turn})}
+  if(hasQuery&&index&&bodyScoped(parsed))for(const c of chats)for(const turn of index.get(c.id)||[]){if(!turnMatches(parsed,turn))continue;total++;if(hits.length<BODY_LIMIT)hits.push({c,turn})}
   for(const {c,turn} of hits){
-   const row=document.getElementById('ceobe-search-body-row').content.firstElementChild.cloneNode(true),a=row.querySelector('a'),s=snippet(turn,query),sub=row.querySelector('.F_cuGW_resultSubtitle'),hit=document.createElement('span'),n=occurrences(turn.key,query);
+   const row=document.getElementById('ceobe-search-body-row').content.firstElementChild.cloneNode(true),a=row.querySelector('a'),s=bodyParts(turn.text,needles),sub=row.querySelector('.F_cuGW_resultSubtitle'),n=s.count;
    a.href=new URL('conversations/'+encodeURIComponent(c.id)+'.html#bookmark='+encodeURIComponent(turn.message_id),root).href;a.dataset.searchChatId=c.id;a.dataset.searchMessageId=turn.message_id;
-   row.querySelector('.F_cuGW_resultTitleText').textContent=c.title;hit.className='F_cuGW_subtitleHighlight';hit.textContent=s.match;sub.replaceChildren(s.before,hit,s.after);
+   row.querySelector('.F_cuGW_resultTitleText').textContent=c.title;fillParts(sub,s.parts,'F_cuGW_subtitleHighlight');
    row.querySelector('.F_cuGW_resultDate').textContent=(turn.role==='user'?'用户':'GPT')+' · 第 '+(Number(turn.order)+1||'?')+' 轮'+(n>1?' · '+n+' 处':'');bodyList.append(row);
   }
   bodySection.hidden=!hits.length;bodyHeading.textContent='正文命中'+(total>hits.length?'（显示前 '+hits.length+' 条，共 '+total+' 条）':'（'+total+' 条）');
-  if(!matches.length&&!hits.length){const empty=document.getElementById('ceobe-search-empty').content.firstElementChild.cloneNode(true);empty.dataset.ceobeSearchEmpty='';list.after(empty)}
-  status.textContent=(offline?'无法刷新索引，使用本页离线索引。':'')+'找到 '+matches.length+' 个聊天'+(!query?'。':index?'，正文命中 '+total+' 条。':indexState==='loading'?'，正在加载正文索引。':'，正文索引不可用，仅按标题搜索。');
+  if(!matches.length&&!hits.length){const empty=document.getElementById('ceobe-search-empty').content.firstElementChild.cloneNode(true);empty.dataset.ceobeSearchEmpty='';const copy=empty.querySelector('[data-ceobe-search-empty-text]');if(copy)copy.textContent=emptyCopy(parsed);list.after(empty)}
+  const kindsNote=parsed.has.length&&index&&!indexHasKinds?'（索引缺少 has: 标签，请重建阅读页）':'';
+  status.textContent=(offline?'无法刷新索引，使用本页离线索引。':'')+'找到 '+matches.length+' 个聊天'+(hasQuery?(index?'，正文命中 '+total+' 条。':indexState==='loading'?'，正在加载正文索引。':'，正文索引不可用，仅按标题搜索。'):'。')+kindsNote;
 
   // A new result set starts at its first row and keeps the caret in the input: restoring the old
   // arrow-key row would drop focus onto a row that is no longer the one the user was reading.
@@ -79,7 +87,7 @@
   // that did not change must not move the reader. This runs before the focus is handed back, so keyboard
   // navigation keeps the last word about where the list is scrolled.
   if(keepTops)for(const [i,e] of resultScrollers().entries()){const want=keepTops[i];if(want&&e.scrollTop!==want)e.scrollTop=want}
-  lastQuery=query;
+  lastQuery=signature;
   if(restore){const again=[...dialog.querySelectorAll('ol a')].find(a=>a.dataset.searchChatId===restore.chat&&(a.dataset.searchMessageId||'')===restore.message);if(again)again.focus();else input.focus({preventScroll:true})}
  }
  async function refresh(){const token=++generation;try{const r=await fetch(new URL('api/chats',root),{cache:'no-store'}),data=await r.json();if(!r.ok||!Array.isArray(data.conversations))throw Error();if(token!==generation||dialog.hidden)return;catalog=data.conversations;offline=false}catch{if(token!==generation||dialog.hidden)return;offline=true}render()}

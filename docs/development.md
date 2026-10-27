@@ -97,6 +97,19 @@ npm run dev -- --host 127.0.0.1 --port 5173
   否则改它之后页面不会刷新；改装饰口径（不是脚本内容）时把 `DECORATION_VERSION` 加一；
 - `npm run library -- --only <id>` 会渲染并装饰指定的页面，其余页面不动。
 
+### 搜索语法与正文索引标签
+
+- `scripts/search-query.mjs` 是纯函数（解析／匹配／高亮切片），浏览器弹窗与 Node 测试共用；
+  先改 `scripts/test-search-query.mjs`，再改弹窗，避免两边口径漂移；
+- 构建时 `build-sidebar-controls.mjs` 把它按内容哈希复制成 `replay/search-query.<hash>.mjs`，
+  并改写 `sidebar-controls.js` 的 import；不要在主脚本里直接 import 未哈希的 `./search-query.mjs`
+  （构建产物里不存在这个文件）；
+- `search-index.mjs` 的 `kinds` 是加法字段，只由阅读页可见内容决定、顺序固定；
+  改判定规则会改变 `has:` 的结果，属于索引口径变化；
+- 浏览器断言在 `test-sidebar-controls.mjs`（引号短语、A/B、排除、title/from/has/messages、空态与高亮），
+  需要本地服务或 `CEOBE_TEST_DIST=1`；
+- 新语法必须保持“旧查询不变”：无法识别的 `字段:值`、裸负数、URL 都按普通文本处理。
+
 ### 资源库按页缓存
 
 `build-asset-library` 原来每次都会读 34 个会话 JSON、解析 34 个页面、把 321 个附件（249 MB）重新复制进
@@ -310,7 +323,7 @@ node scripts/test-copy-content.mjs
 | 响应式书签、最近聊天键盘及项目提示 | `test-ui-followups-browser.mjs`；支持 `CEOBE_TEST_DIST=1` 和 `CEOBE_TEST_HEADED=1`，书签为内存夹具、API 只读 |
 | 连续调整宽度、离屏旁注与精确跳转 | `test-bookmark-resize-browser.mjs`（`npm run test:bookmarks:browser`）；在临时目录构建隔离副本（`bookmark-browser-fixture.mjs` + `fixtures/browser/bookmark-conversations.mjs`，100／500 条消息、20／100 条书签），不依赖本地 5173，不读写使用者归档；支持 `CEOBE_TEST_DIST=1` 与 `CEOBE_TEST_HEADED=1`，检查布局／样式重算次数、懒滚动、精确跳转与面板开关 |
 | 阅读边缘：书签面板停靠与上次阅读位置 | `test-reader-margin-browser.mjs`（`npm run test:reader-margins`）；在临时目录构建隔离副本（同一夹具，120／60 条消息、24／12 条书签），检查 1440→420 各宽度下展开或收起面板都不移动、不压缩正文，留白足够时停靠在正文左侧、不足时改为短浮层且点击别处即收起，空列表收缩为一行提示，以及按聊天恢复阅读位置的精确跳转、从头阅读、清除与只保存 ID＋偏移；全程只读 GET，不依赖本地 5173，不读写使用者归档；支持 `CEOBE_TEST_DIST=1` 与 `CEOBE_TEST_HEADED=1` |
-| 侧栏、搜索与整理 | `test-sidebar-controls.mjs`（标题与正文搜索、片段高亮、页内精确跳转与跨页哈希跳转，新查询把结果列表送回顶部、后台刷新保留焦点与位置；正文索引和 `/api/chats` 均为只读夹具）、`test-search-index.mjs`（索引只含可见提问／回复／代码，排除推理、隐藏上下文、引用与附件名）、`test-sidebar-polish.mjs`、`test-chat-organizer.mjs` |
+| 侧栏、搜索与整理 | `test-sidebar-controls.mjs`（标题与正文搜索、语法查询、片段高亮、页内精确跳转与跨页哈希跳转，新查询把结果列表送回顶部、后台刷新保留焦点与位置；正文索引和 `/api/chats` 均为只读夹具）、`test-search-query.mjs`（搜索语法：引号短语、排除、`A/B`、`title:`／`from:`／`has:`／`created:`／`messages:`、折叠与高亮切片）、`test-search-index.mjs`（索引只含可见提问／回复／代码，排除推理、隐藏上下文、引用与附件名；`kinds` 标签覆盖代码、表格、图片与附件）、`test-sidebar-polish.mjs`、`test-chat-organizer.mjs` |
 | 侧栏客户端渲染（删除不改页面） | `test-sidebar-client-render.mjs`：在临时目录真实复制运行时 + 三份夹具会话，跑真实构建与真实删除流程；断言“数据不变时重建逐字节一致”“删除一个会话后其余页面哈希不变、只有被删页面消失”“页面里没有 `#ceobe-chat-catalog`、保留一行静态回退与行模板”。不读写使用者归档 |
 | 导入与发布 | `test-local-import-api.mjs`、`test-production-import.mjs`、`test-link-import-browser.mjs` |
 | 离线资源 | `test-offline-resources.mjs` |

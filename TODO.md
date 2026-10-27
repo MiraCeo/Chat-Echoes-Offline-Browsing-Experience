@@ -14,16 +14,12 @@
 
 按建议顺序排列，逐项的范围、参考项目与验收方式都在 [docs/ecosystem.md](docs/ecosystem.md)：
 
-1. **阅读器搜索语法**（约 1 天）：`"精确短语"`、`-排除`、`A/B`（任一）、`title:`、`from:`、`created:`、
-   `messages:`；再给 `search-index.json` 的每条 turn 加 `kinds`（code/table/image/attachment）以支持 `has:`。
-   验收：解析器单测 + 浏览器测试（命中数与高亮）。
-2. **官方格式 JSON 导出**（约 0.5–1 天）：新增 `npm run export:json`，输出
+1. **官方格式 JSON 导出**（约 0.5–1 天）：新增 `npm run export:json`，输出
    `conversations.json`（`mapping` 由 `nodes` 生成、`message.content` 用 `content.raw` 原样透传）+
-   `attachments/` + `manifest.json`。两个小决定待定：独立命令（建议）还是并入 `export:md --format json`；
-   附件默认是否复制（建议默认复制、`--no-assets` 关闭）。
-3. **档案 MCP server**（约 1–2 天）：只读 stdio，工具 `search_conversations` / `list_conversations` /
+   `attachments/` + `manifest.json`。两个小决定已定：独立命令、附件默认复制（`--no-assets` 关闭）。
+2. **档案 MCP server**（约 1–2 天）：只读 stdio，工具 `search_conversations` / `list_conversations` /
    `read_conversation` / `archive_stats`，数据源直接读 `archive/`。
-4. **采集扩展补齐**（约 1–2 天）：扩展直接 `POST /api/archive-package`、`chatgpt.com/share/*` 页面内
+3. **采集扩展补齐**（约 1–2 天）：扩展直接 `POST /api/archive-package`、`chatgpt.com/share/*` 页面内
    “发送到 CEOBE”按钮、采集包加 `format`/`version` 握手、书签小工具兜底。现状见 `extension/README.md`。
 
 ## 三、已评估、暂不做

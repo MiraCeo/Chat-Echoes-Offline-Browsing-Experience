@@ -16,7 +16,7 @@ CEOBE（Chat Echoes Offline Browsing Experience）：把 ChatGPT 的公开分享
 
 ```
 HEAD        （见 git log -1；包含“侧栏客户端渲染”“后处理幂等”“页面装饰指纹”“资源库按页缓存”
-             “项目页瘦身”“消息操作裁剪”“附件随页拷贝”）
+             “项目页瘦身”“消息操作裁剪”“附件随页拷贝”“搜索语法与索引标签”）
 标签        v1.0.0 / v1.0.1 / v1.0.2（本地）
 归档        34 个分享会话 / 42 个快照，约 920 MB；chatgpt-web 采集为 0
 磁盘        replay/ 约 1.1 GB（页面 + 附件 + 资源库副本）、dist/ 约 730 MB
@@ -61,12 +61,15 @@ npm run verify:archive      # 只读检查档案结构
 - 侧栏由浏览器渲染：页面里没有全部会话的 `<li>`，也没有 `#ceobe-chat-catalog`；删改一个会话不再改写其他页面；
 - 只读回放的界面只保留能用的操作：消息工具条只有「复制（有正文时）+ 更多操作 + 编辑书签」，
   编辑消息／评价回复／分享／切换模型／图片悬浮层都不再渲染（渲染时裁剪，见第 4 节「只读回放的操作裁剪」）；
+- 搜索支持语法：`"精确短语"`、`-排除`、`A/B`、`title:`、`from:user|gpt`、`has:code|table|image|attachment`、
+  `created:2025-06`（可比较）、`messages:>20`；索引带 `kinds`，高亮按原文切片；旧查询（未知 `字段:值`、
+  负数、URL）行为不变。规则在 `scripts/search-query.mjs`，浏览器与 Node 共用；
 - 资料库可以自建文件夹（当标签用，一条资源可属多个）并上传自己的文件；
   上传字节在 `data/private/library-files/`，不进 `archive/`，任何路径都不删原文件；
 - 附件随页拷贝：并行渲染的每一页都写自己会话的附件字节，`replay/archive-resources` 与 `dist` 都是 321 个文件，
   附件链接 0 失效（此前并行渲染只拷第一页，295 条链接里 280 条失效）。
 
-## 4. 侧栏客户端渲染（已完成）
+## 4. 侧栏客户端渲染与阅读器搜索（已完成）
 
 **目标**：新会话的增删不再重写每一页。
 
@@ -202,6 +205,26 @@ npm run verify:archive      # 只读检查档案结构
   资源引用用 `placeStylesheet`/`placeScript` 就地更新版本，头部顺序不再漂移；
 - 页面内容没变就不写盘（`writeIfChanged`），删除时不再重写全部页面（现在单页约 1.7 MB）。
 
+**阅读器搜索语法（本轮完成）**
+
+`scripts/search-query.mjs` 把查询解析成标题词、正文词、排除词与 `title:`／`from:`／`has:`／`created:`／
+`messages:` 条件（纯函数、无 DOM，浏览器与 Node 共用，后面做 MCP server 时直接复用）。
+`sidebar-controls.js` 只负责取数、渲染与键盘行为；`search-index.mjs` 给每条 turn 附加 `kinds`
+（code/table/image/attachment/audio），`has:` 只看这个标签。构建时模块按内容哈希复制成
+`replay/search-query.<hash>.mjs`，并改写主脚本里的 import（页面无 CSP，按模块加载）。
+
+实测与验收：
+
+| 项目 | 结果 |
+|---|---|
+| 索引规模 | 3028 条 turn、705 条带 kinds；6.96 MB → 7.01 MB（+41 KB） |
+| 同数据两次重建 | 39 页与 `search-index.json` 逐字节一致；第二次 `Decorations: 5 of 39`；只有 `chats.json` 的 `generated_at` 不同 |
+| 解析器单测 | `scripts/test-search-query.mjs`：引号短语、排除、A/B、字段与比较符、折叠/高亮切片、旧查询兼容 |
+| 浏览器测试 | `scripts/test-sidebar-controls.mjs` 追加语法断言并通过：命中数、原文大小写高亮、空态文案 |
+
+语义要点（改之前先看 `docs/development.md` 的「搜索语法与正文索引标签」）：正项是“且”；`title:` 只筛标题、
+`from:`／`has:` 只筛正文；只有排除词时只筛标题；无法识别的 `字段:值`、裸负数、URL 都按普通文本。
+
 ## 5. 已知问题
 
 - 删除会话仍不是“秒级”：重建约 15s，另有档案复制与安装回写；页面本身已经不再重写（见第 4 节）；
@@ -209,7 +232,10 @@ npm run verify:archive      # 只读检查档案结构
 - 指向作者本机的图片永远没有字节，显示「图片未归档」占位；
 - 单文件 HTML 导出仍是实验性（助手侧图片未内嵌）；
 - 正文里的内联附件引用胶囊（554 个，其中 211 个因为附件未归档只显示「附件」）保留为引用标记，
-  它们内部是 `tabindex="-1"` 的按钮（不进 Tab 序、点了没行为）；按用户决定暂不改（方案 A）。
+  它们内部是 `tabindex="-1"` 的按钮（不进 Tab 序、点了没行为）；按用户决定暂不改（方案 A）；
+- `has:` 依赖正文索引里的 `kinds`：升级后要重建一次阅读页（`npm run library`）才会命中；
+  旧索引缺标签时状态文字会提示，其余语法不受影响；
+- 搜索的 `created:` 按阅读器所在时区的日历年/月/日比较；同一份档案在不同时区的机器上可能相差一天。
 
 **已解决（保留记录）**
 

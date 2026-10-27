@@ -4,6 +4,26 @@
 
 ## 未发布（本轮）
 
+### 阅读器搜索语法
+
+- 搜索框支持查询语法（`scripts/search-query.mjs`，纯函数，浏览器与 Node 共用）：`"精确短语"`、`-排除`、
+  `A/B`（任一）、`title:`、`from:user|gpt`、`has:code|table|image|attachment`、`created:2025-06`
+  （支持 `>`／`>=`／`<`／`<=`）与 `messages:>20`（阅读轮数）。同一词内的 `/` 表示任一（含
+  `from:`／`has:`／`created:`／`messages:`），词与词之间是“且”；
+  `title:` 只筛标题、`from:`／`has:` 只筛正文、只有排除词时不列正文。
+- 兼容旧查询：无法识别的 `字段:值`、裸负数（`-1`）、URL 都按普通文本；`\/` 表示字面斜杠。
+- `replay/public/search-index.json` 每条 turn 新增 `kinds`（`code`／`table`／`image`／`attachment`／`audio`，
+  固定顺序、无标签时为空数组），由阅读页可见内容决定；34 个会话 3028 条 turn 里 705 条带标签
+  （表格 313、附件 343、图片 222、代码 106），索引只增约 41 KB（6.96 → 7.01 MB），不是调研时估的 1–2 MB。
+- 高亮改为按原文切片：折叠（NFKC + 小写）用逐码点位置映射，全角字母／连字命中时标在原文对应的字上，
+  且一条命中里所有出现位置都会高亮；标题与正文都走同一套切片，不解析 HTML。
+- 弹窗新增一行语法提示；空结果文案在语法查询时给出可执行建议（去掉 `-排除`、减少 `from:`／`has:` 条件）。
+- 测试：新增 `scripts/test-search-query.mjs`（解析／匹配／高亮／兼容性，已进 `npm test`）；
+  `test-search-index.mjs` 覆盖 `kinds`；`test-sidebar-controls.mjs` 增加浏览器断言
+  （引号短语、`A/B`、排除、`title:`／`from:`／`has:`／`messages:`、空态、原文大小写高亮）。
+- 构建：搜索模块按内容哈希复制为 `replay/search-query.<hash>.mjs`，由 `build-sidebar-controls.mjs`
+  改写主脚本的 import；同一份数据两次重建，39 页与索引逐字节一致（`chats.json` 的 `generated_at` 除外）。
+
 ### 侧栏改为浏览器渲染
 
 - 每个页面只保留“当前会话一行 + `<template id="ceobe-sidebar-chat-row">`”，浏览器按 `replay/chats.json`

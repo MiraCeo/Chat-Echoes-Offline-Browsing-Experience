@@ -44,14 +44,13 @@ README）。这里记录**调研结论、可以借的设计、以及已经定下
 
 ## 四、已定的四个后续方向
 
-### 方向 1：阅读器搜索语法（已批准，待开工）
+### 方向 1：阅读器搜索语法（已完成）
 
-- 现状：`replay/public/search-index.json`（6.8 MB / 34 会话），每条 turn 只有
-  `message_id, role, order, text`；标题来自 catalog；搜索是纯子串匹配；
-- 要做：查询解析（引号短语、`-` 排除、`/` 任一、`title:`、`from:`、`created:`、`messages:`），
-  以及给索引加 `kinds`（code/table/image/attachment）以支持 `has:`（一次性重建，体积 +1–2 MB）；
-- 验收：解析器单测（`test-search-query.mjs`）+ 浏览器测试（输入语法 → 命中数、命中高亮、空结果文案）；
-- 成本：约 1 天。
+- 已落地：查询解析（引号短语、`-` 排除、`/` 任一、`title:`、`from:`、`created:`、`messages:`）与 `has:`；
+  实现为 `scripts/search-query.mjs`（纯函数，浏览器与 Node 共用），索引每条 turn 增加 `kinds`；
+- 实测：34 会话 / 3028 条 turn 中 705 条带 `kinds`，索引 6.96 MB → 7.01 MB（+41 KB，远低于本节原先 1–2 MB 的估算）；
+- 验收：`scripts/test-search-query.mjs` 解析器单测 + `scripts/test-sidebar-controls.mjs` 浏览器断言
+  （命中数、命中高亮、空结果文案），均已通过。
 
 ### 方向 2：档案 MCP server（已批准，待开工）
 

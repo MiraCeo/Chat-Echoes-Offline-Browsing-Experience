@@ -140,6 +140,14 @@ ChatGPT 分享页面及公开资源
 
 `search-index.mjs` 在 `npm run library` 时为每个可见回复块生成一条记录（`replay/public/search-index.json`），键为与书签相同的规范化消息 ID，文本来自 `bookmark-targets.mjs` 的同一投影（提问与最终回复的 `text`／`code` 块），不含推理、隐藏上下文、引用、工具往来和附件名；索引不保存标题，标题始终取自当前目录（`/api/chats` 或页面快照），重命名无需重建。搜索弹窗（`sidebar-controls.js`）首次打开时按需加载索引并在浏览器内匹配（与标题相同的 NFKC 折叠），正文命中只对目录中存在的聊天生成，链接为 `conversations/<id>.html#bookmark=<message_id>`；当前页命中改为触发 `ceobe:jump-message`，由 `bookmarks.js` 复用精确定位，不重新加载页面。索引缺失或损坏时退回仅按标题搜索。
 
+### 搜索语法与类型标签
+
+`scripts/search-query.mjs` 是纯函数层（无 DOM）：把查询解析成标题词、正文词、排除词与 `title:`／`from:`／`has:`／`created:`／`messages:` 条件，并给出聊天级过滤、正文级过滤与高亮切片。阅读器弹窗与将来的档案 MCP server 共用同一份规则，避免两处口径漂移。构建时该模块按内容哈希落盘（`replay/search-query.<hash>.mjs`），由 `build-sidebar-controls.mjs` 改写主脚本里的 import 说明符；页面没有 CSP，`.mjs` 按模块加载。
+
+索引的每条 turn 另带 `kinds`（`code`／`table`／`image`／`attachment`／`audio`，固定顺序，无标签时是空数组），只描述阅读页真的显示出来的内容：代码块、Markdown 表格（索引文本已折叠换行，表格按分隔行形态识别）、图片附件与正文 `![]()`、任何附件。`has:` 只依赖这个标签；旧索引没有 `kinds` 时 `has:` 不命中，状态文字会提示重建。
+
+高亮按原文切片：折叠（NFKC + 小写）用逐码点映射，命中位置能映回原文偏移，因此全角字母、连字与大小写混用也能标在正确的字上；标题与正文片段都按此切片渲染，不解析 HTML。只有负向词时只筛标题列表，不会把整库正文都列成命中。
+
 ## 导出与备份的区别
 
 文本导出复用 JSON → Markdown 转换器。图片、附件与普通资源链接降为可读文字，代码示例中的链接语法不改写。

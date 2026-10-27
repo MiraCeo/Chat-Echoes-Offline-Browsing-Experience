@@ -24,6 +24,8 @@
 Markdown 导出升级为 Obsidian-ready（frontmatter/`$` 数学/`## Sources`）+ `npm run export:md` 连附件、
 XLSX 只读预览（大表截断 500×60、点选高亮行列、缩放、隐藏行列标灰）、批量抓取限流熔断、
 来源适配层 `scripts/sources/registry.mjs`、书签 overlay 面板“取消回到列表”修复（浏览器测试已进 `npm test`）、
+**阅读器搜索语法**（`scripts/search-query.mjs`：引号短语、`-排除`、`A/B`、`title:`、`from:`、`has:`、
+`created:`、`messages:`；索引带 `kinds`；解析器单测 `test-search-query.mjs` 已进 `npm test`）、
 README 四张脱敏截图（`scripts/make-readme-fixture.mjs` + `scripts/shoot-readme.mjs`）、
 远端仓库删库重建 + 本地旧对象清理（`pre-rewrite.bundle` 与 `refs/codex/*` 已删，`.git` 3.77 MiB）。
 
@@ -33,12 +35,10 @@ README 四张脱敏截图（`scripts/make-readme-fixture.mjs` + `scripts/shoot-r
 
 ## 当前任务（按优先级，口径见 `TODO.md` 第二节与 `docs/ecosystem.md`）
 
-1. **阅读器搜索语法**（约 1 天）：引号短语 / `-` 排除 / `A/B` 任一 + `title:` `from:` `created:` `messages:`，
-   并给 `replay/public/search-index.json` 的每条 turn 加 `kinds` 以支持 `has:`；
-2. **官方格式 JSON 导出**（约 0.5–1 天）：`npm run export:json`，`mapping` 由 `nodes` 生成、
-   `message.content` 用 `content.raw` 原样透传；确认“独立命令 vs 并入 `export:md`”与“附件默认复制”两个小决定；
-3. **档案 MCP server**（约 1–2 天）：只读 stdio，工具 search/list/read/stats；
-4. **采集扩展补齐**（约 1–2 天）：扩展直连 `/api/archive-package`、分享页内按钮、采集包版本握手、书签小工具。
+1. **官方格式 JSON 导出**（约 0.5–1 天）：`npm run export:json`，`mapping` 由 `nodes` 生成、
+   `message.content` 用 `content.raw` 原样透传；两个小决定已定：独立命令、附件默认复制（`--no-assets` 关闭）；
+2. **档案 MCP server**（约 1–2 天）：只读 stdio，工具 search/list/read/stats，复用 `scripts/search-query.mjs`；
+3. **采集扩展补齐**（约 1–2 天）：扩展直连 `/api/archive-package`、分享页内按钮、采集包版本握手、书签小工具。
 
 其余条目（已定案、已知限制）不要自行开工。
 
