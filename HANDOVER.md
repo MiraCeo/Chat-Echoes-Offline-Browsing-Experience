@@ -16,7 +16,7 @@ CEOBE（Chat Echoes Offline Browsing Experience）：把 ChatGPT 的公开分享
 
 ```
 HEAD        （见 git log -1；包含“侧栏客户端渲染”“后处理幂等”“页面装饰指纹”“资源库按页缓存”
-             “项目页瘦身”“消息操作裁剪”“附件随页拷贝”“搜索语法与索引标签”）
+             “项目页瘦身”“消息操作裁剪”“附件随页拷贝”“搜索语法与索引标签”“官方格式 JSON 导出”）
 标签        v1.0.0 / v1.0.1 / v1.0.2（本地）
 归档        34 个分享会话 / 42 个快照，约 920 MB；chatgpt-web 采集为 0
 磁盘        replay/ 约 1.1 GB（页面 + 附件 + 资源库副本）、dist/ 约 730 MB
@@ -64,12 +64,15 @@ npm run verify:archive      # 只读检查档案结构
 - 搜索支持语法：`"精确短语"`、`-排除`、`A/B`、`title:`、`from:user|gpt`、`has:code|table|image|attachment`、
   `created:2025-06`（可比较）、`messages:>20`；索引带 `kinds`，高亮按原文切片；旧查询（未知 `字段:值`、
   负数、URL）行为不变。规则在 `scripts/search-query.mjs`，浏览器与 Node 共用；
+- 官方格式 JSON 导出：`npm run export:json -- --all --out <目录>`（或 `--id`），产物为
+  `conversations.json` + `attachments/<sha256>.<ext>` + `manifest.json`；`mapping` 由 `nodes` 生成、
+  `content.raw` 原样透传、缺 `nodes` 时降级为线性 mapping；附件默认复制（`--no-assets` 关闭）；
 - 资料库可以自建文件夹（当标签用，一条资源可属多个）并上传自己的文件；
   上传字节在 `data/private/library-files/`，不进 `archive/`，任何路径都不删原文件；
 - 附件随页拷贝：并行渲染的每一页都写自己会话的附件字节，`replay/archive-resources` 与 `dist` 都是 321 个文件，
   附件链接 0 失效（此前并行渲染只拷第一页，295 条链接里 280 条失效）。
 
-## 4. 侧栏客户端渲染与阅读器搜索（已完成）
+## 4. 侧栏、搜索与 JSON 导出（已完成）
 
 **目标**：新会话的增删不再重写每一页。
 
@@ -225,6 +228,28 @@ npm run verify:archive      # 只读检查档案结构
 语义要点（改之前先看 `docs/development.md` 的「搜索语法与正文索引标签」）：正项是“且”；`title:` 只筛标题、
 `from:`／`has:` 只筛正文；只有排除词时只筛标题；无法识别的 `字段:值`、裸负数、URL 都按普通文本。
 
+**官方格式 JSON 导出（本轮完成）**
+
+`scripts/export-conversation-json.mjs` 是纯映射：`mapping` 由归档 `nodes` 生成（`{id,parent,children,message}`），
+消息字段取规范化记录、`content` 直接引用 `content.raw`；`current_node` 优先 `current_node_id`，不可达时退回线性
+路径末节点并标 `ceobe.current_node_repaired`；缺 `nodes` 的旧快照按 `linear_message_ids` 生成线性 mapping 并标
+`ceobe.degraded`。`scripts/export-json-cli.mjs` 负责选会话、复制附件（内容 SHA-256 命名、同内容去重）、
+写 `conversations.json` 与 `manifest.json`；不写墙钟时间，同一输入两次导出逐字节一致。
+单个 `--id` 写对象，`--all`／多个 `--id` 写数组。
+
+实测与验收：
+
+| 项目 | 结果 |
+|---|---|
+| 真实档案 34 会话 | `conversations.json` 64.6 MB、消息 11137、节点 11171、隐藏 2689；约 6 秒（`--no-assets`） |
+| 附件 | 332 条资源 → 321 个文件／249.3 MB，约 7 秒；153 个缺失（146 unresolved、7 failed） |
+| 逐条校验 | 11171 个节点、11137 条消息的 `content.raw`／`author`／`metadata` 与归档逐字段一致；`current_node` 回溯顺序 34/34 等于 `linear_message_ids` |
+| 确定性 | 真实档案导出两次，`conversations.json` 与 `manifest.json` 均逐字节一致；清单 sha256 与 payload 相符 |
+| 单测 | `scripts/test-export-json.mjs`（顺序/分支、降级、附件、清单、`--no-assets`/`--compact`/`--id`、CLI 全流程），已进 `npm test` |
+
+口径要点：`raw_payload` 与原始 HTML 不导出，因此 JSON 导出**不能替代归档备份**；缺失附件只计数、不伪造
+`file-service://` 链接；重命名过的聊天用当前显示标题，原标题写进 `ceobe.original_title`。
+
 ## 5. 已知问题
 
 - 删除会话仍不是“秒级”：重建约 15s，另有档案复制与安装回写；页面本身已经不再重写（见第 4 节）；
@@ -235,7 +260,9 @@ npm run verify:archive      # 只读检查档案结构
   它们内部是 `tabindex="-1"` 的按钮（不进 Tab 序、点了没行为）；按用户决定暂不改（方案 A）；
 - `has:` 依赖正文索引里的 `kinds`：升级后要重建一次阅读页（`npm run library`）才会命中；
   旧索引缺标签时状态文字会提示，其余语法不受影响；
-- 搜索的 `created:` 按阅读器所在时区的日历年/月/日比较；同一份档案在不同时区的机器上可能相差一天。
+- 搜索的 `created:` 按阅读器所在时区的日历年/月/日比较；同一份档案在不同时区的机器上可能相差一天；
+- `export:json` 不导出 `raw_payload` 与原始 HTML，缺失附件只计数、不补链接，因此它是“可移植的文本 + 已归档
+  附件”，不能替代 `archive/` 备份；单个 `--id` 写对象、`--all`／多个 `--id` 写数组，消费方需要判断。
 
 **已解决（保留记录）**
 

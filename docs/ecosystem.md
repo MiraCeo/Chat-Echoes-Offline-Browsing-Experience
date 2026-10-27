@@ -61,7 +61,14 @@ README）。这里记录**调研结论、可以借的设计、以及已经定下
 - 验收：单测直接调用工具函数 + 一个 stdio 冒烟测试（发 JSON-RPC 帧、断言返回）；
 - 成本：约 1–2 天。
 
-### 方向 3：官方格式 JSON 导出（方案已定，两个小决定待确认）
+### 方向 3：官方格式 JSON 导出（已完成）
+
+已落地：`scripts/export-conversation-json.mjs`（纯映射）+ `scripts/export-json-cli.mjs`（`npm run export:json`）。
+两个小决定按作者口径定为：**独立命令**、**附件默认复制**（`--no-assets` 关闭）；单个 `--id` 写对象，
+`--all`／多个 `--id` 写数组。验收（`test-export-json.mjs`）：mapping 顺序 == `linear_message_ids`、
+`content.raw` 逐字节一致、`current_node` 可达、缺 `nodes` 降级、两次导出逐字节一致；真实档案 34 会话、
+11171 节点、11137 消息逐条校验 0 差异。实测 `conversations.json` 64.6 MB，附件 321 个文件／249.3 MB
+（332 条资源去重，153 个缺失），整体约 7 秒。
 
 **为什么便宜**：档案里的 `nodes`（真实会话 727 个节点，`{id, parent_id, children, message_id, raw}`）与官方
 `mapping` 一一对应；`messages[*].content.raw` 就是 OpenAI 内容对象；`current_node_id` 对应 `current_node`。
@@ -80,7 +87,7 @@ README）。这里记录**调研结论、可以借的设计、以及已经定下
 保真原则：`content.raw` 原样透传（不做 LaTeX/Markdown 改写）；不伪造 `file-service://` id；
 隐藏消息保留并标记；不导出 `raw_payload`；`nodes` 缺失的旧快照回退成线性 mapping 并标注 `ceobe.degraded`。
 
-命令与产物（建议）：
+命令与产物（已实现）：
 
 ```powershell
 npm run export:json -- --all --out <目录> [--no-assets] [--compact]
@@ -89,12 +96,8 @@ npm run export:json -- --id <share-id> --out <目录>
 
 `conversations.json`（`--all` 为数组）+ `attachments/<sha>.<ext>` + `manifest.json`（格式版本、条数、缺附件数）。
 
-验收：`test-export-json.mjs` 断言 `mapping` 重建顺序 == `linear_message_ids`、`content.raw` 逐字节一致、
-`current_node` 可达；缺 `nodes` 的快照走降级分支；同一输入导出两次逐字节一致；
-可选交叉验证：把产物喂给 `convoviz` 或 `chatgpt-to-open-webui` 看能否解析。
-
-待确认的两个小决定：① 独立命令 `export:json`（建议）还是并入 `export:md --format json`；
-② 附件默认是否复制进 `attachments/`（建议默认复制，`--no-assets` 关闭）。成本约 0.5–1 天。
+验收口径（已通过）：`test-export-json.mjs` 断言 `mapping` 重建顺序 == `linear_message_ids`、`content.raw` 逐字节一致、
+`current_node` 可达；缺 `nodes` 的快照走降级分支；同一输入导出两次逐字节一致。
 
 ### 方向 4：采集扩展的生态补齐（已确认要做，优先级最低）
 

@@ -268,6 +268,17 @@ XLSX 走“构建期解析 + 静态片段”的只读路线，分三段：
   同名附件内容不同时自动加内容哈希后缀，`--no-assets` 等价纯文本；
 - 改这里的格式会让下载、批量导出与测试同时变化，先补 `test-markdown-vault.mjs` 的用例再动实现。
 
+## 官方格式 JSON 导出
+
+- 两个模块：`export-conversation-json.mjs` 是纯映射（测试直接调用），`export-json-cli.mjs` 负责选会话、
+  复制附件、写 `conversations.json` 与 `manifest.json`；
+- 映射口径见 `docs/architecture.md` 的「官方格式 JSON 导出」：`content.raw` 必须原样透传，不要“顺手”转成
+  Markdown／LaTeX，也不要补 `file-service://` 链接；隐藏消息保留，`raw_payload` 不导出；
+- 附件按内容 SHA-256 命名，只统计唯一文件；`manifest.json` 不能写墙钟时间，否则“两次导出逐字节一致”失效；
+- 新增字段先补 `scripts/test-export-json.mjs`（含缺 `nodes` 的降级样本与两次导出的哈希比较），再改实现；
+- 真实档案的粗验证：导出到临时目录后按 `linear_message_ids` 回溯 `current_node` 链、逐条比较 `content.raw`
+  （一次性脚本即可，不要把依赖真实档案的检查提交成测试）。
+
 ## 测试策略
 
 ### 基础回归
@@ -314,7 +325,7 @@ node scripts/test-copy-content.mjs
 | 项目简介 | `test-project-description.mjs`、`test-project-description-browser.mjs` |
 | 已有项目图标／颜色 | `test-project-appearance.mjs`、`test-project-appearance-browser.mjs` |
 | 项目文件（沿用原 sources 测试文件名） | `test-project-sources.mjs`、`test-project-sources-browser.mjs`、`test-project-sources-template.mjs` |
-| MD／ZIP 导出 | `test-markdown-export.mjs`（下载通道的 frontmatter/数学/来源）、`test-markdown-vault.mjs`（纯函数：frontmatter、代码感知的数学转换、引用去重）、`test-export-markdown-cli.mjs`（`npm run export:md` 的附件、同名冲突、wikilink、`--no-assets`）、`test-markdown-save-browser.mjs`、`test-project-export.mjs` |
+| MD／ZIP／JSON 导出 | `test-markdown-export.mjs`（下载通道的 frontmatter/数学/来源）、`test-markdown-vault.mjs`（纯函数：frontmatter、代码感知的数学转换、引用去重）、`test-export-markdown-cli.mjs`（`npm run export:md` 的附件、同名冲突、wikilink、`--no-assets`）、`test-export-json.mjs`（`npm run export:json`：mapping 顺序与分支、`content.raw` 透传、`current_node` 可达、降级分支、附件内容寻址、manifest 计数、两次导出逐字节一致）、`test-markdown-save-browser.mjs`、`test-project-export.mjs` |
 | 批量抓取的限流 | `test-import-throttle.mjs`（间隔/休息/次数上限/连续 429/失败率熔断）、`test-import-throttle-api.mjs`（429 + stop + Retry-After、熔断后不再抓取）、`test-link-import-browser.mjs`（前端暂停整批并保留链接） |
 | 站点适配层 | `test-sources-registry.mjs`：匹配/拒绝、严格 id、未知来源报错，以及两个调用方确实走注册表 |
 | XLSX 只读表格 | `test-sheet-table.mjs`、`test-sheet-truncation.mjs`、`test-sheet-grid-browser.mjs` |

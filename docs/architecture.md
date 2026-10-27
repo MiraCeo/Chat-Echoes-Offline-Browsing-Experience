@@ -154,6 +154,18 @@ ChatGPT 分享页面及公开资源
 
 项目 ZIP 收集项目关联的聊天，并按当前标题生成唯一文件名；不加入附件、项目简介或书签备注。完整消息关系、历史版本和资源仍以归档数据为准，因此 MD／ZIP 不能替代备份。
 
+### 官方格式 JSON 导出
+
+`export-conversation-json.mjs` 把 canonical JSON 映射回官方 `conversations.json` 形状：`mapping` 由 `nodes`
+生成（`{id, parent, children, message}`），消息字段取规范化记录，`content` 直接引用 `content.raw`（原样透传）；
+`current_node` 优先用 `current_node_id`，不可达时退回线性路径末节点并标 `ceobe.current_node_repaired`。
+缺 `nodes` 的旧快照按 `linear_message_ids` 生成线性 mapping 并标 `ceobe.degraded`。扩展字段 `ceobe` 保存来源、
+线性消息顺序、隐藏消息、资源本地相对路径与导入报告；`raw_payload` 不进入产物。
+
+`export-json-cli.mjs` 负责文件与确定性：附件按内容 SHA-256 命名（同内容去重），`manifest.json` 不含墙钟时间，
+同一输入两次导出逐字节一致；`--no-assets` 只关闭复制，`--compact` 输出单行。单个 `--id` 写对象，`--all`／多个
+`--id` 写数组。它只读 `archive/`，不修改档案；缺失附件只计数，不伪造链接。
+
 ## 组件样式与冻结包的边界
 
 冻结包（`official-templates/`）只保存**外壳 DOM 与类名**，不保存组件自己的样式表。页面能画出结构，但

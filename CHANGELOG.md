@@ -4,6 +4,22 @@
 
 ## 未发布（本轮）
 
+### 官方格式 JSON 导出
+
+- 新增 `npm run export:json`（`scripts/export-conversation-json.mjs` + `scripts/export-json-cli.mjs`）：
+  `--all` / `--id` / `--out` / `--no-assets` / `--compact`，产物为 `conversations.json` +
+  `attachments/<sha256>.<ext>` + `manifest.json`（独立命令、附件默认复制，按已定口径）。
+- 映射：`mapping` 由 `nodes` 生成、`message.content` 原样使用 `content.raw`、`current_node` 可达；
+  缺 `nodes` 的旧快照按 `linear_message_ids` 线性重建并标 `ceobe.degraded`；扩展字段 `ceobe` 保存来源、
+  线性顺序、隐藏消息、资源本地相对路径与导入报告；`raw_payload` 不导出。
+- 确定性：不写墙钟时间、附件内容寻址、同一输入两次导出逐字节一致；`manifest.json` 记录格式版本、
+  会话／消息／节点／隐藏消息数、附件复制／缺失／跳过数与 payload 的 sha256。
+- 实测（真实档案 34 会话）：`conversations.json` 64.6 MB、消息 11137、节点 11171、隐藏 2689；
+  带附件另 249.3 MB／321 个文件（332 条资源去重），整体约 7 秒；153 个资源缺失（146 unresolved、7 failed）。
+- 测试：新增 `scripts/test-export-json.mjs`（mapping 顺序与分支、`content.raw` 逐字节、`current_node` 可达、
+  降级分支、附件内容寻址、manifest 计数、`--no-assets`／`--compact`／`--id`、CLI 全流程、两次导出一致），
+  已加入 `npm test`。
+
 ### 阅读器搜索语法
 
 - 搜索框支持查询语法（`scripts/search-query.mjs`，纯函数，浏览器与 Node 共用）：`"精确短语"`、`-排除`、

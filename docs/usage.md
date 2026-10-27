@@ -217,6 +217,31 @@ npm run export:md -- --all --out D:\vault\ceobe --link-style wikilink
 - 只读 `archive/`，只往 `--out` 写；`--all` 会跳过不存在的会话并在结束时列出写出的文件。
 
 
+### 整个档案：官方格式 JSON
+
+把本地档案导出成 ChatGPT 官方 `conversations.json` 的字段形状，方便喂给其它工具（导入器、分析脚本、MCP 客户端）：
+
+```powershell
+npm run export:json -- --all --out D:\ceobe-export
+npm run export:json -- --id <会话 ID> --out D:\ceobe-export
+npm run export:json -- --all --out D:\ceobe-export --no-assets   # 只写 JSON
+npm run export:json -- --all --out D:\ceobe-export --compact      # 单行 JSON
+```
+
+- 产物：`conversations.json`（`--all` 与多个 `--id` 为数组；单个 `--id` 为对象）、`attachments/<sha256>.<ext>`、`manifest.json`；
+- 字段按官方格式：`title / create_time / update_time / conversation_id / current_node / mapping`，
+  `mapping[node]` 为 `{id, parent, children, message}`；消息的 `content` 直接使用归档里的原始内容对象，
+  不做 LaTeX／Markdown 改写，也不伪造 `file-service://` 链接；
+- 扩展字段 `ceobe`：来源（url／抓取时间）、`linear_message_ids`、隐藏消息清单、资源本地路径、`import_report`；
+  重命名过的聊天把原标题写进 `ceobe.original_title`；`raw_payload` 不导出；
+- 附件默认按内容哈希复制（相同内容只存一份），`--no-assets` 关闭复制并把 `ceobe.resources[].local_path` 写成 null；
+- 同一份输入导出两次逐字节一致（不写墙钟时间）；`manifest.json` 记录格式版本、会话／消息／节点／隐藏消息数、
+  附件复制／缺失／跳过数与 `conversations.json` 的 sha256；
+- 只读 `archive/`，只写 `--out`；来源没有提供或获取失败的附件不会伪造，只计入清单的“缺失”数；
+- 实测：34 个会话导出 `conversations.json` 64.6 MB；带附件时另加 249.3 MB／321 个文件，整体约 7 秒；
+  153 个资源因未下载而缺失（146 个 unresolved、7 个 failed）。
+
+
 ### 单条聊天：PDF
 
 ```powershell
