@@ -213,9 +213,13 @@ npm run verify:archive      # 只读检查档案结构
 
 **已解决（保留记录）**
 
-- 泄漏面收尾：分享链接实测已失效（同账号另两条仍能匿名访问，排除“站点收紧”）；GitHub 仓库已删除重建，
-  旧提交与旧文件在远端一律 404，新仓库沿用同一 URL/描述/可见性与 `main` 默认分支。
-  本地还留着 `data/private/pre-rewrite.bundle`（旧历史）与两个 `refs/codex/*` 检查点，确认不需要可以清掉。
+- 泄漏面收尾：分享链接实测已失效（同账号另两条仍能匿名访问 19/32 轮，排除“站点收紧”）；
+  GitHub 仓库已删除重建，旧提交与旧文件在远端一律 404（API 422、raw 404），新仓库沿用同一 URL/描述/可见性与 `main`；
+  本地又删掉 `pre-rewrite.bundle`（sha256 `673ae98…`）与两个 `refs/codex/*` 检查点并 `gc`：
+  `.git` 从 17.28 MiB 降到 3.77 MiB，真实 PDF（`d782a2f2`）与名单（`c0021087`）对象已不可读，
+  只留 `data/private/clean-backup.bundle` 作为干净历史的还原点；
+- 测试腐化（历史）：`test-clipboard-browser` 依赖“首页含代码块/表格”（首页是图表会话）、
+  `test-library-browser` 的悬停详情，都已按当前行为修正；
 - `test-bookmarks-browser.mjs` 自书签面板停靠后失效：overlay 面板“点外面就收起”的守卫把编辑器弹窗也当成了外面，
   点「取消」会连列表一起关掉。现在 `!editor.contains(e.target)` 把编辑器排除在外（取消回到列表），
   在正文里点一下仍会收起面板；测试里把“目录跳转后面板还在”改成按 overlay 契约容忍收起，已加进 `npm test`；
