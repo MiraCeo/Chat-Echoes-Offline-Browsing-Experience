@@ -31,7 +31,7 @@ export async function buildTimelinePage(projectRoot = resolve(import.meta.dirnam
     <div class="ceobe-timeline-inner">
       <header class="ceobe-timeline-header">
         <h1>时间线</h1>
-        <p class="ceobe-timeline-lede">按消息时间浏览本地档案；点击条目跳到对应会话。</p>
+        <p class="ceobe-timeline-lede">按消息时间（本地时间）浏览本地档案；点击条目跳到对应会话。</p>
         <p class="ceobe-timeline-status" data-ceobe-timeline-status role="status">正在加载时间线…</p>
       </header>
       <div class="ceobe-timeline-groups" data-ceobe-timeline-groups></div>

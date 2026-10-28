@@ -29,8 +29,17 @@ try {
       previousIsProjects: Boolean(previous?.matches('[data-ceobe-projects-link]')),
       nextHasMore: Boolean(next && next.textContent.trim().startsWith('更多')),
       months: [...document.querySelectorAll('.ceobe-timeline-month h2')].map(node => node.textContent),
+      monthCounts: [...document.querySelectorAll('.ceobe-timeline-month-count')].map(node => node.textContent.trim()),
       entries: rows.length,
       allLinks: rows.every(link => /\/conversations\/[^/]+\.html/.test(link.getAttribute('href') || '')),
+      twoLineRows: rows.every(link => link.children.length === 2
+        && link.firstElementChild?.classList.contains('ceobe-timeline-title')
+        && link.lastElementChild?.classList.contains('ceobe-timeline-meta')
+        && Boolean(link.querySelector('.ceobe-timeline-when'))
+        && Boolean(link.querySelector('.ceobe-timeline-turns'))),
+      datedFormat: [...document.querySelectorAll('time.ceobe-timeline-when')]
+        .every(node => /\d{1,2}月\d{1,2}日 \d{2}:\d{2}/.test(node.textContent)),
+      stickyHead: getComputedStyle(document.querySelector('.ceobe-timeline-month-head')).position,
       overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
       status: document.querySelector('[data-ceobe-timeline-status]')?.textContent,
     };
@@ -44,8 +53,16 @@ try {
   assert.equal(state.overflowX, false, '页面不应横向溢出');
   assert.equal(state.entries, expected, '条目数应等于时间线索引里的会话数');
   assert.equal(state.allLinks, true, '每条都链到会话页');
+  assert.equal(state.twoLineRows, true, '每行是“标题 + 时间/轮数”两行');
+  assert.equal(state.datedFormat, true, '时间用统一的「M 月 D 日 HH:mm」格式');
+  assert.equal(state.stickyHead, 'sticky', '月份标题在滚动时吸顶');
   assert.match(state.status, new RegExp(`${expected} 个会话`));
-  if (expected) assert.ok(state.months.length >= 1, '至少有一个月份分组');
+  assert.match(state.status, /本地时间/);
+  if (expected) {
+    assert.ok(state.months.length >= 1, '至少有一个月份分组');
+    assert.equal(state.monthCounts.length, state.months.length, '每个月都有会话/轮数统计');
+    assert.ok(state.monthCounts.every(text => /^\d+ 个会话 · [\d,]+ 轮$/.test(text)), '月统计格式');
+  }
 
   // 跳转：首条进入会话页，并高亮首条消息。
   if (expected) {
