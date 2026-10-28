@@ -64,6 +64,37 @@ try {
     assert.ok(state.monthCounts.every(text => /^\d+ 个会话 · [\d,]+ 轮$/.test(text)), '月统计格式');
   }
 
+  // 时间顺序：默认最新在前，可切到最早在前，并在刷新后保留。
+  const dated = index.conversations.filter(item => Number.isFinite(item.first));
+  if (dated.length) {
+    const newest = [...dated].sort((a, b) => b.first - a.first)[0];
+    const oldest = [...dated].sort((a, b) => a.first - b.first)[0];
+    const firstHref = async () => (await page.locator('.ceobe-timeline-row').first().getAttribute('href')) || '';
+    assert.ok((await firstHref()).includes(newest.id), '默认第一条是最新会话');
+    assert.equal(await page.locator('[data-ceobe-timeline-order="newest"]').getAttribute('aria-pressed'), 'true');
+    await page.locator('[data-ceobe-timeline-order="oldest"]').click();
+    assert.ok((await firstHref()).includes(oldest.id), '切到最早在前后第一条是最早会话');
+    assert.equal(await page.locator('[data-ceobe-timeline-order="oldest"]').getAttribute('aria-pressed'), 'true');
+    await page.reload({ waitUntil: 'networkidle' });
+    assert.ok((await firstHref()).includes(oldest.id), '刷新后保留最早在前');
+    await page.locator('[data-ceobe-timeline-order="newest"]').click();
+    assert.ok((await firstHref()).includes(newest.id), '切回最新在前');
+  }
+
+  // 窄屏：排序控件仍在、页面不横向溢出。
+  await page.setViewportSize({ width: 480, height: 800 });
+  await page.reload({ waitUntil: 'networkidle' });
+  const mobile = await page.evaluate(() => ({
+    overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    controls: [...document.querySelectorAll('[data-ceobe-timeline-order]')].every(button => button.getBoundingClientRect().width > 0),
+    entries: document.querySelectorAll('.ceobe-timeline-row').length,
+  }));
+  assert.equal(mobile.overflowX, false, '窄屏不应横向溢出');
+  assert.equal(mobile.controls, true, '窄屏仍能看到排序控件');
+  assert.equal(mobile.entries, expected, '窄屏条目数不变');
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.reload({ waitUntil: 'networkidle' });
+
   // 跳转：首条进入会话页，并高亮首条消息。
   if (expected) {
     const first = page.locator('.ceobe-timeline-row').first();

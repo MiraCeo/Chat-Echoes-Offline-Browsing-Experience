@@ -32,7 +32,14 @@ export async function buildTimelinePage(projectRoot = resolve(import.meta.dirnam
       <header class="ceobe-timeline-header">
         <h1>时间线</h1>
         <p class="ceobe-timeline-lede">按消息时间（本地时间）浏览本地档案；点击条目跳到对应会话。</p>
-        <p class="ceobe-timeline-status" data-ceobe-timeline-status role="status">正在加载时间线…</p>
+        <div class="ceobe-timeline-toolbar">
+          <p class="ceobe-timeline-status" data-ceobe-timeline-status role="status">正在加载时间线…</p>
+          <div class="ceobe-timeline-order" role="group" aria-label="时间顺序">
+            <span class="ceobe-timeline-order-label">按首条消息</span>
+            <button type="button" data-ceobe-timeline-order="newest" aria-pressed="true">最新在前</button>
+            <button type="button" data-ceobe-timeline-order="oldest" aria-pressed="false">最早在前</button>
+          </div>
+        </div>
       </header>
       <div class="ceobe-timeline-groups" data-ceobe-timeline-groups></div>
       <p class="ceobe-timeline-empty" data-ceobe-timeline-empty hidden>本地档案里还没有会话。</p>

@@ -2,9 +2,16 @@
   const groups = document.querySelector('[data-ceobe-timeline-groups]');
   const status = document.querySelector('[data-ceobe-timeline-status]');
   const empty = document.querySelector('[data-ceobe-timeline-empty]');
+  const orderButtons = [...document.querySelectorAll('[data-ceobe-timeline-order]')];
   if (!groups || !status) return;
 
   const root = new URL('./', location.href);
+  const ORDER_KEY = 'ceobe.timeline.order';
+  let order = 'newest';
+  try { if (localStorage.getItem(ORDER_KEY) === 'oldest') order = 'oldest'; } catch { /* 隐私模式下没有 localStorage */ }
+  let index = null;
+  let titles = new Map();
+
   const pad = value => String(value).padStart(2, '0');
   const parts = seconds => {
     const date = new Date(seconds * 1000);
@@ -31,6 +38,21 @@
     return `${a.year}年${dayLabel(a)} ${clockLabel(a)} → ${b.year}年${dayLabel(b)} ${clockLabel(b)}`;
   };
   const count = value => Number(value).toLocaleString('zh-CN');
+  const titleOf = item => titles.get(item.id) || '会话 ' + String(item.id).slice(0, 8);
+
+  const syncOrderButtons = () => {
+    for (const button of orderButtons) {
+      const active = (button.dataset.ceobeTimelineOrder || 'newest') === order;
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+  };
+
+  const setOrder = next => {
+    order = next === 'oldest' ? 'oldest' : 'newest';
+    try { localStorage.setItem(ORDER_KEY, order); } catch { /* ignore */ }
+    syncOrderButtons();
+    if (index) draw();
+  };
 
   const fail = text => {
     status.textContent = text;
@@ -80,37 +102,21 @@
     return list;
   };
 
-  let titles = new Map();
-  const titleOf = item => titles.get(item.id) || '会话 ' + String(item.id).slice(0, 8);
-
-  Promise.all([
-    fetch(new URL('timeline-index.json', root), { cache: 'no-cache' }).then(response => {
-      if (!response.ok) throw new Error('HTTP ' + response.status);
-      return response.json();
-    }),
-    fetch(new URL('chats.json', root), { cache: 'no-store' })
-      .then(response => (response.ok ? response.json() : null))
-      .catch(() => null),
-  ]).then(([index, catalog]) => {
-    if (!index || index.kind !== 'ceobe.timeline-index' || !Array.isArray(index.conversations)) {
-      fail('时间线索引不可用：请运行 npm run library 重建阅读页。');
-      return;
-    }
-    titles = new Map((catalog?.chats || []).map(chat => [chat.id, chat.title]));
+  const draw = () => {
+    if (!index) return;
     const dated = index.conversations.filter(item => Number.isFinite(item.first));
     const undated = index.conversations.filter(item => !Number.isFinite(item.first));
     const totalTurns = index.conversations.reduce((sum, item) => sum + (Number.isFinite(item.turns) ? item.turns : 0), 0);
-
     const byMonth = new Map();
     for (const item of dated) {
       const key = monthKey(item.first);
       if (!byMonth.has(key)) byMonth.set(key, []);
       byMonth.get(key).push(item);
     }
-    const months = [...byMonth.keys()].sort().reverse();
+    const months = [...byMonth.keys()].sort((a, b) => (order === 'oldest' ? a.localeCompare(b) : b.localeCompare(a)));
     groups.replaceChildren();
     for (const key of months) {
-      const items = byMonth.get(key).sort((a, b) => b.first - a.first);
+      const items = byMonth.get(key).sort((a, b) => (order === 'oldest' ? a.first - b.first : b.first - a.first));
       const turns = items.reduce((sum, item) => sum + (Number.isFinite(item.turns) ? item.turns : 0), 0);
       const section = document.createElement('section');
       section.className = 'ceobe-timeline-month';
@@ -143,5 +149,28 @@
     status.textContent = index.conversations.length
       ? `${count(index.conversations.length)} 个会话 · ${count(totalTurns)} 轮 · 本地时间`
       : '暂无会话';
+  };
+
+  for (const button of orderButtons) {
+    button.addEventListener('click', () => setOrder(button.dataset.ceobeTimelineOrder));
+  }
+  syncOrderButtons();
+
+  Promise.all([
+    fetch(new URL('timeline-index.json', root), { cache: 'no-cache' }).then(response => {
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      return response.json();
+    }),
+    fetch(new URL('chats.json', root), { cache: 'no-store' })
+      .then(response => (response.ok ? response.json() : null))
+      .catch(() => null),
+  ]).then(([payload, catalog]) => {
+    if (!payload || payload.kind !== 'ceobe.timeline-index' || !Array.isArray(payload.conversations)) {
+      fail('时间线索引不可用：请运行 npm run library 重建阅读页。');
+      return;
+    }
+    index = payload;
+    titles = new Map((catalog?.chats || []).map(chat => [chat.id, chat.title]));
+    draw();
   }).catch(error => fail('时间线索引不可用：' + (error?.message || error) + '。请运行 npm run library 重建阅读页。'));
 })();

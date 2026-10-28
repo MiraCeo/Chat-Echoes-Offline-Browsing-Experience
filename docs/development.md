@@ -296,7 +296,8 @@ XLSX 走“构建期解析 + 静态片段”的只读路线，分三段：
 - 时间口径：只统计可见轮次；按消息 `created_at` 的本地日期分桶；`conversation.created_at` 是分享
   创建时间，不参与排序；索引不存标题，标题取自 `chats.json`；
 - 测试：`test-timeline-index.mjs`（纯函数 + 文件输出）、`test-timeline-browser.mjs`
-  （入口位置/当前页、两行结构、统一日期、月统计、吸顶、跳转高亮、返回、无溢出；需要本地服务）；
+  （入口位置/当前页、两行结构、统一日期、月统计、吸顶、排序切换与持久化、窄屏无溢出、跳转高亮、返回；
+  需要本地服务）；
   `test-sidebar-client-render` 的顶层页上限是 6。
 
 ## Markdown 导出
