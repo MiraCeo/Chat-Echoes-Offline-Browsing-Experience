@@ -9,7 +9,7 @@
 
   const descriptions = {
     p1: 'P1 等距：竖线只表达先后，不表达真实间隔或覆盖。卡片左右交替，适合快速回看“发生了什么”，但不回答“隔了多久、覆盖多长”。',
-    p2: 'P2 真实比例：横轴是时间，条长 = 首末跨度，能看出覆盖与重叠；但三个月压缩到 560px 后，短会话只有几像素。',
+    p2: 'P2 横向月轴：每月固定 30 天（不是真实日历比例，31 日按月末处理），会话跨度画成横条；左右拖动平移画布，按钮回到最新。',
     p3: 'P3 覆盖条：竖线给顺序，卡片内的条按“最长的会话”归一化显示首末跨度；能比较长短，但不做全档案真实比例。',
     p4: 'P4 活跃日：卡片内的点 = 真的发过消息的日子，空隙保留；能看出“聊了两天、停了一天又回来”，但条本身不再表示连续覆盖。',
   };
@@ -122,56 +122,136 @@
     main.append(rail);
   };
 
-  const monthColor = seconds => {
-    const palette = ['#344054', '#475467', '#667085', '#7f8c9a'];
-    return palette[(parts(seconds).month - 1) % palette.length];
-  };
-
-  const renderGantt = () => {
+  const renderHorizontal = () => {
     const min = Math.min(...items.map(item => item.first));
     const max = Math.max(...items.map(item => item.last));
-    const range = Math.max(1, max - min);
-    const wrap = el('div', 'proto-gantt');
-    const axis = el('div', 'proto-gantt-axis');
-    const cursor = new Date(min * 1000);
-    cursor.setDate(1);
-    const startMonth = new Date(min * 1000);
+    const startDate = new Date(min * 1000);
+    const endDate = new Date(max * 1000);
+    const cursor = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
     const months = [];
-    while (cursor.getTime() / 1000 <= max) {
-      const sameMonth = cursor.getFullYear() === startMonth.getFullYear() && cursor.getMonth() === startMonth.getMonth();
-      if (cursor.getTime() / 1000 >= min || sameMonth) months.push(new Date(cursor));
+    while (cursor <= endDate) {
+      months.push(`${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}`);
       cursor.setMonth(cursor.getMonth() + 1);
     }
-    for (const date of months) {
-      const left = Math.max(0, ((date.getTime() / 1000 - min) / range) * 100);
-      const tick = el('span', 'proto-month-tick', `${date.getFullYear()}-${pad(date.getMonth() + 1)}`);
-      tick.style.left = left.toFixed(2) + '%';
-      axis.append(tick);
+    const monthIndex = new Map(months.map((key, index) => [key, index]));
+    const DAY = 12;
+    const MONTH = 30;
+    const WIDTH = months.length * MONTH * DAY;
+
+    const axisPoint = (seconds, isEnd = false) => {
+      const p = parts(seconds);
+      const index = monthIndex.get(`${p.year}-${pad(p.month)}`);
+      if (index == null) return null;
+      const day = Math.min(p.day, 30);
+      const fraction = Math.min(0.999, (Number(p.hours) * 60 + Number(p.minutes)) / 1440);
+      let position = index * MONTH + (day - 1) + fraction;
+      if (isEnd && p.day > 30) position = index * MONTH + MONTH - 0.05;
+      return Math.max(0, Math.min(months.length * MONTH, position));
+    };
+
+    const head = el('div', 'htl-head');
+    head.append(el('div', 'htl-corner', '会话'));
+    const axis = el('div', 'htl-axis');
+    for (const key of months) {
+      const block = el('div', 'htl-month');
+      block.style.width = `${MONTH * DAY}px`;
+      block.append(el('span', 'htl-month-name', key));
+      for (const day of [1, 5, 10, 15, 20, 25, 30]) {
+        const tick = el('span', 'htl-day', String(day));
+        tick.style.left = `${(day - 1) * DAY}px`;
+        block.append(tick);
+      }
+      axis.append(block);
     }
-    const rows = el('div', 'proto-gantt-rows');
-    for (const date of months) {
-      const line = el('div', 'proto-grid-line');
-      line.style.left = Math.max(0, (((date.getTime() / 1000 - min) / range) * 100)).toFixed(2) + '%';
-      rows.append(line);
-    }
+    head.append(axis);
+
+    const body = el('div', 'htl-body');
+    const background = el('div', 'htl-bg');
+    background.style.width = `${WIDTH}px`;
+    months.forEach((key, index) => {
+      if (index % 2 === 1) {
+        const band = el('div', 'htl-band');
+        band.style.left = `${index * MONTH * DAY}px`;
+        band.style.width = `${MONTH * DAY}px`;
+        background.append(band);
+      }
+      const line = el('div', 'htl-month-line');
+      line.style.left = `${index * MONTH * DAY}px`;
+      background.append(line);
+    });
+    body.append(background);
+
     for (const item of items) {
-      const row = el('div', 'proto-gantt-row');
-      row.append(el('div', 'proto-gantt-label', item.title));
-      const bar = el('a', 'proto-gantt-bar');
-      bar.href = hrefOf(item);
-      bar.target = '_blank';
-      bar.rel = 'noreferrer';
-      bar.style.left = (((item.first - min) / range) * 100).toFixed(2) + '%';
-      bar.style.width = Math.max(0.4, ((item.last - item.first) / range) * 100).toFixed(2) + '%';
-      bar.style.background = monthColor(item.first);
+      const row = el('div', 'htl-row');
+      const label = el('a', 'htl-label');
+      label.href = hrefOf(item);
+      label.target = '_blank';
+      label.rel = 'noreferrer';
+      label.title = `${item.title}\n${fmtRange(item.first, item.last)}\n${item.turns} 轮`;
+      label.append(el('span', 'htl-name', item.title));
+      label.append(el('span', 'htl-dates', `${fmtCardRange(item.first, item.last)} · ${item.turns} 轮`));
+      const track = el('div', 'htl-track');
+      track.style.width = `${WIDTH}px`;
+      const start = axisPoint(item.first);
+      const end = axisPoint(item.last, true);
+      const bar = el('span', 'htl-bar');
+      bar.style.left = `${start * DAY}px`;
+      bar.style.width = `${Math.max(6, (end - start) * DAY)}px`;
       bar.title = `${item.title}\n${fmtRange(item.first, item.last)}\n${item.turns} 轮`;
-      row.append(bar);
-      rows.append(row);
+      track.append(bar);
+      row.append(label, track);
+      body.append(row);
     }
-    wrap.append(axis, rows);
-    main.append(wrap, el('p', 'proto-note', `横轴 ${fmtDay(min)} → ${fmtDay(max)}（真实比例）；每行一条会话，条长 = 首末跨度，最短 3px。`));
+
+    const wrap = el('div', 'htl-wrap');
+    const toolbar = el('div', 'htl-toolbar');
+    toolbar.append(el('span', 'htl-hint', `每月固定 30 天 · ${months[0]} → ${months[months.length - 1]} · 左右拖动平移，31 日按月末处理`));
+    const latest = el('button', 'htl-latest', '回到最新');
+    latest.type = 'button';
+    latest.dataset.htlLatest = '';
+    toolbar.append(latest);
+    const scroll = el('div', 'htl-scroll');
+    scroll.dataset.htlScroll = '';
+    scroll.append(head, body);
+    wrap.append(toolbar, scroll);
+    main.append(wrap, el('p', 'proto-note', '横轴：每月固定 30 天（不是真实日历比例）；条长 = 会话首末跨度；点击左侧标题打开会话。'));
+
+    requestAnimationFrame(() => { scroll.scrollLeft = scroll.scrollWidth; });
+    let down = false;
+    let moved = false;
+    let startX = 0;
+    let startLeft = 0;
+    scroll.addEventListener('pointerdown', event => {
+      if (event.button !== 0) return;
+      down = true;
+      moved = false;
+      startX = event.clientX;
+      startLeft = scroll.scrollLeft;
+      scroll.classList.add('is-dragging');
+      scroll.setPointerCapture(event.pointerId);
+    });
+    scroll.addEventListener('pointermove', event => {
+      if (!down) return;
+      const dx = event.clientX - startX;
+      if (Math.abs(dx) > 3) moved = true;
+      scroll.scrollLeft = startLeft - dx;
+    });
+    const endDrag = () => {
+      if (!down) return;
+      down = false;
+      scroll.classList.remove('is-dragging');
+    };
+    scroll.addEventListener('pointerup', endDrag);
+    scroll.addEventListener('pointercancel', endDrag);
+    scroll.addEventListener('click', event => {
+      if (!moved) return;
+      event.preventDefault();
+      event.stopPropagation();
+      moved = false;
+    }, true);
+    latest.addEventListener('click', () => scroll.scrollTo({ left: scroll.scrollWidth, behavior: 'smooth' }));
   };
 
-  if (variant === 'p2') renderGantt();
+  if (variant === 'p2') renderHorizontal();
   else renderRail();
 })();
