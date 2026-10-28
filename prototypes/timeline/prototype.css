@@ -143,20 +143,19 @@ a { color: inherit; }
   overflow: visible;
   background: #f2f4f7;
 }
-.proto-track-tall .proto-bar {
-  position: absolute;
-  top: 3px;
-  left: 0;
-  height: 4px;
+.proto-segments {
+  display: flex;
+  flex: 1;
+  gap: 2px;
+  height: 8px;
+}
+.proto-seg {
+  flex: 1 1 0;
+  min-width: 2px;
   border-radius: 2px;
-  background: #98a2b3;
+  background: #e4e7ec;
 }
-.proto-tick-overlay {
-  top: 0;
-  z-index: 2;
-  height: 10px;
-  background: #344054;
-}
+.proto-seg.filled { background: #475467; }
 
 /* P1/P2/P3: horizontal, equidistant slots, cards alternate above/below */
 .hrl-wrap { margin-top: 4px; }
@@ -341,6 +340,7 @@ a { color: inherit; }
   height: 1px;
   background: #e4e7ec;
 }
+.drl-card.tall { height: 58px; }
 .drl-title {
   overflow: hidden;
   font-size: 11px;
