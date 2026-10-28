@@ -17,16 +17,17 @@ CEOBE（Chat Echoes Offline Browsing Experience）：把 ChatGPT 的公开分享
 ```
 HEAD        （见 git log -1；包含“侧栏客户端渲染”“后处理幂等”“页面装饰指纹”“资源库按页缓存”
              “项目页瘦身”“消息操作裁剪”“附件随页拷贝”“搜索语法与索引标签”“官方格式 JSON 导出”
-             “装饰指纹修复/方向记录”）
+             “装饰指纹修复/方向记录”“采集扩展补齐与导入链路修复”）
 标签        v1.0.0 / v1.0.1 / v1.0.2（本地）
-归档        35 个分享会话 / 43 个快照，约 934 MB；chatgpt-web 采集为 0
+归档        36 个分享会话 / 44 个快照，约 945 MB；chatgpt-web 采集为 0
 磁盘        replay/ 约 1.09 GB（页面 + 附件 + 资源库副本）、dist/ 约 731 MB
 附件        323 个本地文件（replay/archive-resources 与 public 副本、dist 一致），附件链接 0 失效
-页面        40 页；巡检 0 问题；npm test / npm run check / npm run build 全绿
-构建        全量约 80–105s（35 页重渲染，4 并发）；数据没变时 13–15s（系统缓存热）/ 23–25s（冷缓存或磁盘繁忙），
-             只重做 5/40 页、页面字节不变；换首页或导入后为 5–6/40 页、约 19–25s（修复前为 40/40、107–118s）
+页面        41 页；巡检 0 问题；npm test / npm run check / npm run build 全绿
+构建        全量约 80–105s（36 页重渲染，4 并发）；数据没变时 13–15s（系统缓存热）/ 23–25s（冷缓存或磁盘繁忙），
+             只重做 5/41 页、页面字节不变；换首页或导入后为 5–6/41 页、约 19–25s（修复前为 40/40、107–118s）
 删除        重建部分约 15s＋档案复制约 1s（原为 52.5s）；会话页逐字节不变
-导出        官方 JSON 63.9 MB（35 会话；可选附件 323 个文件／254.3 MB）；Markdown 走 export:md
+导出        官方 JSON 65.3 MB（36 会话；可选附件 323 个文件／254.3 MB）；Markdown 走 export:md
+扩展        MV3 0.5.0：直连发送、页内按钮、ZIP 兜底、端口探测、采集包 format/version 握手
 侧栏        浏览器按 replay/chats.json 渲染；每页只剩“当前会话一行 + 行模板”，不再内嵌全部会话
 历史        2026-10-26 做过一次脱敏重写：旧夹具与「测试消息/」「图表/」「文件/」「新界面/」从全部
              历史移除、本机用户名替换为占位；提交时间保持不变，但**旧 SHA 全部失效**
@@ -225,8 +226,8 @@ npm run verify:archive      # 只读检查档案结构
 
 | 项目 | 结果 |
 |---|---|
-| 索引规模 | 3068 条 turn、715 条带 kinds（表格 320、附件 346、图片 223、代码 108）；34 会话加 kinds 时 6.96 → 7.01 MB（+41 KB），当前 35 会话 7.11 MB |
-| 同数据两次重建 | 40 页与 `search-index.json` 逐字节一致；第二次 `Decorations: 5 of 40`；只有 `chats.json` 的 `generated_at` 不同 |
+| 索引规模 | 3098 条 turn、729 条带 kinds（表格 332、附件 348、图片 223、代码 109）；34 会话加 kinds 时 6.96 → 7.01 MB（+41 KB），当前 36 会话 7.21 MB |
+| 同数据两次重建 | 41 页与 `search-index.json` 逐字节一致；第二次 `Decorations: 5 of 41`；只有 `chats.json` 的 `generated_at` 不同 |
 | 解析器单测 | `scripts/test-search-query.mjs`：引号短语、排除、A/B、字段与比较符、折叠/高亮切片、旧查询兼容 |
 | 浏览器测试 | `scripts/test-sidebar-controls.mjs` 追加语法断言并通过：命中数、原文大小写高亮、空态文案 |
 
@@ -246,9 +247,9 @@ npm run verify:archive      # 只读检查档案结构
 
 | 项目 | 结果 |
 |---|---|
-| 真实档案 35 会话 | `conversations.json` 63.9 MB、消息 11304、节点 11339、隐藏 2734；约 6 秒（`--no-assets`） |
+| 真实档案 36 会话 | `conversations.json` 65.3 MB、消息 11487、节点 11523、隐藏 2796；约 6 秒（`--no-assets`） |
 | 附件 | 334 条资源 → 323 个文件／254.3 MB，约 7 秒；154 个缺失（未下载） |
-| 逐条校验 | 11339 个节点、11304 条消息的 `content.raw`／`author`／`metadata` 与归档逐字段一致；`current_node` 回溯顺序 35/35 等于 `linear_message_ids` |
+| 逐条校验 | 11523 个节点、11487 条消息的 `content.raw`／`author`／`metadata` 与归档逐字段一致；`current_node` 回溯顺序 36/36 等于 `linear_message_ids` |
 | 确定性 | 真实档案导出两次，`conversations.json` 与 `manifest.json` 均逐字节一致；清单 sha256 与 payload 相符 |
 | 单测 | `scripts/test-export-json.mjs`（顺序/分支、降级、附件、清单、`--no-assets`/`--compact`/`--id`、CLI 全流程），已进 `npm test` |
 
@@ -273,6 +274,13 @@ npm run verify:archive      # 只读检查档案结构
 - `extension/` 0.5.0（MV3）：`zip.js`（浏览器与 Node 共用的 STORE ZIP 写出）、`capture.js`
   （匿名抓取／投递／端口探测）、`background.js`（Service Worker 消息路由）、popup 直接发送与 ZIP 导出、
   `content.js/css` 分享页内按钮；抓取在扩展上下文里做，不受页面 CSP 限制；
+- **ZIP 在 popup 内生成**：`chrome.runtime.sendMessage` 是 JSON 序列化，把 `Uint8Array` 传给 popup
+  会变成普通对象、Blob 退化成 `[object Object]`（实机导出的 15 字节坏包）。直连发送仍由 Service Worker
+  完成，二进制不跨消息通道；
+- `/api/archive-package` 导入成功后**先全量重建**（索引 + 页面），生产模式再 `publish`；导入后失败返回
+  `archived: true` 与“重试只更新页面”，扩展会显示对应提示；
+- `build-library --only` 遇到落后索引（刚导入的新快照）会先重建一次索引再渲染，不再报
+  “档案库中没有这些会话”；
 - 本地服务只对扩展 scheme 开放跨源（`chrome-extension://`／`moz-extension://`／
   `safari-web-extension://`），`application/zip` 的 OPTIONS 预检同样只对这些来源开放；普通网站仍被
   同源与 `sec-fetch-site` 检查拒绝；`/api/capabilities` 返回 `packageFormat`／`packageVersion`；
@@ -281,9 +289,11 @@ npm run verify:archive      # 只读检查档案结构
 - 书签小工具（`extension/bookmarklet.md`）打开 `import.html?url=<分享链接>`，导入页会预填并校验；
   这条路线不跨站 POST，不放宽 CSRF；
 - 验证：`test-share-package.mjs`（ZIP 往返、握手、URL 解析，扩展写出的 ZIP 也通过 Python `zipfile`
-  读取）、`test-local-import-api.mjs`（扩展预检/白名单、普通网站仍 403）；均进 `npm test`。
-  **扩展 UI（popup、页内按钮）本轮没有在真实浏览器里加载验收**，只做了语法检查与契约测试；
-  发布前需在 Edge/Chrome 手动加载 `extension/` 走一遍。
+  读取）、`test-local-import-api.mjs`（扩展预检/白名单、普通网站仍 403）、
+  `test-local-import-package-api.mjs`（重建顺序、归档标记、发布、临时包清理）、
+  `test-only-index.mjs`（落后索引只重建一次）；均进 `npm test`。实机故障（`6ae173a0…`）已复现并修复，
+  该会话已补进索引与页面。**扩展 UI（popup、页内按钮）本轮没有在真实浏览器里加载验收**，
+  只做了语法检查与契约测试；发布前需在 Edge/Chrome 手动加载 `extension/` 走一遍。
 
 ## 5. 已知问题
 
@@ -292,6 +302,8 @@ npm run verify:archive      # 只读检查档案结构
   107–118s → 19–22s）；修复后的新导入尚未重新计时，预计仍在几十秒量级；
 - 扩展 UI（popup、分享页按钮）本轮没有在真实浏览器里加载验收，只做了语法检查与契约测试；
   发布前需在 Edge/Chrome 手动加载 `extension/` 走一遍；
+- 并行渲染带附件的新会话时，共享预览目录偶发一次 `ENOENT: chmod ... pdf-page-N.png`（2026-10-28 出现一次，
+  重跑 `npm run library` 即通过）；尚未定位到具体竞态，若复现再查 `build-file-previews` 的共享预览同步；
 - 书签小工具的端口默认写死 5173；`npm run dev` 换端口时需要手改书签地址；
 - 扩展白名单按 scheme 放行：本机已安装的任意扩展都能请求本地服务（浏览器的内网请求里无法区分具体扩展），
   属于本机信任边界；直连发送依赖本地服务，纯静态部署只能用 ZIP 或书签小工具；

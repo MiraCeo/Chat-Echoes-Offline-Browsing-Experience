@@ -4,6 +4,22 @@
 
 ## 未发布（本轮）
 
+### 修复（2026-10-28 实机反馈）
+
+- **扩展「发送到本地 CEOBE」失败**：`/api/archive-package` 原先只导入快照就执行
+  `build-library --only <id>`，索引没更新 → “档案库中没有这些会话”。现在导入成功后先全量重建
+  （索引 + 页面），生产模式再 `publish`；导入后失败返回 `archived: true` 与“重试只更新页面”，
+  不再把 Node 堆栈原样抛给扩展。
+- **`build-library --only` 遇到落后索引**：新增 `indexForOnlyIds()`，索引里没有目标 id 时先重建一次，
+  重建后仍没有才报错；`test-only-index.mjs` 锁住“只重建一次、不循环”。
+- **扩展导出的 ZIP 只有 15 字节 `[object Object]`**：`chrome.runtime.sendMessage` 是 JSON 序列化，
+  `Uint8Array` 会变成普通对象。ZIP 下载改在 popup 内直接抓取并生成；直连发送仍由 Service Worker
+  完成，不再跨消息通道传二进制。
+- 新增 `test-local-import-package-api.mjs`：验证“先重建再读索引”、导入后失败返回 `archived`、
+  生产发布、重试不重复快照、临时 zip 清理。
+- 实机那条会话（`6ae173a0…`，标题「提升记忆力训练方法」，30 轮）已通过重跑 `npm run library`
+  补进索引并生成页面；当前档案 36 会话 / 44 快照 / 15054 消息、41 页。
+
 ### 采集扩展补齐
 
 - `extension/` 升到 0.5.0（MV3）：popup 增加**直接发送到本地 CEOBE** 与端口探测；分享页
@@ -19,7 +35,8 @@
 - **书签小工具兜底**（`extension/bookmarklet.md`）：打开本地导入页并预填 `?url=`；导入页
   （`link-import.js`）支持该参数。这条路线不跨站 POST，不放宽 CSRF 防护。
 - 测试：新增 `scripts/test-share-package.mjs`（ZIP 往返、握手、旧包/未来版本、URL 解析），
-  扩展 `test-local-import-api.mjs`（预检、白名单、普通网站仍拒绝）；均加入 `npm test`。
+  扩展 `test-local-import-api.mjs`（预检、白名单、普通网站仍拒绝），新增
+  `test-local-import-package-api.mjs`（采集包导入后重建/发布/归档标记）；均加入 `npm test`。
   端到端实测：扩展来源 `OPTIONS` 204、`POST /api/archive-package` 200 且幂等导入不新增快照、
   非扩展来源 POST 403。扩展 UI 需要手动在 Edge/Chrome 加载 `extension/` 检查。
 - 顺带修正 `test-bookmarks-browser.mjs` 的注释位置断言：首页消息可能先有附件卡片（气泡因此下移），
@@ -46,8 +63,8 @@
   线性顺序、隐藏消息、资源本地相对路径与导入报告；`raw_payload` 不导出。
 - 确定性：不写墙钟时间、附件内容寻址、同一输入两次导出逐字节一致；`manifest.json` 记录格式版本、
   会话／消息／节点／隐藏消息数、附件复制／缺失／跳过数与 payload 的 sha256。
-- 实测（真实档案 35 会话）：`conversations.json` 63.9 MB、消息 11304、节点 11339、隐藏 2734；
-  带附件另 254.3 MB／323 个文件（334 条资源去重），整体约 7 秒；154 个资源缺失（未下载）。
+- 实测（真实档案 36 会话）：`conversations.json` 65.3 MB、消息 11487、节点 11523、隐藏 2796；
+  带附件另 254.3 MB／323 个文件（335 条资源去重），整体约 7 秒；155 个资源缺失（未下载）。
 - 测试：新增 `scripts/test-export-json.mjs`（mapping 顺序与分支、`content.raw` 逐字节、`current_node` 可达、
   降级分支、附件内容寻址、manifest 计数、`--no-assets`／`--compact`／`--id`、CLI 全流程、两次导出一致），
   已加入 `npm test`。
@@ -61,9 +78,9 @@
   `title:` 只筛标题、`from:`／`has:` 只筛正文、只有排除词时不列正文。
 - 兼容旧查询：无法识别的 `字段:值`、裸负数（`-1`）、URL 都按普通文本；`\/` 表示字面斜杠。
 - `replay/public/search-index.json` 每条 turn 新增 `kinds`（`code`／`table`／`image`／`attachment`／`audio`，
-  固定顺序、无标签时为空数组），由阅读页可见内容决定；当前 35 个会话 3068 条 turn 里 715 条带标签
-  （表格 320、附件 346、图片 223、代码 108），加 `kinds` 时索引只增约 41 KB（34 会话时 6.96 → 7.01 MB；
-  当前 35 会话 7.11 MB）。
+  固定顺序、无标签时为空数组），由阅读页可见内容决定；当前 36 个会话 3098 条 turn 里 729 条带标签
+  （表格 332、附件 348、图片 223、代码 109），加 `kinds` 时索引只增约 41 KB（34 会话时 6.96 → 7.01 MB；
+  当前 36 会话 7.21 MB）。
 - 高亮改为按原文切片：折叠（NFKC + 小写）用逐码点位置映射，全角字母／连字命中时标在原文对应的字上，
   且一条命中里所有出现位置都会高亮；标题与正文都走同一套切片，不解析 HTML。
 - 弹窗新增一行语法提示；空结果文案在语法查询时给出可执行建议（去掉 `-排除`、减少 `from:`／`has:` 条件）。

@@ -1,4 +1,4 @@
-import { parseShareUrl, DEFAULT_ENDPOINT } from './capture.js';
+import { parseShareUrl, captureShare, DEFAULT_ENDPOINT } from './capture.js';
 
 const urlInput = document.getElementById('url');
 const endpointInput = document.getElementById('endpoint');
@@ -48,13 +48,21 @@ async function run(deliver) {
   setBusy(true);
   say(deliver === 'post' ? '正在匿名抓取并发送到本地 CEOBE…' : '正在匿名抓取分享页…');
   try {
-    if (deliver === 'post') await chrome.runtime.sendMessage({ type: 'ceobe:save-endpoint', endpoint });
-    const response = await chrome.runtime.sendMessage({ type: 'ceobe:capture', url, deliver, endpoint });
-    if (!response?.ok) throw new Error(response?.error || '操作失败');
+    // 不要在 popup 与 Service Worker 之间传 ZIP 字节：扩展消息是 JSON 序列化，
+    // Uint8Array 会变成普通对象，Blob 随即退化成 "[object Object]"（15 字节，实测踩过）。
+    // ZIP 下载直接在 popup 里抓取并生成；直连发送仍由 Service Worker 完成。
     if (deliver === 'zip') {
-      downloadZip(response.zip, response.filename);
-      say(`已导出 ${Math.round(response.bytes / 1024)} KB 的 ZIP。把它拖到本地导入页即可。`, 'success');
+      const captured = await captureShare(url);
+      downloadZip(captured.zip, captured.filename);
+      say(`已导出 ${Math.round(captured.bytes / 1024)} KB 的 ZIP。把它拖到本地导入页即可。`, 'success');
       return;
+    }
+    await chrome.runtime.sendMessage({ type: 'ceobe:save-endpoint', endpoint });
+    const response = await chrome.runtime.sendMessage({ type: 'ceobe:capture', url, deliver, endpoint });
+    if (!response?.ok) {
+      const error = new Error(response?.error || '操作失败');
+      if (response?.archived) error.archived = true;
+      throw error;
     }
     const result = response.result || {};
     const page = result.page ? response.endpoint + result.page : '';
@@ -66,7 +74,10 @@ async function run(deliver) {
       status.append(' ', link);
     }
   } catch (error) {
-    say('失败：' + (error?.message || error) + '\n请确认本地 CEOBE 已启动（npm run dev），端口与上面一致。', 'error');
+    const hint = error?.archived
+      ? '\n采集包已经归档，只是页面没更新；运行 npm run library 或再次发送（不会重复导入）。'
+      : '\n请确认本地 CEOBE 已启动（npm run dev），端口与上面一致。';
+    say('失败：' + (error?.message || error) + hint, 'error');
   } finally {
     setBusy(false);
   }

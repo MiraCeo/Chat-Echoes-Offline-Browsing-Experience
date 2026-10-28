@@ -30,7 +30,7 @@ export async function publishProduction(root){
   if(moved)await rm(backup,{recursive:true,force:true}).catch(()=>{});
  }finally{await rm(stage,{recursive:true,force:true}).catch(()=>{})}
 }
-export function localImportMiddleware(root,{mode='development',archive=url=>runLocal(root,['scripts/archive-share.mjs',url,'--skip-library']),rebuild=()=>runLocal(root,['scripts/build-library.mjs']),publish=()=>publishProduction(root),throttle=createThrottle()}={}){
+export function localImportMiddleware(root,{mode='development',archive=url=>runLocal(root,['scripts/archive-share.mjs',url,'--skip-library']),rebuild=()=>runLocal(root,['scripts/build-library.mjs']),importPackage=input=>runLocal(root,['scripts/import-share-package.mjs','--input',input]),publish=()=>publishProduction(root),throttle=createThrottle()}={}){
  root=resolve(root);
  return async(req,res,next)=>{
   const path=req.url.split('?')[0];if(!['/api/capabilities','/api/archive-share','/api/archive-package'].includes(path))return next();
@@ -58,19 +58,28 @@ export function localImportMiddleware(root,{mode='development',archive=url=>runL
    if(path==='/api/archive-package'){
    if(!/^(application\/zip|application\/octet-stream)(?:;|$)/i.test(req.headers['content-type']||''))throw bad('需要 zip 文件',415);
    release=await acquireMutation(root);
+   let archived=false;
    try{
     const parts=[];let total=0;for await(const chunk of req){total+=chunk.length;if(total>200*1024*1024)throw bad('采集包超过 200 MB',413);parts.push(chunk)}
     const dir=join(root,'data/private/import-packages');await mkdir(dir,{recursive:true});
     const zip=join(dir,randomUUID()+'.zip');await writeFile(zip,Buffer.concat(parts));
-    const log=await new Promise((yes,no)=>{const child=spawn(process.execPath,['scripts/import-share-package.mjs','--input',zip],{cwd:root,windowsHide:true,stdio:['ignore','pipe','pipe']});let out='';for(const stream of [child.stdout,child.stderr])stream.on('data',b=>out=(out+b).slice(-20000));child.on('error',no);child.on('close',code=>code===0?yes(out):no(new Error(out||'采集包导入失败')))});
-    await rm(zip,{force:true});
-    const id=(/SHARE_ID=([a-f0-9-]{36})/i.exec(log)||[])[1];if(!id)throw Error('采集包已导入，但未能确定会话标识');
-    await runLocal(root,['scripts/build-library.mjs','--only',id]);
+    let log;
+    try{log=await importPackage(zip)}finally{await rm(zip,{force:true})}
+    archived=true;
+    const id=(/SHARE_ID=([a-f0-9-]{36})/i.exec(log)||[])[1];if(!id)throw bad('采集包已导入，但未能确定会话标识',422);
+    // 采集包导入只写快照、不更新索引；必须先重建索引与页面，直接 `--only` 会因
+    // “档案库中没有这些会话”失败（2026-10-28 实际踩到）。全量重建同时把新会话设为首页，
+    // 与分享链接导入路径保持一致；生产模式下再发布 dist。
+    await rebuild();
     const library=JSON.parse(await readFile(join(root,'archive/library.ceobe.json'),'utf8')),entry=library.conversations?.find(c=>c.id===id);
-    if(!entry)throw Error('已归档，但索引中没有该会话');
-    return send(200,{ok:true,shareId:id,title:entry.title,messageCount:entry.message_count,turnCount:entry.turn_count,resourceCounts:entry.resource_counts,page:'/conversations/'+id+'.html'});
-   }catch(e){if(!e.status)e.status=422;throw e}
-   finally{await release();release=null}
+    if(!entry)throw bad('采集包已归档，但重建后索引里仍没有该会话',422);
+    if(mode==='production')await publish();
+    return send(200,{ok:true,shareId:id,title:entry.title,messageCount:entry.message_count,turnCount:entry.turn_count,userTurnCount:entry.user_turn_count,assistantTurnCount:entry.assistant_turn_count,resourceCounts:entry.resource_counts,page:'/conversations/'+id+'.html'});
+   }catch(e){
+    if(!e.status)e.status=422;
+    if(archived){e.archived=true;e.retryPublish=true;e.message='采集包已归档，但页面更新失败：'+summarize(e.message)+'。重试只会更新页面，不会重复导入。'}
+    throw e;
+   }finally{await release();release=null}
   }
 if(!/^application\/json(?:;|$)/i.test(req.headers['content-type']||''))throw bad('需要 JSON 请求',415);
    let size=0;const chunks=[];for await(const b of req){size+=b.length;if(size>4096)throw bad('请求内容过大',413);chunks.push(b)}
@@ -107,7 +116,7 @@ if(!/^application\/json(?:;|$)/i.test(req.headers['content-type']||''))throw bad
    const result={ok:true,shareId:id,title:entry.title,messageCount:entry.message_count,turnCount:entry.turn_count,userTurnCount:entry.user_turn_count,assistantTurnCount:entry.assistant_turn_count,resourceCounts:entry.resource_counts,page:'/conversations/'+id+'.html'};
    record.state='complete';record.result=result;await atomic(file,record);return send(200,result);
   }catch(e){console.error('Local import:',e.message);return send(e.status||500,{error:e.status?e.message:record?.captured?'归档已保存，但页面更新失败。重试只更新页面，不重复抓取。':
-    '导入未完成：' + summarize(e.message),archived:!!record?.captured,retryPublish:!!record?.captured})}
+    '导入未完成：' + summarize(e.message),archived:e.archived ?? !!record?.captured,retryPublish:e.retryPublish ?? !!record?.captured})}
   finally{if(release)await release()}
  };
 }

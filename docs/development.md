@@ -100,7 +100,8 @@ npm run dev -- --host 127.0.0.1 --port 5173
   清单之外的页面不会被解析、也不会被写盘；构建日志会打印 `Decorations: N of M page(s) refreshed`；
 - 新增“会影响页面字节”的全局输入时，必须加进 `decoration-plan.mjs` 的共享输入（例如项目清单），
   否则改它之后页面不会刷新；改装饰口径（不是脚本内容）时把 `DECORATION_VERSION` 加一；
-- `npm run library -- --only <id>` 会渲染并装饰指定的页面，其余页面不动。
+- `npm run library -- --only <id>` 会渲染并装饰指定的页面，其余页面不动；如果索引里还没有这个 id
+  （例如刚用 `import-share-package` 导入了新快照），会先重建一次索引再继续。
 
 ### 搜索语法与正文索引标签
 
@@ -265,7 +266,16 @@ XLSX 走“构建期解析 + 静态片段”的只读路线，分三段：
   `test-local-import-api.mjs`；
 - 采集包契约在 `scripts/share-package-format.mjs`（`format`/`version`），扩展写、导入读；
   旧包按 legacy 接受。改版本要同时改扩展与 `CAPTURE_PACKAGE_VERSION`，并把兼容范围写进 `extension/README.md`；
-- 测试：`test-share-package.mjs`（ZIP 往返、握手、URL 解析）、`test-local-import-api.mjs`（预检与来源白名单）；
+- **不要在 `chrome.runtime.sendMessage` 里传二进制**：扩展消息是 JSON 序列化，`Uint8Array` 会变成普通对象，
+  `Blob` 随后退化成 `"[object Object]"`（实测导出过 15 字节坏包）。ZIP 下载在 popup 内直接抓取生成；
+  直连 POST 在 Service Worker 内完成，`fetch` 的 body 用内存里的 `Uint8Array`；
+- `/api/archive-package` 的顺序必须是“导入快照 → 全量重建索引与页面 → 生产模式 publish → 再读索引条目”；
+  不要在这里用 `build-library --only` 代替重建（索引还没更新）。导入后失败时返回 `archived: true` 与
+  “重试只更新页面”，扩展据此提示。改动先补 `test-local-import-package-api.mjs`；
+- `build-library --only` 在索引落后于磁盘时（刚导入了新快照）会先重建一次索引再渲染，见
+  `indexForOnlyIds()`；`test-only-index.mjs` 锁住“只重建一次、不循环”；
+- 测试：`test-share-package.mjs`（ZIP 往返、握手、URL 解析）、`test-local-import-api.mjs`（预检与来源白名单）、
+  `test-local-import-package-api.mjs`（重建顺序、归档标记、发布）、`test-only-index.mjs`（落后索引）；
   扩展 UI（popup、页内按钮）需要在 Edge/Chrome 里加载目录手动检查，仓库里的 Playwright 不加载扩展。
 
 ## Markdown 导出
@@ -354,7 +364,7 @@ node scripts/test-copy-content.mjs
 | 阅读边缘：书签面板停靠与上次阅读位置 | `test-reader-margin-browser.mjs`（`npm run test:reader-margins`）；在临时目录构建隔离副本（同一夹具，120／60 条消息、24／12 条书签），检查 1440→420 各宽度下展开或收起面板都不移动、不压缩正文，留白足够时停靠在正文左侧、不足时改为短浮层且点击别处即收起，空列表收缩为一行提示，以及按聊天恢复阅读位置的精确跳转、从头阅读、清除与只保存 ID＋偏移；全程只读 GET，不依赖本地 5173，不读写使用者归档；支持 `CEOBE_TEST_DIST=1` 与 `CEOBE_TEST_HEADED=1` |
 | 侧栏、搜索与整理 | `test-sidebar-controls.mjs`（标题与正文搜索、语法查询、片段高亮、页内精确跳转与跨页哈希跳转，新查询把结果列表送回顶部、后台刷新保留焦点与位置；正文索引和 `/api/chats` 均为只读夹具）、`test-search-query.mjs`（搜索语法：引号短语、排除、`A/B`、`title:`／`from:`／`has:`／`created:`／`messages:`、折叠与高亮切片）、`test-search-index.mjs`（索引只含可见提问／回复／代码，排除推理、隐藏上下文、引用与附件名；`kinds` 标签覆盖代码、表格、图片与附件）、`test-sidebar-polish.mjs`、`test-chat-organizer.mjs` |
 | 侧栏客户端渲染（删除不改页面） | `test-sidebar-client-render.mjs`：在临时目录真实复制运行时 + 三份夹具会话，跑真实构建与真实删除流程；断言“数据不变时重建逐字节一致”“删除一个会话后其余页面哈希不变、只有被删页面消失”“页面里没有 `#ceobe-chat-catalog`、保留一行静态回退与行模板”。不读写使用者归档；`test-decoration-plan.mjs` 锁住装饰指纹的精度（换首页只重做 5 个顶层页、项目数据变化才全量、单页改动只重做该页、指纹损坏回退全量） |
-| 导入与发布 | `test-local-import-api.mjs`（能力探测、同源/跨站拒绝、扩展 scheme 的 OPTIONS 预检与白名单、持久化重试与发布恢复）、`test-share-package.mjs`（扩展 ZIP 写出与本地读取的往返、`format`/`version` 握手、旧包兼容、未来版本拒绝）、`test-production-import.mjs`、`test-link-import-browser.mjs` |
+| 导入与发布 | `test-local-import-api.mjs`（能力探测、同源/跨站拒绝、扩展 scheme 的 OPTIONS 预检与白名单、持久化重试与发布恢复）、`test-local-import-package-api.mjs`（采集包导入后重建索引/发布、`archived` 标记、重试不重复快照、临时包清理）、`test-share-package.mjs`（扩展 ZIP 写出与本地读取的往返、`format`/`version` 握手、旧包兼容、未来版本拒绝）、`test-only-index.mjs`（`--only` 落后索引只重建一次）、`test-production-import.mjs`、`test-link-import-browser.mjs` |
 | 离线资源 | `test-offline-resources.mjs` |
 
 例如：

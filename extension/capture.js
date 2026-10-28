@@ -54,7 +54,13 @@ export async function postPackage(endpoint, zip) {
   const text = await response.text();
   let data = null;
   try { data = JSON.parse(text); } catch { /* 非 JSON：保留原文 */ }
-  if (!response.ok) throw new Error(data?.error || `本地服务返回 HTTP ${response.status}：${text.slice(0, 160)}`);
+  if (!response.ok) {
+    const error = new Error(data?.error || `本地服务返回 HTTP ${response.status}：${text.slice(0, 160)}`);
+    // 服务端可能已经归档、只是页面更新失败；把标记带给 popup / 页内提示。
+    if (data?.archived === true) error.archived = true;
+    if (data?.retryPublish === true) error.retryPublish = true;
+    throw error;
+  }
   return { ...data, endpoint: base };
 }
 

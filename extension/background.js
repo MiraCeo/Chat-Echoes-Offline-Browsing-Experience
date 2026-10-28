@@ -1,5 +1,6 @@
-// MV3 Service Worker：抓取在扩展上下文里做（不受分享页 CSP 限制），
-// 页面内按钮与 popup 都通过消息走这里。
+// MV3 Service Worker：抓取在扩展上下文里做（不受分享页 CSP 限制），页面内按钮与 popup 的直连都走这里。
+// 注意：扩展消息是 JSON 序列化，不要在这里把 ZIP 字节回传给 popup（会变成普通对象）；
+// ZIP 下载由 popup 自己抓取并生成，这里只负责直连发送。
 import { captureShare, postPackage, probeEndpoint, DEFAULT_ENDPOINT } from './capture.js';
 
 const ENDPOINT_KEY = 'ceobe.endpoint';
@@ -10,9 +11,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const run = async () => {
     if (message?.type === 'ceobe:capture') {
       const captured = await captureShare(message.url);
-      if (message.deliver === 'zip') {
-        return { ok: true, mode: 'zip', filename: captured.filename, zip: captured.zip, bytes: captured.bytes };
-      }
       const endpoint = message.endpoint && validEndpoint(message.endpoint) ? message.endpoint : await savedEndpoint();
       const result = await postPackage(endpoint, captured.zip);
       return { ok: true, mode: 'post', shareId: captured.shareId, endpoint, result };
@@ -30,6 +28,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message?.type === 'ceobe:endpoint') return { ok: true, endpoint: await savedEndpoint() };
     return { ok: false, error: '未知操作' };
   };
-  run().then(sendResponse, error => sendResponse({ ok: false, error: error?.message || String(error) }));
+  run().then(sendResponse, error => sendResponse({
+    ok: false,
+    error: error?.message || String(error),
+    archived: error?.archived === true,
+    retryPublish: error?.retryPublish === true,
+  }));
   return true;
 });

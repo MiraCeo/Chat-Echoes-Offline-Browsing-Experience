@@ -35,14 +35,16 @@ XLSX 只读预览（大表截断 500×60、点选高亮行列、缩放、隐藏�
 `test-decoration-plan.mjs` 已进 `npm test`）、
 **采集扩展补齐**（0.5.0：直连发送、页内按钮、端口探测、ZIP 兜底；`format`/`version` 握手；
 书签小工具打开导入页预填；`test-share-package.mjs` 与扩展的 `test-local-import-api.mjs` 已进 `npm test`；
-popup/页内按钮仍需手动在浏览器验收）、
+**实机修复**：采集包导入后先全量重建索引/页面再返回、失败返回 `archived` 标记、`build-library --only`
+落后索引时自动重建一次、ZIP 改在 popup 内生成；`test-local-import-package-api.mjs`、
+`test-only-index.mjs` 已进 `npm test`；popup/页内按钮仍需手动在浏览器验收）、
 **方向记录与 MCP 归档**（`docs/direction.md`；MCP 已评估、暂不做）、
 README 四张脱敏截图（`scripts/make-readme-fixture.mjs` + `scripts/shoot-readme.mjs`）、
 远端仓库删库重建 + 本地旧对象清理（`pre-rewrite.bundle` 与 `refs/codex/*` 已删，`.git` 3.77 MiB）。
 
-基线：35 个分享会话 / 43 个快照 / 14871 条消息、40 页巡检 0 问题；
+基线：36 个分享会话 / 44 个快照 / 15054 条消息、41 页巡检 0 问题；
 `npm test`（含书签与表格两套浏览器测试）、`npm run check`、`npm run build` 全绿；
-数据没变时重建 13–15s、只重做 5/40 页、页面字节不变；换首页 5/40、约 19–22s。
+数据没变时重建 13–15s、只重做 5/41 页、页面字节不变；换首页 5/41、约 19–22s。
 
 ## 当前任务（口径见 `TODO.md` 与 `docs/direction.md`）
 

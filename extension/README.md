@@ -19,7 +19,10 @@
 
 - 「检测」会从 5173 起逐个探测 `http://127.0.0.1:<端口>/api/capabilities`，找到服务后记住地址；
 - 端口被系统保留或占用时，`npm run dev` 会打印实际端口，也可以直接在 popup 里填；
-- 直接发送成功后 popup / 页内提示里会给「打开会话」链接。
+- 直接发送成功后 popup / 页内提示里会给「打开会话」链接；
+- ZIP 在 popup 内直接抓取并生成（不经过扩展消息通道，避免二进制被 JSON 序列化）；
+- 如果提示「采集包已归档，但页面更新失败」，说明快照已经保存、只是页面没更新：运行 `npm run library`
+  或再点一次发送（不会重复导入）。
 
 ## 采集包契约（`format` / `version`）
 
@@ -34,7 +37,9 @@ capture.json     来源 URL、抓取时间、HTTP 状态、字节数、sha256、
 
 - 认这个格式与版本 → 正常导入；
 - 没有 `format`/`version`（0.4.x 旧包）→ 按 legacy 接受；
-- 格式不对或版本更高 → 明确报错（提示更新 CEOBE 或扩展），不会带着半个包解码。
+- 格式不对或版本更高 → 明确报错（提示更新 CEOBE 或扩展），不会带着半个包解码；
+- 导入成功后本地会**全量重建索引与页面**再返回结果；如果导入已完成但页面更新失败，会返回
+  `archived: true` 并提示“重试只更新页面”。
 
 本地导入会解包、过归档守卫、用 Python importer 解码成 `conversation.ceobe.json`，
 并生成 `conversation.md` 与 `import-report.json`——与 `npm run archive:share` 同一套逻辑。

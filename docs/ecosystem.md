@@ -110,8 +110,10 @@ npm run export:json -- --id <share-id> --out <目录>
 已落地：扩展直连 `/api/archive-package`（扩展 scheme 白名单 + OPTIONS 预检）、`chatgpt.com/share/*`
 页面内「发送到 CEOBE」按钮（Service Worker 抓取，规避页面 CSP）、采集包 `format`/`version` 握手
 （旧包按 legacy 接受，更高版本明确报错）、书签小工具兜底（打开导入页预填链接，不跨站 POST）。
-测试：`test-share-package.mjs`、`test-local-import-api.mjs`；扩展 UI 需手动在 Edge/Chrome 加载检查。
-⑤ 多站点仍暂缓（需要素材）。
+实机反馈后补了两处：采集包导入后先全量重建索引/页面（失败返回 `archived`），`build-library --only`
+遇到落后索引会先重建一次；ZIP 改在 popup 内生成（扩展消息是 JSON 序列化，不能传 `Uint8Array`）。
+测试：`test-share-package.mjs`、`test-local-import-api.mjs`、`test-local-import-package-api.mjs`、
+`test-only-index.mjs`；扩展 UI 需手动在 Edge/Chrome 加载检查。⑤ 多站点仍暂缓（需要素材）。
 
 原始缺口与动作（保留备查）：
 

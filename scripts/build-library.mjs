@@ -263,6 +263,21 @@ async function buildReader(library, selectedId, onlyIds = null) {
   console.log(`Library reader built: ${library.conversations.length} conversations; home is “${selected?.title || "本地聊天"}”.`);
 }
 
+/**
+ * `--only` 复用现有索引以做到“不碰 archive/”，但索引可能落后于磁盘（例如刚用
+ * import-share-package 导入新快照）。这时先重建索引，再继续只渲染指定页面；
+ * 重建后仍然没有的 id 才报错。返回 `rebuilt` 供调用方打印日志。
+ */
+export async function indexForOnlyIds(ids, { readIndex, rebuildIndex }) {
+  let library = await readIndex();
+  const missingNow = () => ids.filter(id => !library.conversations.some(entry => entry.id === id));
+  if (!missingNow().length) return { library, rebuilt: false };
+  library = await rebuildIndex();
+  const still = missingNow();
+  if (still.length) throw new Error(`档案库中没有这些会话：${still.join(', ')}`);
+  return { library, rebuilt: true };
+}
+
 if (pathToFileURL(process.argv[1]).href === import.meta.url) {
   const { values } = parseArgs({ options: {
     'index-only': { type: 'boolean', default: false },
@@ -271,11 +286,15 @@ if (pathToFileURL(process.argv[1]).href === import.meta.url) {
     only: { type: 'string' },
   } });
   const only = values.only ? values.only.split(',').map(value => value.trim()).filter(Boolean) : null;
-  // Page-only refreshes must not touch the archive: reuse the existing index instead of rewriting it.
+  // Page-only refreshes reuse the index; if it is stale for a new snapshot, rebuild it once and continue.
   let library;
   if (only?.length) {
-    library = JSON.parse(await readFile(indexPath, 'utf8'));
-    console.log(`Library index reused: ${indexPath} (${library.conversations.length} conversations, archive untouched)`);
+    const result = await indexForOnlyIds(only, {
+      readIndex: async () => JSON.parse(await readFile(indexPath, 'utf8')),
+      rebuildIndex: buildLibraryIndex,
+    });
+    library = result.library;
+    console.log(`Library index ${result.rebuilt ? 'rebuilt (stale for a new snapshot)' : 'reused'}: ${indexPath} (${library.conversations.length} conversations)`);
   } else {
     library = await buildLibraryIndex();
     console.log(`Library index: ${indexPath} (${library.conversations.length} conversations)`);

@@ -34,14 +34,21 @@
     toast('正在匿名抓取分享页并发送到本地 CEOBE…');
     try {
       const response = await chrome.runtime.sendMessage({ type: 'ceobe:capture', url: location.href, deliver: 'post' });
-      if (!response?.ok) throw new Error(response?.error || '发送失败');
+      if (!response?.ok) {
+        const error = new Error(response?.error || '发送失败');
+        if (response?.archived) error.archived = true;
+        throw error;
+      }
       const result = response.result || {};
       const page = result.page ? response.endpoint + result.page : '';
       toast(`已归档「${result.title || result.shareId || ''}」${page ? '\n' + page : ''}`);
       button.textContent = '已发送';
       setTimeout(reset, 4000);
     } catch (error) {
-      toast('发送失败：' + (error?.message || error) + '\n请确认本地 CEOBE 已启动（npm run dev），并在扩展里允许访问 127.0.0.1。', 'error');
+      toast('发送失败：' + (error?.message || error)
+        + (error?.archived
+          ? '\n采集包已经归档，只是页面没更新；运行 npm run library 或再次发送（不会重复导入）。'
+          : '\n请确认本地 CEOBE 已启动（npm run dev），并在扩展里允许访问 127.0.0.1。'), 'error');
       reset();
     }
   });

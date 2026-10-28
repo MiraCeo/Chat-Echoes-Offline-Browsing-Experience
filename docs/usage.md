@@ -189,7 +189,9 @@ Windows 快捷键：`Ctrl+K` 搜索（标题和正文，支持 `title:`／`has:`
 - 没有本地服务时，用 popup 里的「导出 ZIP」把采集包下载下来，再拖到导入输入框；
 - 不装扩展时，用 `extension/bookmarklet.md` 里的书签小工具：点一下打开本地导入页并预填链接（不跨站 POST）；
 - 采集包带 `format`/`version` 握手：0.4.x 的旧 ZIP 仍可导入；比本地支持更高的版本会明确提示更新，不会带着半个包解码；
-- 本地服务只放行扩展 scheme（`chrome-extension://` 等）的跨源请求，普通网站仍受同源与 `Sec-Fetch-Site` 检查保护。
+- 本地服务只放行扩展 scheme（`chrome-extension://` 等）的跨源请求，普通网站仍受同源与 `Sec-Fetch-Site` 检查保护；
+- 如果提示「采集包已归档，但页面更新失败」，快照其实已经保存，只是页面没更新：运行 `npm run library`
+  或再点一次发送（不会重复导入）。
 
 ### 批量导入分享链接
 
