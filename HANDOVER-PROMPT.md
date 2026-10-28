@@ -38,7 +38,7 @@ XLSX 只读预览（大表截断 500×60、点选高亮行列、缩放、隐藏�
 **实机修复**：采集包导入后先全量重建索引/页面再返回、失败返回 `archived` 标记、`build-library --only`
 落后索引时自动重建一次、ZIP 改在 popup 内生成；`test-local-import-package-api.mjs`、
 `test-only-index.mjs` 已进 `npm test`；popup/页内按钮仍需手动在浏览器验收）、
-**时间线 / 时间轴**（1.2 时间模块：`timeline-index.json` 构建期索引；侧栏「时间」；页内「时间线」列表 +
+**时间线 / 时间轴**（1.2 时间模块：`timeline-index.json` 构建期索引；侧栏「时间」；页内「时间线」列表/卡片 +
 「时间轴」真实日历缩略/详情，视图状态 `?view=axis` + `localStorage`；`test-timeline-index.mjs` 与
 `test-timeline-browser.mjs` 已进 `npm test`）、
 **方向记录与 MCP 归档**（`docs/direction.md`；MCP 已评估、暂不做）、

@@ -29,7 +29,7 @@ HEAD        （见 git log -1；包含“侧栏客户端渲染”“后处理幂
 导出        官方 JSON 65.3 MB（36 会话；可选附件 323 个文件／254.3 MB）；Markdown 走 export:md
 扩展        MV3 0.5.1：直连发送、页内按钮、ZIP 兜底、端口探测、采集包 format/version 握手
 时间        replay/timeline.html + replay/public/timeline-index.json（36 会话 / 3142 可见轮次）；
-             侧栏入口「时间」在「项目」与「更多」之间；页内「时间线」列表 +「时间轴」缩略/详情
+             侧栏入口「时间」在「项目」与「更多」之间；页内「时间线」列表/卡片 +「时间轴」缩略/详情
 侧栏        浏览器按 replay/chats.json 渲染；每页只剩“当前会话一行 + 行模板”，不再内嵌全部会话
 历史        2026-10-26 做过一次脱敏重写：旧夹具与「测试消息/」「图表/」「文件/」「新界面/」从全部
              历史移除、本机用户名替换为占位；提交时间保持不变，但**旧 SHA 全部失效**
@@ -76,9 +76,9 @@ npm run verify:archive      # 只读检查档案结构
 - 采集扩展 0.5.1：popup 直接发送 + 端口探测、分享页内「发送到 CEOBE」按钮、无服务时导出 ZIP；
   采集包带 `format`/`version` 握手（旧包按 legacy 接受）；书签小工具打开导入页预填链接；
 - 时间：侧栏「项目」与「更多」之间的入口「时间」；`timeline.html` 内含「时间线」（年/月列表，
-  首→末条可见消息时间、轮数，点击跳到首条消息）与「时间轴」（真实日历缩略 7px/天 + 详情 96px/天，
-  3 条泳道、视口框双向同步）两个视图；视图状态写入 `?view=axis` 和 `localStorage`；索引仍是构建期
-  `replay/public/timeline-index.json`，标题取 `chats.json`；
+  可切列表/卡片；卡片两列、多日逐日进度条、单日「当天」）与「时间轴」（真实日历缩略 7px/天 +
+  详情 96px/天，3 条泳道、视口框双向同步）两个视图；视图状态写入 `?view=axis` 和 `localStorage`，
+  布局状态写入 `localStorage`；索引仍是构建期 `replay/public/timeline-index.json`，标题取 `chats.json`；
 - 资料库可以自建文件夹（当标签用，一条资源可属多个）并上传自己的文件；
   上传字节在 `data/private/library-files/`，不进 `archive/`，任何路径都不删原文件；
 - 附件随页拷贝：并行渲染的每一页都写自己会话的附件字节，`replay/archive-resources` 与 `dist` 都是 321 个文件，

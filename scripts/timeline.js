@@ -3,12 +3,18 @@
   const status = document.querySelector('[data-ceobe-timeline-status]');
   const empty = document.querySelector('[data-ceobe-timeline-empty]');
   const orderButtons = [...document.querySelectorAll('[data-ceobe-timeline-order]')];
+  const layoutButtons = [...document.querySelectorAll('[data-ceobe-timeline-layout]')];
   if (!groups || !status) return;
 
   const root = new URL('./', location.href);
   const ORDER_KEY = 'ceobe.timeline.order';
+  const LAYOUT_KEY = 'ceobe.timeline.layout';
   let order = 'newest';
-  try { if (localStorage.getItem(ORDER_KEY) === 'oldest') order = 'oldest'; } catch { /* 隐私模式下没有 localStorage */ }
+  let layout = 'list';
+  try {
+    if (localStorage.getItem(ORDER_KEY) === 'oldest') order = 'oldest';
+    if (localStorage.getItem(LAYOUT_KEY) === 'cards') layout = 'cards';
+  } catch { /* 隐私模式下没有 localStorage */ }
   let index = null;
   let titles = new Map();
 
@@ -39,12 +45,37 @@
   };
   const count = value => Number(value).toLocaleString('zh-CN');
   const titleOf = item => titles.get(item.id) || '会话 ' + String(item.id).slice(0, 8);
+  const spanOf = (first, last) => {
+    const a = parts(first);
+    const b = parts(last);
+    return Math.round((Date.UTC(b.year, b.month - 1, b.day) - Date.UTC(a.year, a.month - 1, a.day)) / 86400000) + 1;
+  };
+  const activeOf = item => Object.keys(item.days || {}).length;
+  const dayKeyAt = (first, offset) => {
+    const date = new Date(first * 1000);
+    date.setDate(date.getDate() + offset);
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  };
 
   const syncOrderButtons = () => {
     for (const button of orderButtons) {
       const active = (button.dataset.ceobeTimelineOrder || 'newest') === order;
       button.setAttribute('aria-pressed', active ? 'true' : 'false');
     }
+  };
+
+  const syncLayoutButtons = () => {
+    for (const button of layoutButtons) {
+      const active = (button.dataset.ceobeTimelineLayout || 'list') === layout;
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+  };
+
+  const setLayout = next => {
+    layout = next === 'cards' ? 'cards' : 'list';
+    try { localStorage.setItem(LAYOUT_KEY, layout); } catch { /* ignore */ }
+    syncLayoutButtons();
+    if (index) draw();
   };
 
   const setOrder = next => {
@@ -102,6 +133,61 @@
     return list;
   };
 
+  const buildCards = (items, { undated = false } = {}) => {
+    const list = document.createElement('ol');
+    list.className = 'ceobe-timeline-cards';
+    for (const item of items) {
+      const row = document.createElement('li');
+      const link = document.createElement('a');
+      link.className = 'ceobe-timeline-card';
+      const href = 'conversations/' + encodeURIComponent(item.id) + '.html'
+        + (item.first_message_id ? '#bookmark=' + encodeURIComponent(item.first_message_id) : '');
+      link.href = new URL(href, root).href;
+
+      const title = document.createElement('span');
+      title.className = 'ceobe-timeline-card-title';
+      title.textContent = titleOf(item);
+
+      const meta = document.createElement('span');
+      meta.className = 'ceobe-timeline-card-meta';
+      const when = undated ? '时间未知' : rangeLabel(item.first, item.last);
+      const turns = Number.isFinite(item.turns) ? `${item.turns} 轮` : '';
+      meta.textContent = [when, turns].filter(Boolean).join(' · ');
+
+      link.append(title, meta);
+      let accessible = [titleOf(item), when, turns].filter(Boolean).join('，');
+      if (!undated) {
+        const span = spanOf(item.first, item.last);
+        const active = activeOf(item);
+        if (span > 1) {
+          const progress = document.createElement('span');
+          progress.className = 'ceobe-timeline-card-progress';
+          progress.setAttribute('aria-hidden', 'true');
+          for (let offset = 0; offset < span; offset += 1) {
+            const segment = document.createElement('span');
+            segment.className = 'ceobe-timeline-card-segment'
+              + ((item.days || {})[dayKeyAt(item.first, offset)] ? ' is-filled' : '');
+            progress.append(segment);
+          }
+          const label = document.createElement('span');
+          label.className = 'ceobe-timeline-card-progress-label';
+          label.textContent = `${active}/${span} 天有消息`;
+          link.append(progress, label);
+          accessible += `，跨度 ${span} 天，${active} 天有消息`;
+        } else {
+          const label = document.createElement('span');
+          label.className = 'ceobe-timeline-card-progress-label';
+          label.textContent = '当天';
+          link.append(label);
+        }
+      }
+      link.setAttribute('aria-label', accessible);
+      row.append(link);
+      list.append(row);
+    }
+    return list;
+  };
+
   const draw = () => {
     if (!index) return;
     const dated = index.conversations.filter(item => Number.isFinite(item.first));
@@ -119,7 +205,7 @@
       const items = byMonth.get(key).sort((a, b) => (order === 'oldest' ? a.first - b.first : b.first - a.first));
       const turns = items.reduce((sum, item) => sum + (Number.isFinite(item.turns) ? item.turns : 0), 0);
       const section = document.createElement('section');
-      section.className = 'ceobe-timeline-month';
+      section.className = 'ceobe-timeline-month' + (layout === 'cards' ? ' ceobe-timeline-month-cards' : '');
       const head = document.createElement('div');
       head.className = 'ceobe-timeline-month-head';
       const heading = document.createElement('h2');
@@ -128,12 +214,12 @@
       tally.className = 'ceobe-timeline-month-count';
       tally.textContent = `${count(items.length)} 个会话 · ${count(turns)} 轮`;
       head.append(heading, tally);
-      section.append(head, buildList(items));
+      section.append(head, layout === 'cards' ? buildCards(items) : buildList(items));
       groups.append(section);
     }
     if (undated.length) {
       const section = document.createElement('section');
-      section.className = 'ceobe-timeline-month';
+      section.className = 'ceobe-timeline-month' + (layout === 'cards' ? ' ceobe-timeline-month-cards' : '');
       const head = document.createElement('div');
       head.className = 'ceobe-timeline-month-head';
       const heading = document.createElement('h2');
@@ -142,7 +228,7 @@
       tally.className = 'ceobe-timeline-month-count';
       tally.textContent = `${count(undated.length)} 个会话`;
       head.append(heading, tally);
-      section.append(head, buildList(undated, { undated: true }));
+      section.append(head, layout === 'cards' ? buildCards(undated, { undated: true }) : buildList(undated, { undated: true }));
       groups.append(section);
     }
     if (empty) empty.hidden = index.conversations.length > 0;
@@ -155,6 +241,10 @@
     button.addEventListener('click', () => setOrder(button.dataset.ceobeTimelineOrder));
   }
   syncOrderButtons();
+  for (const button of layoutButtons) {
+    button.addEventListener('click', () => setLayout(button.dataset.ceobeTimelineLayout));
+  }
+  syncLayoutButtons();
 
   const viewButtons = [...document.querySelectorAll('[data-ceobe-view]')];
   const viewPanels = [...document.querySelectorAll('[data-ceobe-view-panel]')];

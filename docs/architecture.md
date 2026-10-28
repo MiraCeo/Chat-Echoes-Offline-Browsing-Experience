@@ -168,7 +168,11 @@ ChatGPT 分享页面及公开资源
 
 `build-timeline-page.mjs` 从导入页骨架生成顶层 `replay/timeline.html`，页内分「时间线」（列表）和「时间轴」（缩略 + 详情）两个 tab；视图状态写入 `?view=axis` 与 `localStorage`，由 `timeline.js` 切换。侧栏入口由 `build-timeline-nav.mjs` 克隆官方「项目」行插入到「项目」与「更多」之间（每趟先清后插），标签为「时间」，当前页带 `aria-current="page"`。
 
-时间线视图由 `timeline.js` 渲染年/月分组、两行式行、吸顶月标题和首条消息排序。时间轴视图由 `timeline-axis.js` 独立渲染：完整 7–10 月的真实日历（缩略 7px/天、详情 96px/天），3 条泳道、会话跨度卡片、缩略视口框；滚动详情同步视口，点击/拖动缩略图定位详情，视口框有 slider ARIA 与键盘方向键/Home/End。
+时间线视图由 `timeline.js` 渲染年/月分组、两行式行、吸顶月标题和首条消息排序；同一面板内可切
+「列表 / 卡片」：卡片是两列网格（窄屏单列），多日会话显示逐日进度条，单日显示「当天」，布局选择
+写 `localStorage`。时间轴视图由 `timeline-axis.js` 独立渲染：完整 7–10 月的真实日历（缩略 7px/天、
+详情 96px/天），3 条泳道、会话跨度卡片、缩略视口框；滚动详情同步视口，点击/拖动缩略图定位详情，
+视口框有 slider ARIA 与键盘方向键/Home/End。
 
 ## 导出与备份的区别
 

@@ -40,10 +40,16 @@ export async function buildTimelinePage(projectRoot = resolve(import.meta.dirnam
       <section class="ceobe-timeline-panel" id="ceobe-view-panel-timeline" role="tabpanel" aria-labelledby="ceobe-view-tab-timeline" data-ceobe-view-panel="timeline">
         <div class="ceobe-timeline-toolbar">
           <p class="ceobe-timeline-status" data-ceobe-timeline-status role="status">正在加载时间线…</p>
-          <div class="ceobe-timeline-order" role="group" aria-label="时间顺序">
-            <span class="ceobe-timeline-order-label">按首条消息</span>
-            <button type="button" data-ceobe-timeline-order="newest" aria-pressed="true">最新在前</button>
-            <button type="button" data-ceobe-timeline-order="oldest" aria-pressed="false">最早在前</button>
+          <div class="ceobe-timeline-controls">
+            <div class="ceobe-timeline-layout" role="group" aria-label="时间线布局">
+              <button type="button" data-ceobe-timeline-layout="list" aria-pressed="true">列表</button>
+              <button type="button" data-ceobe-timeline-layout="cards" aria-pressed="false">卡片</button>
+            </div>
+            <div class="ceobe-timeline-order" role="group" aria-label="时间顺序">
+              <span class="ceobe-timeline-order-label">按首条消息</span>
+              <button type="button" data-ceobe-timeline-order="newest" aria-pressed="true">最新在前</button>
+              <button type="button" data-ceobe-timeline-order="oldest" aria-pressed="false">最早在前</button>
+            </div>
           </div>
         </div>
         <div class="ceobe-timeline-groups" data-ceobe-timeline-groups></div>

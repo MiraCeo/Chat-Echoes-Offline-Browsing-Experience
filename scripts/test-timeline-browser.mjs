@@ -89,6 +89,40 @@ try {
     assert.ok((await firstHref()).includes(newest.id), '切回最新在前');
   }
 
+  // 卡片视图：与列表同一批会话，2 列网格、进度条/当天标签，布局选择持久化。
+  await page.locator('[data-ceobe-timeline-layout="cards"]').click();
+  await page.waitForTimeout(120);
+  const cardsState = await page.evaluate(() => {
+    const grid = document.querySelector('.ceobe-timeline-cards');
+    return {
+      cards: document.querySelectorAll('.ceobe-timeline-card').length,
+      rows: document.querySelectorAll('.ceobe-timeline-row').length,
+      columns: grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').length : 0,
+      segments: document.querySelectorAll('.ceobe-timeline-card-segment').length,
+      filled: document.querySelectorAll('.ceobe-timeline-card-segment.is-filled').length,
+      singleLabels: [...document.querySelectorAll('.ceobe-timeline-card-progress-label')].filter(node => node.textContent === '当天').length,
+      pressed: document.querySelector('[data-ceobe-timeline-layout="cards"]')?.getAttribute('aria-pressed'),
+      overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    };
+  });
+  assert.equal(cardsState.cards, expected, '卡片视图应有全部会话卡片');
+  assert.equal(cardsState.rows, 0, '卡片视图不渲染列表行');
+  assert.equal(cardsState.columns, 2, '桌面卡片为两列');
+  assert.ok(cardsState.segments > 0, '多日会话应有进度条');
+  assert.ok(cardsState.filled > 0, '进度条应有已填充段');
+  assert.ok(cardsState.singleLabels > 0, '单日会话应显示“当天”');
+  assert.equal(cardsState.pressed, 'true');
+  assert.equal(cardsState.overflowX, false);
+  await page.reload({ waitUntil: 'networkidle' });
+  const cardsPersisted = await page.evaluate(() => ({
+    cards: document.querySelectorAll('.ceobe-timeline-card').length,
+    pressed: document.querySelector('[data-ceobe-timeline-layout="cards"]')?.getAttribute('aria-pressed'),
+  }));
+  assert.equal(cardsPersisted.cards, expected, '刷新后保留卡片视图');
+  assert.equal(cardsPersisted.pressed, 'true');
+  await page.locator('[data-ceobe-timeline-layout="list"]').click();
+  assert.equal(await page.locator('.ceobe-timeline-row').count(), expected, '切回列表恢复全部行');
+
   // 时间轴：缩略图、详情卡片、视口框，以及点击缩略图定位详情。
   await page.locator('[data-ceobe-view="axis"]').click();
   await page.waitForFunction(() => document.querySelectorAll('.ceobe-axis-card').length > 0);
@@ -135,6 +169,21 @@ try {
   assert.equal(mobile.overflowX, false, '窄屏不应横向溢出');
   assert.equal(mobile.controls, true, '窄屏仍能看到排序控件');
   assert.equal(mobile.entries, expected, '窄屏条目数不变');
+  await page.locator('[data-ceobe-timeline-layout="cards"]').click();
+  const mobileCards = await page.evaluate(() => {
+    const grid = document.querySelector('.ceobe-timeline-cards');
+    return {
+      cards: document.querySelectorAll('.ceobe-timeline-card').length,
+      columns: grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').length : 0,
+      overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      controls: [...document.querySelectorAll('[data-ceobe-timeline-layout]')].every(button => button.getBoundingClientRect().width > 0),
+    };
+  });
+  assert.equal(mobileCards.cards, expected);
+  assert.equal(mobileCards.columns, 1, '窄屏卡片为单列');
+  assert.equal(mobileCards.overflowX, false);
+  assert.equal(mobileCards.controls, true);
+  await page.locator('[data-ceobe-timeline-layout="list"]').click();
   await page.locator('[data-ceobe-view="axis"]').click();
   await page.waitForFunction(() => document.querySelectorAll('.ceobe-axis-card').length > 0);
   const mobileAxis = await page.evaluate(() => {
@@ -175,7 +224,7 @@ try {
   }
 
   assert.deepEqual(errors, [], '没有页面错误');
-  console.log('PASS timeline browser: 时间 nav slot, 时间线/时间轴 views, list ordering, month groups, axis overview/detail sync, mobile viewport, conversation jump, no overflow/errors');
+  console.log('PASS timeline browser: 时间 nav slot, 时间线 列表/卡片, 时间轴 views, list ordering, month groups, axis overview/detail sync, mobile viewport, conversation jump, no overflow/errors');
 } finally {
   await browser.close();
 }
