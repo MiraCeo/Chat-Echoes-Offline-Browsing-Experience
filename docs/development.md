@@ -29,7 +29,9 @@ npm run dev -- --host 127.0.0.1 --port 5173
 - 想固定端口：`CEOBE_PORT=5400 npm run dev`（PowerShell 用 `$env:CEOBE_PORT=5400`）；
 - 组件结构正确但排版塌陷（无间距、无对齐、宽高为 0）：先确认冻结包是否缺组件样式表，见[架构说明](architecture.md#组件样式与冻结包的边界)，不要先改渲染器。
 - 原因通常是 Windows 把一段端口列进了保留区，可用 `netsh interface ipv4 show excludedportrange protocol=tcp` 查看；
-- 探针会真的尝试 bind 一次，因此 EACCES（保留端口）也能被跳过，而不只是 EADDRINUSE。
+- 探针会真的尝试 bind 一次，因此 EACCES（保留端口）也能被跳过，而不只是 EADDRINUSE；
+- **注意 5173 上可能是旧的 dev server**：端口被一个修复前启动的进程占着时，新启动会落到 5174，而扩展、浏览器测试和默认地址仍打 5173，等于在跑旧代码（2026-10-28 实机踩到：采集包写入了但索引没刷新）。先
+  `Get-NetTCPConnection -LocalPort 5173` 确认占用进程，停掉旧服务再启动；扩展里也可以点「检测」连到新端口。
 
 ## 构建与预览
 
