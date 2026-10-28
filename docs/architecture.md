@@ -170,9 +170,13 @@ ChatGPT 分享页面及公开资源
 
 时间线视图由 `timeline.js` 渲染年/月分组、两行式行、吸顶月标题和首条消息排序；同一面板内可切
 「列表 / 卡片」：卡片是两列网格（窄屏单列），多日会话显示逐日进度条，单日显示「当天」，布局选择
-写 `localStorage`。时间轴视图由 `timeline-axis.js` 独立渲染：完整 7–10 月的真实日历（缩略 7px/天、
-详情 96px/天），3 条泳道、会话跨度卡片、缩略视口框；滚动详情同步视口，点击/拖动缩略图定位详情，
-视口框有 slider ARIA 与键盘方向键/Home/End。
+写 `localStorage`。页面可选读取 `replay/public/timeline-summaries.json`，只在卡片视图、
+`status=fresh` 且 `source.last_message_id` 匹配时显示 1–2 行摘要；文件缺失/过期/源不匹配时不占位。
+契约见 `docs/summary-contract.md`，1.2 不生成摘要。
+
+时间轴视图由 `timeline-axis.js` 独立渲染：完整 7–10 月的真实日历（缩略 7px/天、详情 96px/天），
+3 条泳道、会话跨度卡片、缩略视口框；滚动详情同步视口，点击/拖动缩略图定位详情，视口框有 slider
+ARIA 与键盘方向键/Home/End。时间轴不读取摘要。
 
 ## 导出与备份的区别
 

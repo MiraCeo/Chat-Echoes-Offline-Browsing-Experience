@@ -259,8 +259,60 @@ try {
     await utcContext.close();
   }
 
+  // 摘要骨架：只有 fresh 且 last_message_id 匹配的条目才渲染，缺失/过期/不匹配不占位。
+  if (expected >= 3) {
+    const [fresh, stale, mismatch] = index.conversations;
+    const summaryPage = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const summaryErrors = [];
+    summaryPage.on('pageerror', error => summaryErrors.push(error.message));
+    await summaryPage.route('**/timeline-summaries.json', route => route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        schema_version: '1.0.0',
+        kind: 'ceobe.timeline-summaries',
+        conversations: {
+          [fresh.id]: {
+            summary: '骨架摘要：这是一条用于验证卡片布局的测试摘要。',
+            status: 'fresh',
+            source: { last_message_id: fresh.last_message_id },
+          },
+          [stale.id]: {
+            summary: '这条摘要已经过期，不应显示。',
+            status: 'stale',
+            source: { last_message_id: stale.last_message_id },
+          },
+          [mismatch.id]: {
+            summary: '源消息不匹配，不应显示。',
+            status: 'fresh',
+            source: { last_message_id: 'different-message' },
+          },
+        },
+      }),
+    }));
+    await summaryPage.goto(base + 'timeline.html', { waitUntil: 'networkidle' });
+    await summaryPage.locator('[data-ceobe-timeline-layout="cards"]').click();
+    await summaryPage.waitForTimeout(120);
+    const summaryState = await summaryPage.evaluate(() => ({
+      count: document.querySelectorAll('.ceobe-timeline-card-summary').length,
+      text: document.querySelector('.ceobe-timeline-card-summary')?.textContent,
+      stale: [...document.querySelectorAll('.ceobe-timeline-card-summary')]
+        .some(node => node.textContent.includes('过期')),
+      mismatch: [...document.querySelectorAll('.ceobe-timeline-card-summary')]
+        .some(node => node.textContent.includes('不匹配')),
+      aiLabel: document.querySelector('.ceobe-timeline-card-summary')?.getAttribute('data-ai-summary') != null,
+    }));
+    assert.equal(summaryState.count, 1, '只渲染 fresh 且源匹配的摘要');
+    assert.match(summaryState.text, /骨架摘要/);
+    assert.equal(summaryState.stale, false);
+    assert.equal(summaryState.mismatch, false);
+    assert.equal(summaryState.aiLabel, true, '摘要节点应带 data-ai-summary 标记');
+    assert.deepEqual(summaryErrors, [], '摘要夹具没有页面错误');
+    await summaryPage.close();
+  }
+
   assert.deepEqual(errors, [], '没有页面错误');
-  console.log('PASS timeline browser: 时间 nav slot, 时间线 列表/卡片, 时间轴 views, list ordering, month groups, axis overview/detail sync, UTC timezone, mobile viewport, conversation jump, no overflow/errors');
+  console.log('PASS timeline browser: 时间 nav slot, 时间线 列表/卡片, 时间轴 views, rounds, UTC timezone, summary skeleton, mobile viewport, conversation jump, no overflow/errors');
 } finally {
   await browser.close();
 }

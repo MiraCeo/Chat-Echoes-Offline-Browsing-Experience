@@ -17,6 +17,7 @@
   } catch { /* 隐私模式下没有 localStorage */ }
   let index = null;
   let titles = new Map();
+  let summaries = new Map();
   const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   let timezone = browserTimezone;
   let zoneFormatter = null;
@@ -76,6 +77,19 @@
   const roundsOf = item => Number.isFinite(item.rounds)
     ? item.rounds
     : Math.ceil((Number.isFinite(item.turns) ? item.turns : 0) / 2);
+  const normalizeSummaries = payload => {
+    if (!payload || payload.kind !== 'ceobe.timeline-summaries'
+      || !payload.conversations || typeof payload.conversations !== 'object') return new Map();
+    return new Map(Object.entries(payload.conversations));
+  };
+  const summaryOf = item => {
+    const entry = summaries.get(item.id);
+    if (!entry || entry.status !== 'fresh' || typeof entry.summary !== 'string') return '';
+    if (entry.source?.last_message_id
+      && item.last_message_id
+      && entry.source.last_message_id !== item.last_message_id) return '';
+    return entry.summary.trim();
+  };
   const spanOf = (first, last) => {
     const a = parts(first);
     const b = parts(last);
@@ -187,7 +201,16 @@
       const footer = document.createElement('span');
       footer.className = 'ceobe-timeline-card-footer';
       link.append(title, meta, footer);
+      const summaryText = summaryOf(item);
+      if (summaryText) {
+        const summary = document.createElement('span');
+        summary.className = 'ceobe-timeline-card-summary';
+        summary.dataset.aiSummary = '';
+        summary.textContent = summaryText;
+        link.insertBefore(summary, footer);
+      }
       let accessible = [titleOf(item), when, turns].filter(Boolean).join('，');
+      if (summaryText) accessible += `，AI 摘要：${summaryText}`;
       if (!undated) {
         const span = spanOf(item.first, item.last);
         if (span > 1) {
@@ -332,7 +355,10 @@
     fetch(new URL('chats.json', root), { cache: 'no-store' })
       .then(response => (response.ok ? response.json() : null))
       .catch(() => null),
-  ]).then(([payload, catalog]) => {
+    fetch(new URL('timeline-summaries.json', root), { cache: 'no-store' })
+      .then(response => (response.ok ? response.json() : null))
+      .catch(() => null),
+  ]).then(([payload, catalog, summaryPayload]) => {
     if (!payload || payload.kind !== 'ceobe.timeline-index' || !Array.isArray(payload.conversations)) {
       fail('时间线索引不可用：请运行 npm run library 重建阅读页。');
       return;
@@ -340,6 +366,7 @@
     index = payload;
     timezone = normalizeTimezone(payload.timezone);
     titles = new Map((catalog?.chats || []).map(chat => [chat.id, chat.title]));
+    summaries = normalizeSummaries(summaryPayload);
     draw();
   }).catch(error => fail('时间线索引不可用：' + (error?.message || error) + '。请运行 npm run library 重建阅读页。'));
 })();
