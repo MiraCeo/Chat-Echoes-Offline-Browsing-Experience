@@ -5,15 +5,16 @@
   const description = document.querySelector('[data-proto-desc]');
   const count = document.querySelector('[data-proto-count]');
   const params = new URLSearchParams(location.search);
-  const variant = ['p1', 'p2', 'p3', 'p4', 'p5', 'p5a'].includes(params.get('v')) ? params.get('v') : 'p1';
+  const variant = ['p1', 'p2', 'p3', 'p4', 'p5', 'p5a', 'p6'].includes(params.get('v')) ? params.get('v') : 'p1';
 
   const descriptions = {
     p1: 'P1 会话基础：横轴等距槽位，卡片上下交替；只表达先后，可左右拖动。',
     p2: 'P2 会话进度：会话卡片内加完整进度条；整条=该会话自身跨度，按天填充，填充=有消息的日子（例如 2/3）。',
     p3: 'P3 日期基础：只保留有会话的日期，日期等距；每个日期节点分支挂当天所有会话卡片（按开始时间），卡片标注持续天数。',
     p4: 'P4 日期进度：日期节点 + 完整进度条；日期卡片内逐日填充，整条=该会话总跨度，填充=有消息的日子。',
-    p5: 'P5 卡片泳道：保留 P3 的白色标题卡，把卡片横向拉长——卡片本身就是从开始节点到结束节点的跨度；3 条泳道互不交叉，同日会话用居中小卡。',
+    p5: 'P5 卡片泳道：保留 P3 的白色标题卡；卡片按日期格拉伸（一天=相邻节点中点之间），3 条泳道互不交叉。',
     p5a: 'P5A 分离泳道（对照）：保留 P3 的卡片堆叠，跨度条单独放在下方 3 条泳道。',
+    p6: 'P6 缩略图：全档案压缩到一屏，33 个日期节点、3 条泳道、纯色细条；没有卡片文字，作为详情页的缩略导航基底。',
   };
   description.textContent = descriptions[variant];
   count.textContent = String(data.conversations.length);
@@ -494,7 +495,6 @@
     const AXIS_H = 36;
     const LANE_H = 52;
     const CARD_H = 40;
-    const MIN_W = 60;
 
     const dates = [...new Set(itemsAsc.flatMap(item => [fmtDay(item.first), fmtDay(item.last)]))].sort();
     const dateIndex = new Map(dates.map((date, index) => [date, index]));
@@ -504,11 +504,8 @@
     for (const item of itemsAsc) {
       const startIndex = dateIndex.get(fmtDay(item.first));
       const endIndex = dateIndex.get(fmtDay(item.last));
-      const startCenter = startIndex * NODE_W + NODE_W / 2;
-      const endCenter = endIndex * NODE_W + NODE_W / 2;
-      const sameDay = startIndex === endIndex;
-      const cardWidth = sameDay ? MIN_W : Math.max(MIN_W, endCenter - startCenter);
-      const left = sameDay ? startCenter - MIN_W / 2 : startCenter;
+      const cardWidth = (endIndex - startIndex + 1) * NODE_W;
+      const left = startIndex * NODE_W;
       const right = left + cardWidth;
       let lane = lanes.findIndex(list => !list.length || list[list.length - 1] <= left);
       if (lane < 0) {
@@ -586,11 +583,8 @@
       const number = index + 1;
       const startIndex = dateIndex.get(fmtDay(item.first));
       const endIndex = dateIndex.get(fmtDay(item.last));
-      const startCenter = startIndex * NODE_W + NODE_W / 2;
-      const endCenter = endIndex * NODE_W + NODE_W / 2;
-      const sameDay = startIndex === endIndex;
-      const cardWidth = sameDay ? MIN_W : Math.max(MIN_W, endCenter - startCenter);
-      const left = sameDay ? startCenter - MIN_W / 2 : startCenter;
+      const cardWidth = (endIndex - startIndex + 1) * NODE_W;
+      const left = startIndex * NODE_W;
       const laneIndex = laneOf.get(item);
       const card = el('a', 'crd-card');
       card.draggable = false;
@@ -608,8 +602,9 @@
 
     scroll.append(strip);
     wrap.append(toolbar, scroll);
-    main.append(wrap, el('p', 'proto-note', '保留日期节点；卡片本身就是跨度条，从开始节点延伸到结束节点。同一天开始并结束的会话用 60px 居中小卡；3 条泳道互不交叉。'));
+    main.append(wrap, el('p', 'proto-note', '保留日期节点；卡片按日期格拉伸：一天=相邻节点中点之间，多天覆盖完整起止日；3 条泳道互不交叉。'));
     const updateCurrent = () => {
+      scroll.dataset.scrolled = scroll.scrollLeft > 4 ? 'true' : 'false';
       const left = scroll.scrollLeft;
       const right = Math.min(width, scroll.scrollLeft + scroll.clientWidth);
       const startDate = [...dates].reverse().find(date => dateIndex.get(date) * NODE_W <= left) || dates[0];
@@ -623,7 +618,94 @@
     attachPan(scroll, latest);
   };
 
-  if (variant === 'p5') renderCardLanes();
+  const renderOverview = () => {
+    const NODE_W = 24;
+    const HEADER = 20;
+    const LANE_H = 20;
+    const BAR_H = 10;
+    const dates = [...new Set(itemsAsc.flatMap(item => [fmtDay(item.first), fmtDay(item.last)]))].sort();
+    const dateIndex = new Map(dates.map((date, index) => [date, index]));
+    const width = dates.length * NODE_W;
+    const lanes = [[], [], []];
+    const laneOf = new Map();
+    for (const item of itemsAsc) {
+      const startIndex = dateIndex.get(fmtDay(item.first));
+      const endIndex = dateIndex.get(fmtDay(item.last));
+      const left = startIndex * NODE_W;
+      const right = (endIndex + 1) * NODE_W;
+      let lane = lanes.findIndex(list => !list.length || list[list.length - 1] <= left);
+      if (lane < 0) {
+        lane = lanes.length;
+        lanes.push([]);
+      }
+      lanes[lane].push(right);
+      laneOf.set(item, lane);
+    }
+
+    const wrap = el('div', 'ovw-wrap');
+    const toolbar = el('div', 'htl-toolbar');
+    toolbar.append(el('span', 'htl-hint', `缩略图 · ${dates.length} 个日期 · ${itemsAsc.length} 条会话 · ${lanes.length} 条泳道 · 全档案`));
+    const scroll = el('div', 'ovw-scroll');
+    const chart = el('div', 'ovw-chart');
+    chart.style.width = `${width}px`;
+    chart.style.height = `${HEADER + lanes.length * LANE_H + 6}px`;
+    const head = el('div', 'ovw-head');
+    let monthStart = 0;
+    while (monthStart < dates.length) {
+      const key = dates[monthStart].slice(0, 7);
+      let end = monthStart;
+      while (end < dates.length && dates[end].slice(0, 7) === key) end++;
+      const block = el('div', 'ovw-month');
+      block.style.width = `${(end - monthStart) * NODE_W}px`;
+      block.append(el('span', 'ovw-month-label', `${Number(key.slice(5))} 月`));
+      head.append(block);
+      monthStart = end;
+    }
+    const body = el('div', 'ovw-body');
+    body.style.height = `${lanes.length * LANE_H}px`;
+    for (let lane = 0; lane < lanes.length; lane += 1) {
+      const band = el('div', 'ovw-lane' + (lane % 2 ? ' alt' : ''));
+      band.style.top = `${lane * LANE_H}px`;
+      band.style.height = `${LANE_H}px`;
+      body.append(band);
+    }
+    let boundary = 0;
+    let monthCursor = 0;
+    while (monthCursor < dates.length) {
+      const key = dates[monthCursor].slice(0, 7);
+      let end = monthCursor;
+      while (end < dates.length && dates[end].slice(0, 7) === key) end++;
+      const line = el('div', 'ovw-month-line');
+      line.style.left = `${boundary}px`;
+      body.append(line);
+      boundary += (end - monthCursor) * NODE_W;
+      monthCursor = end;
+    }
+    itemsAsc.forEach((item, index) => {
+      const startIndex = dateIndex.get(fmtDay(item.first));
+      const endIndex = dateIndex.get(fmtDay(item.last));
+      const left = startIndex * NODE_W;
+      const widthX = (endIndex - startIndex + 1) * NODE_W;
+      const laneIndex = laneOf.get(item);
+      const bar = el('a', 'ovw-bar');
+      bar.draggable = false;
+      bar.href = hrefOf(item);
+      bar.target = '_blank';
+      bar.rel = 'noreferrer';
+      bar.style.left = `${left}px`;
+      bar.style.width = `${widthX}px`;
+      bar.style.top = `${laneIndex * LANE_H + (LANE_H - BAR_H) / 2}px`;
+      bar.title = `#${index + 1} ${item.title}\n${fmtRange(item.first, item.last)}\n${item.turns} 轮 · 泳道 ${laneIndex + 1}`;
+      body.append(bar);
+    });
+    chart.append(head, body);
+    scroll.append(chart);
+    wrap.append(toolbar, scroll);
+    main.append(wrap, el('p', 'proto-note', '缩略图：全档案压缩在一屏；细条表示会话跨度，3 条泳道互不交叉，悬停看标题，点击进会话。'));
+  };
+
+  if (variant === 'p6') renderOverview();
+  else if (variant === 'p5') renderCardLanes();
   else if (variant === 'p5a') renderSpanRail();
   else if (variant === 'p3' || variant === 'p4') renderDateRail(variant === 'p4' ? 'progress' : 'base');
   else renderHorizontalRail();

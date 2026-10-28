@@ -503,6 +503,10 @@ a { color: inherit; }
   user-select: none;
 }
 .crd-scroll.is-dragging { cursor: grabbing; }
+.crd-scroll[data-scrolled="true"] {
+  mask-image: linear-gradient(to right, transparent 0, #000 24px);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 24px);
+}
 .crd-strip { position: relative; }
 .crd-months { display: flex; height: 26px; }
 .crd-month {
@@ -598,6 +602,56 @@ a { color: inherit; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* P6: whole-archive thumbnail */
+.ovw-wrap { margin-top: 4px; }
+.ovw-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  background: #fff;
+}
+.ovw-chart { margin: 0 auto; }
+.ovw-head { display: flex; height: 20px; }
+.ovw-month {
+  position: relative;
+  flex: none;
+  border-left: 1px solid #e4e7ec;
+}
+.ovw-month:first-child { border-left: 0; }
+.ovw-month-label {
+  position: absolute;
+  top: 4px;
+  left: 5px;
+  color: #667085;
+  font-size: 8px;
+  font-weight: 600;
+}
+.ovw-body { position: relative; }
+.ovw-lane {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-bottom: 1px solid #f2f4f7;
+}
+.ovw-lane.alt { background: #fafbfc; }
+.ovw-month-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 1px;
+  background: #e4e7ec;
+}
+.ovw-bar {
+  position: absolute;
+  z-index: 2;
+  height: 10px;
+  border-radius: 2px;
+  background: #475467;
+}
+.ovw-bar:hover { background: #111; }
 .proto-note {
   margin: 12px 0 0;
   color: #667085;
