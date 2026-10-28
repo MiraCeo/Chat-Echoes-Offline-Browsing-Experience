@@ -18,7 +18,7 @@ CEOBE（Chat Echoes Offline Browsing Experience）：把 ChatGPT 的公开分享
 HEAD        （见 git log -1；包含“侧栏客户端渲染”“后处理幂等”“页面装饰指纹”“资源库按页缓存”
              “项目页瘦身”“消息操作裁剪”“附件随页拷贝”“搜索语法与索引标签”“官方格式 JSON 导出”
              “装饰指纹修复/方向记录”“采集扩展补齐与导入链路修复”）
-标签        v1.0.0 / v1.0.1 / v1.0.2（本地）
+标签        v1.0.0 / v1.0.1 / v1.0.2 / v1.1.0（本地 1.1.0 = 2026-10-28）
 归档        36 个分享会话 / 45 个快照，约 955 MB；chatgpt-web 采集为 0
 磁盘        replay/ 约 1.09 GB（页面 + 附件 + 资源库副本）、dist/ 约 731 MB
 附件        323 个本地文件（replay/archive-resources 与 public 副本、dist 一致），附件链接 0 失效
