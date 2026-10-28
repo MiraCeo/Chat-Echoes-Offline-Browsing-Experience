@@ -14,7 +14,7 @@
     p4: 'P4 日期进度：日期节点 + 完整进度条；日期卡片内逐日填充，整条=该会话总跨度，填充=有消息的日子。',
     p5: 'P5 卡片泳道：保留 P3 的白色标题卡；卡片按日期格拉伸（一天=相邻节点中点之间），3 条泳道互不交叉。',
     p5a: 'P5A 分离泳道（对照）：保留 P3 的卡片堆叠，跨度条单独放在下方 3 条泳道。',
-    p6: 'P6 缩略图：全档案压缩到一屏，33 个日期节点、3 条泳道、纯色细条；没有卡片文字，作为详情页的缩略导航基底。',
+    p6: 'P6 缩略图：按真实日历天数（7px/天）把全档案压缩到一屏；月份宽度=实际天数，3 条泳道、纯色细条、无卡片文字。',
   };
   description.textContent = descriptions[variant];
   count.textContent = String(data.conversations.length);
@@ -307,7 +307,7 @@
 
   const renderSpanRail = () => {
     const NODE_W = 155;
-    const CARD_W = 131;
+    const CARD_W = 124;
     const CARD_H = 38;
     const CARD_GAP = 4;
     const HEADER = 26;
@@ -343,8 +343,10 @@
 
     const lanes = [[], [], []];
     for (const item of itemsAsc) {
-      const startX = centerOf(fmtDay(item.first));
-      const endX = centerOf(fmtDay(item.last));
+      const startIndex = dateIndex.get(fmtDay(item.first));
+      const endIndex = dateIndex.get(fmtDay(item.last));
+      const startX = startIndex * NODE_W + NODE_W * 0.1;
+      const endX = endIndex * NODE_W + NODE_W * 0.9;
       const barWidth = Math.max(6, endX - startX);
       const effectiveEnd = startX + barWidth;
       let lane = lanes.find(list => !list.length || list[list.length - 1].endX <= startX);
@@ -426,6 +428,7 @@
         card.target = '_blank';
         card.rel = 'noreferrer';
         card.style.top = `${top}px`;
+        card.style.left = `${NODE_W * 0.1}px`;
         card.style.width = `${CARD_W}px`;
         card.title = `#${numberOf.get(item)} ${item.title}\n${fmtRange(item.first, item.last)}\n${item.turns} 轮`;
         card.append(el('span', 'snd-card-title', `#${numberOf.get(item)} ${item.title}`));
@@ -474,7 +477,7 @@
     strip.append(body);
     scroll.append(strip);
     wrap.append(toolbar, scroll);
-    main.append(wrap, el('p', 'proto-note', '保留日期节点和分支卡片，节点宽度缩到 155px；同一天的会话卡片叠在节点上方，跨度条在下方的 3 条泳道里从开始日接到结束日，互不交叉。'));
+    main.append(wrap, el('p', 'proto-note', '保留日期节点和卡片堆叠，卡片/跨度条左右各留 10% 间隙（节点前/后各 40%）；跨度条在下方 3 条泳道里。'));
     const updateCurrent = () => {
       const left = scroll.scrollLeft;
       const right = Math.min(width, scroll.scrollLeft + scroll.clientWidth);
@@ -504,9 +507,9 @@
     for (const item of itemsAsc) {
       const startIndex = dateIndex.get(fmtDay(item.first));
       const endIndex = dateIndex.get(fmtDay(item.last));
-      const cardWidth = (endIndex - startIndex + 1) * NODE_W;
-      const left = startIndex * NODE_W;
-      const right = left + cardWidth;
+      const left = startIndex * NODE_W + NODE_W * 0.1;
+      const right = endIndex * NODE_W + NODE_W * 0.9;
+      const cardWidth = right - left;
       let lane = lanes.findIndex(list => !list.length || list[list.length - 1] <= left);
       if (lane < 0) {
         lane = lanes.length;
@@ -583,8 +586,8 @@
       const number = index + 1;
       const startIndex = dateIndex.get(fmtDay(item.first));
       const endIndex = dateIndex.get(fmtDay(item.last));
-      const cardWidth = (endIndex - startIndex + 1) * NODE_W;
-      const left = startIndex * NODE_W;
+      const left = startIndex * NODE_W + NODE_W * 0.1;
+      const cardWidth = (endIndex - startIndex + 0.8) * NODE_W;
       const laneIndex = laneOf.get(item);
       const card = el('a', 'crd-card');
       card.draggable = false;
@@ -602,7 +605,7 @@
 
     scroll.append(strip);
     wrap.append(toolbar, scroll);
-    main.append(wrap, el('p', 'proto-note', '保留日期节点；卡片按日期格拉伸：一天=相邻节点中点之间，多天覆盖完整起止日；3 条泳道互不交叉。'));
+    main.append(wrap, el('p', 'proto-note', '保留日期节点；卡片按日期格拉伸，左右各留 10% 间隙（节点前/后各 40%）；3 条泳道互不交叉。'));
     const updateCurrent = () => {
       scroll.dataset.scrolled = scroll.scrollLeft > 4 ? 'true' : 'false';
       const left = scroll.scrollLeft;
@@ -619,20 +622,32 @@
   };
 
   const renderOverview = () => {
-    const NODE_W = 24;
+    const DAY_W = 7;
     const HEADER = 20;
     const LANE_H = 20;
     const BAR_H = 10;
-    const dates = [...new Set(itemsAsc.flatMap(item => [fmtDay(item.first), fmtDay(item.last)]))].sort();
-    const dateIndex = new Map(dates.map((date, index) => [date, index]));
-    const width = dates.length * NODE_W;
+    const firstDate = new Date(itemsAsc[0].first * 1000);
+    const lastDate = new Date(itemsAsc[itemsAsc.length - 1].last * 1000);
+    const cursor = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+    const endCursor = new Date(lastDate.getFullYear(), lastDate.getMonth() + 1, 1);
+    const months = [];
+    let offset = 0;
+    while (cursor < endCursor) {
+      const days = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
+      const key = `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}`;
+      months.push({ key, label: `${Number(key.slice(5))} 月`, days, offset, width: days * DAY_W });
+      offset += days * DAY_W;
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    const total = offset;
+    const originDay = Math.floor(Date.UTC(firstDate.getFullYear(), firstDate.getMonth(), 1) / 86400000);
+    const xOf = seconds => (dayNumber(seconds) - originDay) * DAY_W;
+
     const lanes = [[], [], []];
     const laneOf = new Map();
     for (const item of itemsAsc) {
-      const startIndex = dateIndex.get(fmtDay(item.first));
-      const endIndex = dateIndex.get(fmtDay(item.last));
-      const left = startIndex * NODE_W;
-      const right = (endIndex + 1) * NODE_W;
+      const left = xOf(item.first);
+      const right = xOf(item.last) + DAY_W;
       let lane = lanes.findIndex(list => !list.length || list[list.length - 1] <= left);
       if (lane < 0) {
         lane = lanes.length;
@@ -644,22 +659,17 @@
 
     const wrap = el('div', 'ovw-wrap');
     const toolbar = el('div', 'htl-toolbar');
-    toolbar.append(el('span', 'htl-hint', `缩略图 · ${dates.length} 个日期 · ${itemsAsc.length} 条会话 · ${lanes.length} 条泳道 · 全档案`));
+    toolbar.append(el('span', 'htl-hint', `缩略图 · 日历时间轴 · ${itemsAsc.length} 条会话 · ${lanes.length} 条泳道 · 全档案`));
     const scroll = el('div', 'ovw-scroll');
     const chart = el('div', 'ovw-chart');
-    chart.style.width = `${width}px`;
+    chart.style.width = `${total}px`;
     chart.style.height = `${HEADER + lanes.length * LANE_H + 6}px`;
     const head = el('div', 'ovw-head');
-    let monthStart = 0;
-    while (monthStart < dates.length) {
-      const key = dates[monthStart].slice(0, 7);
-      let end = monthStart;
-      while (end < dates.length && dates[end].slice(0, 7) === key) end++;
+    for (const month of months) {
       const block = el('div', 'ovw-month');
-      block.style.width = `${(end - monthStart) * NODE_W}px`;
-      block.append(el('span', 'ovw-month-label', `${Number(key.slice(5))} 月`));
+      block.style.width = `${month.width}px`;
+      block.append(el('span', 'ovw-month-label', month.label));
       head.append(block);
-      monthStart = end;
     }
     const body = el('div', 'ovw-body');
     body.style.height = `${lanes.length * LANE_H}px`;
@@ -669,23 +679,14 @@
       band.style.height = `${LANE_H}px`;
       body.append(band);
     }
-    let boundary = 0;
-    let monthCursor = 0;
-    while (monthCursor < dates.length) {
-      const key = dates[monthCursor].slice(0, 7);
-      let end = monthCursor;
-      while (end < dates.length && dates[end].slice(0, 7) === key) end++;
+    for (const month of months) {
       const line = el('div', 'ovw-month-line');
-      line.style.left = `${boundary}px`;
+      line.style.left = `${month.offset}px`;
       body.append(line);
-      boundary += (end - monthCursor) * NODE_W;
-      monthCursor = end;
     }
     itemsAsc.forEach((item, index) => {
-      const startIndex = dateIndex.get(fmtDay(item.first));
-      const endIndex = dateIndex.get(fmtDay(item.last));
-      const left = startIndex * NODE_W;
-      const widthX = (endIndex - startIndex + 1) * NODE_W;
+      const left = xOf(item.first);
+      const widthX = xOf(item.last) + DAY_W - left;
       const laneIndex = laneOf.get(item);
       const bar = el('a', 'ovw-bar');
       bar.draggable = false;
@@ -701,7 +702,7 @@
     chart.append(head, body);
     scroll.append(chart);
     wrap.append(toolbar, scroll);
-    main.append(wrap, el('p', 'proto-note', '缩略图：全档案压缩在一屏；细条表示会话跨度，3 条泳道互不交叉，悬停看标题，点击进会话。'));
+    main.append(wrap, el('p', 'proto-note', '缩略图：按真实日历天数（7px/天），月份宽度=该月天数；空日期也占位，3 条泳道互不交叉。'));
   };
 
   if (variant === 'p6') renderOverview();

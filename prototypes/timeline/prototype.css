@@ -504,8 +504,8 @@ a { color: inherit; }
 }
 .crd-scroll.is-dragging { cursor: grabbing; }
 .crd-scroll[data-scrolled="true"] {
-  mask-image: linear-gradient(to right, transparent 0, #000 24px);
-  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 24px);
+  mask-image: linear-gradient(to right, transparent 0, #000 64px);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 64px);
 }
 .crd-strip { position: relative; }
 .crd-months { display: flex; height: 26px; }
