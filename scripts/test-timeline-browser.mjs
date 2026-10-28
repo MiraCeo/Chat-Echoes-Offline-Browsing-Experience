@@ -89,7 +89,7 @@ try {
     assert.ok((await firstHref()).includes(newest.id), '切回最新在前');
   }
 
-  // 卡片视图：与列表同一批会话，2 列网格、进度条/当天标签，布局选择持久化。
+  // 卡片视图：与列表同一批会话，2 列网格、右上角活动条、布局选择持久化。
   await page.locator('[data-ceobe-timeline-layout="cards"]').click();
   await page.waitForTimeout(120);
   const cardsState = await page.evaluate(() => {
@@ -98,9 +98,12 @@ try {
       cards: document.querySelectorAll('.ceobe-timeline-card').length,
       rows: document.querySelectorAll('.ceobe-timeline-row').length,
       columns: grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').length : 0,
-      segments: document.querySelectorAll('.ceobe-timeline-card-segment').length,
-      filled: document.querySelectorAll('.ceobe-timeline-card-segment.is-filled').length,
-      singleLabels: [...document.querySelectorAll('.ceobe-timeline-card-progress-label')].filter(node => node.textContent === '当天').length,
+      segments: document.querySelectorAll('.ceobe-timeline-card-activity-segment').length,
+      filled: document.querySelectorAll('.ceobe-timeline-card-activity-segment.is-filled').length,
+      activities: document.querySelectorAll('.ceobe-timeline-card-activity').length,
+      singleActivity: [...document.querySelectorAll('.ceobe-timeline-card-activity')]
+        .filter(node => node.querySelectorAll('.ceobe-timeline-card-activity-segment').length === 1).length,
+      rounds: document.querySelectorAll('.ceobe-timeline-card-rounds').length,
       pressed: document.querySelector('[data-ceobe-timeline-layout="cards"]')?.getAttribute('aria-pressed'),
       overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
     };
@@ -108,9 +111,11 @@ try {
   assert.equal(cardsState.cards, expected, '卡片视图应有全部会话卡片');
   assert.equal(cardsState.rows, 0, '卡片视图不渲染列表行');
   assert.equal(cardsState.columns, 2, '桌面卡片为两列');
-  assert.ok(cardsState.segments > 0, '多日会话应有进度条');
-  assert.ok(cardsState.filled > 0, '进度条应有已填充段');
-  assert.ok(cardsState.singleLabels > 0, '单日会话应显示“当天”');
+  assert.ok(cardsState.segments > 0, '卡片应有活动条分段');
+  assert.ok(cardsState.filled > 0, '活动条应有已填充段');
+  assert.equal(cardsState.activities, expected, '每张卡片都应有一个活动条');
+  assert.ok(cardsState.singleActivity > 0, '单日会话应只有一个活动段');
+  assert.equal(cardsState.rounds, expected, '每张卡片都显示轮数');
   assert.equal(cardsState.pressed, 'true');
   assert.equal(cardsState.overflowX, false);
   await page.reload({ waitUntil: 'networkidle' });
@@ -244,14 +249,14 @@ try {
     assert.ok(utcState.firstMeta.includes(expectedTime), 'UTC 浏览器仍按构建时区显示首条时间');
     await utcPage.locator('[data-ceobe-timeline-layout="cards"]').click();
     const utcCards = await utcPage.evaluate(() => ({
-      labels: [...document.querySelectorAll('.ceobe-timeline-card-progress-label')].map(node => node.textContent),
-      invalid: [...document.querySelectorAll('.ceobe-timeline-card-progress-label')]
-        .map(node => node.textContent.match(/^(\d+)\/(\d+) 天有消息$/))
-        .filter(Boolean)
-        .filter(match => Number(match[1]) > Number(match[2]))
-        .map(match => match[0]),
+      cards: document.querySelectorAll('.ceobe-timeline-card').length,
+      activities: document.querySelectorAll('.ceobe-timeline-card-activity').length,
+      invalid: [...document.querySelectorAll('.ceobe-timeline-card-activity-bar')]
+        .filter(bar => bar.querySelectorAll('.is-filled').length > bar.children.length).length,
     }));
-    assert.deepEqual(utcCards.invalid, [], '进度不能出现“有消息天数 > 跨度”');
+    assert.equal(utcCards.cards, expected);
+    assert.equal(utcCards.activities, expected);
+    assert.equal(utcCards.invalid, 0, '活动条填充段不能超过总段数');
     await utcPage.locator('[data-ceobe-view="axis"]').click();
     await utcPage.waitForFunction(() => document.querySelectorAll('.ceobe-axis-card').length > 0);
     assert.equal(await utcPage.locator('.ceobe-axis-card').count(), expected, 'UTC 浏览器时间轴仍有全部会话');
@@ -274,16 +279,19 @@ try {
         conversations: {
           [fresh.id]: {
             summary: '骨架摘要：这是一条用于验证卡片布局的测试摘要。',
+            tags: ['骨架标签', '测试'],
             status: 'fresh',
             source: { last_message_id: fresh.last_message_id },
           },
           [stale.id]: {
             summary: '这条摘要已经过期，不应显示。',
+            tags: ['过期标签'],
             status: 'stale',
             source: { last_message_id: stale.last_message_id },
           },
           [mismatch.id]: {
             summary: '源消息不匹配，不应显示。',
+            tags: ['不匹配标签'],
             status: 'fresh',
             source: { last_message_id: 'different-message' },
           },
@@ -301,12 +309,21 @@ try {
       mismatch: [...document.querySelectorAll('.ceobe-timeline-card-summary')]
         .some(node => node.textContent.includes('不匹配')),
       aiLabel: document.querySelector('.ceobe-timeline-card-summary')?.getAttribute('data-ai-summary') != null,
+      tagCount: document.querySelectorAll('.ceobe-timeline-card-tag').length,
+      tagsText: [...document.querySelectorAll('.ceobe-timeline-card-tag')].map(node => node.textContent).join('、'),
+      tagsAi: document.querySelector('.ceobe-timeline-card-tags')?.getAttribute('data-ai-tags') != null,
+      staleTags: [...document.querySelectorAll('.ceobe-timeline-card-tag')]
+        .some(node => node.textContent.includes('过期') || node.textContent.includes('不匹配')),
     }));
     assert.equal(summaryState.count, 1, '只渲染 fresh 且源匹配的摘要');
     assert.match(summaryState.text, /骨架摘要/);
     assert.equal(summaryState.stale, false);
     assert.equal(summaryState.mismatch, false);
     assert.equal(summaryState.aiLabel, true, '摘要节点应带 data-ai-summary 标记');
+    assert.equal(summaryState.tagCount, 2, '摘要和 tag 来自同一条 fresh 记录');
+    assert.equal(summaryState.tagsText, '骨架标签、测试');
+    assert.equal(summaryState.tagsAi, true, 'tag 容器应带 data-ai-tags 标记');
+    assert.equal(summaryState.staleTags, false, '过期/不匹配记录的 tag 不应显示');
     assert.deepEqual(summaryErrors, [], '摘要夹具没有页面错误');
     await summaryPage.close();
   }

@@ -82,13 +82,17 @@
       || !payload.conversations || typeof payload.conversations !== 'object') return new Map();
     return new Map(Object.entries(payload.conversations));
   };
-  const summaryOf = item => {
+  const aiOf = item => {
     const entry = summaries.get(item.id);
-    if (!entry || entry.status !== 'fresh' || typeof entry.summary !== 'string') return '';
+    if (!entry || entry.status !== 'fresh') return { summary: '', tags: [] };
     if (entry.source?.last_message_id
       && item.last_message_id
-      && entry.source.last_message_id !== item.last_message_id) return '';
-    return entry.summary.trim();
+      && entry.source.last_message_id !== item.last_message_id) return { summary: '', tags: [] };
+    const summary = typeof entry.summary === 'string' ? entry.summary.trim() : '';
+    const tags = Array.isArray(entry.tags)
+      ? [...new Set(entry.tags.map(tag => String(tag).trim()).filter(Boolean))].slice(0, 4)
+      : [];
+    return { summary, tags };
   };
   const spanOf = (first, last) => {
     const a = parts(first);
@@ -188,54 +192,84 @@
         + (item.first_message_id ? '#bookmark=' + encodeURIComponent(item.first_message_id) : '');
       link.href = new URL(href, root).href;
 
+      const head = document.createElement('span');
+      head.className = 'ceobe-timeline-card-head';
+      const titleLine = document.createElement('span');
+      titleLine.className = 'ceobe-timeline-card-title-line';
       const title = document.createElement('span');
       title.className = 'ceobe-timeline-card-title';
       title.textContent = titleOf(item);
+      titleLine.append(title);
+      if (Number.isFinite(item.rounds) || Number.isFinite(item.turns)) {
+        const rounds = document.createElement('span');
+        rounds.className = 'ceobe-timeline-card-rounds';
+        rounds.textContent = `${roundsOf(item)} 轮`;
+        titleLine.append(rounds);
+      }
+      head.append(titleLine);
 
-      const meta = document.createElement('span');
-      meta.className = 'ceobe-timeline-card-meta';
+      let accessible = [titleOf(item), undated ? '时间未知' : rangeLabel(item.first, item.last), `${roundsOf(item)} 轮对话`].filter(Boolean).join('，');
       const when = undated ? '时间未知' : rangeLabel(item.first, item.last);
-      const turns = Number.isFinite(item.turns) ? `${roundsOf(item)} 轮对话` : '';
-      meta.textContent = [when, turns].filter(Boolean).join(' · ');
+      let span = 0;
+      let active = 0;
+      if (!undated) {
+        span = spanOf(item.first, item.last);
+        for (let offset = 0; offset < span; offset += 1) {
+          if ((item.days || {})[dayKeyAt(item.first, offset)]) active += 1;
+        }
+        const activity = document.createElement('span');
+        activity.className = 'ceobe-timeline-card-activity';
+        activity.title = `会话活跃时间：${active}/${span} 天有消息`;
+        activity.setAttribute('aria-label', `会话活跃时间：${active}/${span} 天有消息`);
+        const bar = document.createElement('span');
+        bar.className = 'ceobe-timeline-card-activity-bar';
+        bar.setAttribute('aria-hidden', 'true');
+        for (let offset = 0; offset < span; offset += 1) {
+          const segment = document.createElement('span');
+          segment.className = 'ceobe-timeline-card-activity-segment'
+            + ((item.days || {})[dayKeyAt(item.first, offset)] ? ' is-filled' : '');
+          bar.append(segment);
+        }
+        const label = document.createElement('span');
+        label.className = 'ceobe-timeline-card-activity-label';
+        label.textContent = '会话活跃时间';
+        activity.append(bar, label);
+        head.append(activity);
+        accessible += `，会话活跃时间 ${active}/${span} 天有消息`;
+      }
+      link.append(head);
 
-      const footer = document.createElement('span');
-      footer.className = 'ceobe-timeline-card-footer';
-      link.append(title, meta, footer);
-      const summaryText = summaryOf(item);
-      if (summaryText) {
+      const time = document.createElement('span');
+      time.className = 'ceobe-timeline-card-time';
+      time.textContent = when;
+      link.append(time);
+
+      const ai = aiOf(item);
+      if (ai.summary || ai.tags.length) {
+        const divider = document.createElement('span');
+        divider.className = 'ceobe-timeline-card-divider';
+        link.append(divider);
+      }
+      if (ai.summary) {
         const summary = document.createElement('span');
         summary.className = 'ceobe-timeline-card-summary';
         summary.dataset.aiSummary = '';
-        summary.textContent = summaryText;
-        link.insertBefore(summary, footer);
+        summary.textContent = ai.summary;
+        link.append(summary);
+        accessible += `，AI 摘要：${ai.summary}`;
       }
-      let accessible = [titleOf(item), when, turns].filter(Boolean).join('，');
-      if (summaryText) accessible += `，AI 摘要：${summaryText}`;
-      if (!undated) {
-        const span = spanOf(item.first, item.last);
-        if (span > 1) {
-          let active = 0;
-          const progress = document.createElement('span');
-          progress.className = 'ceobe-timeline-card-progress';
-          progress.setAttribute('aria-hidden', 'true');
-          for (let offset = 0; offset < span; offset += 1) {
-            const filled = Boolean((item.days || {})[dayKeyAt(item.first, offset)]);
-            if (filled) active += 1;
-            const segment = document.createElement('span');
-            segment.className = 'ceobe-timeline-card-segment' + (filled ? ' is-filled' : '');
-            progress.append(segment);
-          }
-          const label = document.createElement('span');
-          label.className = 'ceobe-timeline-card-progress-label';
-          label.textContent = `${active}/${span} 天有消息`;
-          footer.append(progress, label);
-          accessible += `，跨度 ${span} 天，${active} 天有消息`;
-        } else {
-          const label = document.createElement('span');
-          label.className = 'ceobe-timeline-card-progress-label is-single';
-          label.textContent = '当天';
-          footer.append(label);
+      if (ai.tags.length) {
+        const tags = document.createElement('span');
+        tags.className = 'ceobe-timeline-card-tags';
+        tags.dataset.aiTags = '';
+        for (const text of ai.tags) {
+          const tag = document.createElement('span');
+          tag.className = 'ceobe-timeline-card-tag';
+          tag.textContent = text;
+          tags.append(tag);
         }
+        link.append(tags);
+        accessible += `，AI 标签：${ai.tags.join('、')}`;
       }
       link.setAttribute('aria-label', accessible);
       row.append(link);

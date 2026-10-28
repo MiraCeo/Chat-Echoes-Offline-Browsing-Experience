@@ -1,6 +1,8 @@
-# 时间线摘要契约（1.2 骨架）
+# 时间线 AI 元数据契约（1.2 骨架）
 
-状态：**只搭骨架，不生成摘要**。1.2 的时间模块保持确定性；摘要能力留到 1.3。
+状态：**只搭骨架，不生成摘要/tag**。1.2 的时间模块保持确定性；生成能力留到 1.3。
+
+摘要和 tag 是同一份 AI 派生记录：一起生成、一起失效、共用同一个 `source`，不把 tag 拆成项目/附件来源。
 
 ## 数据文件
 
@@ -10,7 +12,7 @@
 replay/public/timeline-summaries.json
 ```
 
-文件不存在、返回非 200、或格式不合法时：**不显示摘要，也不显示占位**。
+文件不存在、返回非 200、或格式不合法时：**不显示摘要/tag，也不显示占位**。
 
 ```json
 {
@@ -19,9 +21,10 @@ replay/public/timeline-summaries.json
   "conversations": {
     "<conversation-id>": {
       "summary": "一段 1–2 行的中文摘要。",
+      "tags": ["标签一", "标签二"],
       "status": "fresh",
       "source": {
-        "last_message_id": "<生成摘要时该会话的最后一条可见消息 id>"
+        "last_message_id": "<生成时该会话的最后一条可见消息 id>"
       },
       "generator": {
         "model": "future-model",
@@ -36,27 +39,28 @@ replay/public/timeline-summaries.json
 ## 渲染规则
 
 1. 只渲染 `status === "fresh"` 的条目；
-2. `source.last_message_id` 与会话当前 `last_message_id` 不一致时**不渲染**（视为过期）；
-3. 摘要只出现在**卡片视图**，列表与时间轴暂不渲染；
+2. `source.last_message_id` 与会话当前 `last_message_id` 不一致时**整条不渲染**（摘要和 tag 一起隐藏）；
+3. 摘要与 tag 只出现在**卡片视图**，列表与时间轴暂不渲染；
 4. 摘要节点为 `.ceobe-timeline-card-summary`，最多两行，带 `data-ai-summary`；
-5. 无摘要时卡片不新增空节点、不增加固定高度；
-6. 1.2 不调用模型、不生成摘要、不把摘要写入 `timeline-index.json`。
+5. tag 容器为 `.ceobe-timeline-card-tags`，最多 4 个，带 `data-ai-tags`；
+6. 无摘要/tag 时卡片不新增空节点、不增加固定高度；
+7. 1.2 不调用模型、不生成摘要/tag、不写入 `timeline-index.json`。
 
 ## 1.3 要补的能力
 
-- 生成 pipeline、模型/提示词版本；
+- 摘要 + tag 的同一次生成 pipeline、模型/提示词版本；
 - `stale` / `failed` 的界面状态与重生成；
 - 列表悬停/详情弹层；
 - 批量/增量生成、成本与失败重试；
 - 本地/云端与隐私 opt-in；
-- 摘要质量与人工纠错。
+- 摘要/tag 质量与人工纠错。
 
 ## 测试
 
 `test-timeline-browser.mjs` 在浏览器端拦截 `timeline-summaries.json`，注入三条 fixture：
 
-- `fresh` + 源匹配：显示；
-- `stale`：不显示；
-- `fresh` + `last_message_id` 不匹配：不显示。
+- `fresh` + 源匹配：摘要和 tag 显示；
+- `stale`：摘要和 tag 都不显示；
+- `fresh` + `last_message_id` 不匹配：摘要和 tag 都不显示。
 
 测试不依赖真实模型，也不向仓库写入假摘要。

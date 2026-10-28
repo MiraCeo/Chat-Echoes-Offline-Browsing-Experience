@@ -76,10 +76,11 @@ npm run verify:archive      # 只读检查档案结构
 - 采集扩展 0.5.1：popup 直接发送 + 端口探测、分享页内「发送到 CEOBE」按钮、无服务时导出 ZIP；
   采集包带 `format`/`version` 握手（旧包按 legacy 接受）；书签小工具打开导入页预填链接；
 - 时间：侧栏「项目」与「更多」之间的入口「时间」；`timeline.html` 内含「时间线」（年/月列表，
-  可切列表/卡片；卡片两列、多日逐日进度条、单日「当天」）与「时间轴」（真实日历缩略 7px/天 +
+  可切列表/卡片；卡片两列、标题旁轮数、右上角活动条，底部不再放进度条）与「时间轴」（真实日历缩略 7px/天 +
   详情 96px/天，3 条泳道、视口框双向同步）两个视图；视图状态写入 `?view=axis` 和 `localStorage`，
-  布局状态写入 `localStorage`；卡片可选读取 `timeline-summaries.json`（1.2 只搭骨架，不生成），
-  契约见 `docs/summary-contract.md`；索引仍是构建期 `replay/public/timeline-index.json`，标题取 `chats.json`；
+  布局状态写入 `localStorage`；卡片可选读取 `timeline-summaries.json`（摘要 + tag，同一份 AI 记录；
+  1.2 只搭骨架，不生成），契约见 `docs/summary-contract.md`；索引仍是构建期
+  `replay/public/timeline-index.json`，标题取 `chats.json`；
 - 资料库可以自建文件夹（当标签用，一条资源可属多个）并上传自己的文件；
   上传字节在 `data/private/library-files/`，不进 `archive/`，任何路径都不删原文件；
 - 附件随页拷贝：并行渲染的每一页都写自己会话的附件字节，`replay/archive-resources` 与 `dist` 都是 321 个文件，
