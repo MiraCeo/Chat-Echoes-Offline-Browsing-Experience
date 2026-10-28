@@ -52,7 +52,8 @@ const html = `<!DOCTYPE html>
       <a data-variant-link="p2" href="?v=p2">P2 会话进度</a>
       <a data-variant-link="p3" href="?v=p3">P3 日期基础</a>
       <a data-variant-link="p4" href="?v=p4">P4 日期进度</a>
-      <a data-variant-link="p5" href="?v=p5">P5 跨节点</a>
+      <a data-variant-link="p5" href="?v=p5">P5 卡片泳道</a>
+      <a data-variant-link="p5a" href="?v=p5a">P5A 分离泳道（对照）</a>
     </nav>
   </header>
   <p class="proto-desc" data-proto-desc></p>
