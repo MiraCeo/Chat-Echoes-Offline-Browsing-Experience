@@ -11,7 +11,7 @@
     p1: 'P1 横向等距：横轴按会话先后等距排布，卡片上下交替；只表达先后，不表达真实间隔或覆盖。左右拖动平移画布。',
     p2: 'P2 横向覆盖条：与 P1 相同的横轴，卡片内加一条连续跨度条（按最长会话归一化）；能比较长短，不做全档案真实位置。',
     p3: 'P3 横向活跃日：卡片内的点 = 真的有消息的日子，空隙保留；能看出“聊了两天、停了一天又回来”。',
-    p4: 'P4 固定 30 天轴：每月固定 30 天（不是真实日历比例，31 日按月末处理），每行一条会话，条长 = 首末跨度；左右拖动平移。',
+    p4: 'P4 日期节点：只保留有会话的日期，日期等距排布；每个日期节点用一条分支挂出当天所有会话卡片（按开始时间）。左右拖动平移。',
   };
   description.textContent = descriptions[variant];
   count.textContent = String(data.conversations.length);
@@ -35,6 +35,7 @@
   const fmtCardRange = (first, last) => (dayNumber(first) === dayNumber(last) ? fmtCardDay(first) : `${fmtCardDay(first)} → ${fmtCardDay(last)}`);
   const fmtRange = (first, last) => `${fmtDay(first)} → ${fmtDay(last)}`;
   const fmtShort = seconds => { const p = parts(seconds); return `${pad(p.month)}-${pad(p.day)} ${p.hours}:${p.minutes}`; };
+  const fmtTime = seconds => { const p = parts(seconds); return `${p.hours}:${p.minutes}`; };
   const monthKey = seconds => { const p = parts(seconds); return `${p.year}-${pad(p.month)}`; };
   const monthLabel = key => { const [year, month] = key.split('-'); return `${year} 年 ${Number(month)} 月`; };
   const spanDays = (first, last) => Math.max(1, dayDiff(first, last) + 1);
@@ -55,6 +56,7 @@
 
   const makeCard = item => {
     const link = el('a', 'proto-card');
+    link.draggable = false;
     link.href = hrefOf(item);
     link.target = '_blank';
     link.rel = 'noreferrer';
@@ -199,100 +201,118 @@
     attachPan(scroll, latest);
   };
 
-  const MONTH = 30;
-  const DAY = 12;
-  const renderFixedMonthAxis = () => {
-    const min = Math.min(...items.map(item => item.first));
-    const max = Math.max(...items.map(item => item.last));
-    const startDate = new Date(min * 1000);
-    const endDate = new Date(max * 1000);
-    const cursor = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-    const months = [];
-    while (cursor <= endDate) {
-      months.push(`${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}`);
-      cursor.setMonth(cursor.getMonth() + 1);
+  const CARD_H = 42;
+  const CARD_GAP = 6;
+  const renderDateRail = () => {
+    const groups = new Map();
+    for (const item of itemsAsc) {
+      const key = fmtDay(item.first);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(item);
     }
-    const monthIndex = new Map(months.map((key, index) => [key, index]));
-    const WIDTH = months.length * MONTH * DAY;
+    const dates = [...groups.keys()].sort();
+    for (const list of groups.values()) list.sort((a, b) => a.first - b.first);
+    const maxCards = Math.max(...[...groups.values()].map(list => list.length));
+    const HEADER = 28;
+    const TOP_GAP = 10;
+    const STEM_GAP = 12;
+    const stack = maxCards * CARD_H + (maxCards - 1) * CARD_GAP;
+    const railY = HEADER + TOP_GAP + stack + STEM_GAP;
+    const STRIP = railY + 34;
+    const width = dates.length * SLOT;
+    const railLocal = railY - HEADER;
 
-    const axisPoint = (seconds, isEnd = false) => {
-      const p = parts(seconds);
-      const index = monthIndex.get(`${p.year}-${pad(p.month)}`);
-      if (index == null) return null;
-      const day = Math.min(p.day, 30);
-      const fraction = Math.min(0.999, (Number(p.hours) * 60 + Number(p.minutes)) / 1440);
-      let position = index * MONTH + (day - 1) + fraction;
-      if (isEnd && p.day > 30) position = index * MONTH + MONTH - 0.05;
-      return Math.max(0, Math.min(months.length * MONTH, position));
-    };
-
-    const head = el('div', 'htl-head');
-    head.append(el('div', 'htl-corner', '会话'));
-    const axis = el('div', 'htl-axis');
-    for (const key of months) {
-      const block = el('div', 'htl-month');
-      block.style.width = `${MONTH * DAY}px`;
-      block.append(el('span', 'htl-month-name', key));
-      for (const day of [1, 5, 10, 15, 20, 25, 30]) {
-        const tick = el('span', 'htl-day', String(day));
-        tick.style.left = `${(day - 1) * DAY}px`;
-        block.append(tick);
-      }
-      axis.append(block);
-    }
-    head.append(axis);
-
-    const body = el('div', 'htl-body');
-    const background = el('div', 'htl-bg');
-    background.style.width = `${WIDTH}px`;
-    months.forEach((key, index) => {
-      if (index % 2 === 1) {
-        const band = el('div', 'htl-band');
-        band.style.left = `${index * MONTH * DAY}px`;
-        band.style.width = `${MONTH * DAY}px`;
-        background.append(band);
-      }
-      const line = el('div', 'htl-month-line');
-      line.style.left = `${index * MONTH * DAY}px`;
-      background.append(line);
-    });
-    body.append(background);
-
-    for (const item of items) {
-      const row = el('div', 'htl-row');
-      const label = el('a', 'htl-label');
-      label.href = hrefOf(item);
-      label.target = '_blank';
-      label.rel = 'noreferrer';
-      label.title = `${item.title}\n${fmtRange(item.first, item.last)}\n${item.turns} 轮`;
-      label.append(el('span', 'htl-name', item.title));
-      label.append(el('span', 'htl-dates', `${fmtCardRange(item.first, item.last)} · ${item.turns} 轮`));
-      const track = el('div', 'htl-track');
-      track.style.width = `${WIDTH}px`;
-      const start = axisPoint(item.first);
-      const end = axisPoint(item.last, true);
-      const bar = el('span', 'htl-bar');
-      bar.style.left = `${start * DAY}px`;
-      bar.style.width = `${Math.max(6, (end - start) * DAY)}px`;
-      bar.title = `${item.title}\n${fmtRange(item.first, item.last)}\n${item.turns} 轮`;
-      track.append(bar);
-      row.append(label, track);
-      body.append(row);
-    }
-
-    const wrap = el('div', 'htl-wrap');
+    const wrap = el('div', 'drl-wrap');
     const toolbar = el('div', 'htl-toolbar');
-    toolbar.append(el('span', 'htl-hint', `每月固定 30 天 · ${months[0]} → ${months[months.length - 1]} · 左右拖动平移，31 日按月末处理`));
+    const current = el('span', 'hrl-current', monthLabel(dates[dates.length - 1].slice(0, 7)));
+    const hint = el('span', 'htl-hint');
+    hint.append(`日期节点 · ${dates.length} 个有会话的日期 · `, current, ' · 左右拖动平移');
+    toolbar.append(hint);
     const latest = el('button', 'htl-latest', '回到最新');
     latest.type = 'button';
     toolbar.append(latest);
-    const scroll = el('div', 'htl-scroll');
-    scroll.append(head, body);
+
+    const scroll = el('div', 'drl-scroll');
+    const strip = el('div', 'drl-strip');
+    strip.style.width = `${width}px`;
+    strip.style.height = `${STRIP}px`;
+    const months = el('div', 'drl-months');
+    let monthStart = 0;
+    while (monthStart < dates.length) {
+      const month = dates[monthStart].slice(0, 7);
+      let end = monthStart;
+      while (end < dates.length && dates[end].slice(0, 7) === month) end++;
+      const block = el('div', 'drl-month-block');
+      block.style.width = `${(end - monthStart) * SLOT}px`;
+      block.append(el('span', 'drl-month-label', monthLabel(month)));
+      months.append(block);
+      monthStart = end;
+    }
+    const slots = el('div', 'drl-slots');
+    slots.style.width = `${width}px`;
+    slots.style.height = `${STRIP - HEADER}px`;
+    const rail = el('div', 'drl-rail');
+    rail.style.top = `${railLocal}px`;
+    slots.append(rail);
+    let boundary = 0;
+    let monthCursor = 0;
+    while (monthCursor < dates.length) {
+      const month = dates[monthCursor].slice(0, 7);
+      let end = monthCursor;
+      while (end < dates.length && dates[end].slice(0, 7) === month) end++;
+      const line = el('div', 'drl-month-line');
+      line.style.left = `${boundary}px`;
+      slots.append(line);
+      boundary += (end - monthCursor) * SLOT;
+      monthCursor = end;
+    }
+    for (const date of dates) {
+      const list = groups.get(date);
+      const n = list.length;
+      const slot = el('div', 'drl-slot');
+      slot.style.width = `${SLOT}px`;
+      const topCard = railLocal - STEM_GAP - n * CARD_H - (n - 1) * CARD_GAP;
+      list.forEach((item, index) => {
+        const top = railLocal - STEM_GAP - (n - index) * CARD_H - (n - index - 1) * CARD_GAP;
+        const card = el('a', 'drl-card');
+        card.draggable = false;
+        card.href = hrefOf(item);
+        card.target = '_blank';
+        card.rel = 'noreferrer';
+        card.style.top = `${top}px`;
+        card.title = `${item.title}\n${fmtRange(item.first, item.last)}\n${item.turns} 轮`;
+        card.append(el('span', 'drl-title', item.title));
+        const span = spanDays(item.first, item.last);
+        card.append(el('span', 'drl-meta', `${fmtTime(item.first)} · ${item.turns} 轮${span > 1 ? ` · 跨 ${span} 天` : ''}`));
+        slot.append(card);
+      });
+      const stem = el('div', 'drl-stem');
+      stem.style.top = `${topCard}px`;
+      stem.style.height = `${railLocal - topCard}px`;
+      slot.append(stem);
+      const dot = el('span', 'drl-dot');
+      dot.style.top = `${railLocal}px`;
+      slot.append(dot);
+      const label = el('div', 'drl-date');
+      label.style.top = `${railLocal + 8}px`;
+      label.append(el('span', 'drl-date-text', fmtCardDay(list[0].first)));
+      label.append(el('span', 'drl-date-count', `${n} 个会话`));
+      slot.append(label);
+      slots.append(slot);
+    }
+    strip.append(months, slots);
+    scroll.append(strip);
     wrap.append(toolbar, scroll);
-    main.append(wrap, el('p', 'proto-note', '横轴：每月固定 30 天（不是真实日历比例）；条长 = 会话首末跨度；点击左侧标题打开会话。'));
+    main.append(wrap, el('p', 'proto-note', '每个有会话的日期一个节点；同一天的会话挂在节点分支上；拖动平移画布，点击卡片打开会话。'));
+    const updateCurrent = () => {
+      const index = Math.min(dates.length - 1, Math.max(0, Math.ceil(scroll.scrollLeft / SLOT)));
+      current.textContent = monthLabel(dates[index].slice(0, 7));
+    };
+    scroll.addEventListener('scroll', updateCurrent);
+    requestAnimationFrame(updateCurrent);
     attachPan(scroll, latest);
   };
 
-  if (variant === 'p4') renderFixedMonthAxis();
+  if (variant === 'p4') renderDateRail();
   else renderHorizontalRail();
 })();
