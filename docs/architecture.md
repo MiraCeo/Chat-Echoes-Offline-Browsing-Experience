@@ -164,7 +164,7 @@ ChatGPT 分享页面及公开资源
 
 ## 时间（时间线 / 时间轴）
 
-`timeline-index.mjs` 在 `npm run library` 时生成 `replay/public/timeline-index.json`：每个会话的首/末条可见轮次时间、首末锚点消息 ID、可见轮数，以及按本地日期的轮数；标题不写入索引，页面从 `chats.json` 取当前标题，重命名不用重建。只统计阅读页可见轮次（提问、最终回复、生成图片），隐藏记录、推理与工具往来不计；时间取消息 `created_at`（构建机本地时区），会话的 `created_at` 是分享创建时间，只作辅助。
+`timeline-index.mjs` 在 `npm run library` 时生成 `replay/public/timeline-index.json`：每个会话的首/末条可见轮次时间、首末锚点消息 ID、可见轮数，以及按本地日期的轮数；标题不写入索引，页面从 `chats.json` 取当前标题，重命名不用重建。只统计阅读页可见轮次（提问、最终回复、生成图片），隐藏记录、推理与工具往来不计；时间取消息 `created_at`（构建机 IANA 时区，写入索引 `timezone`，页面统一按它显示），会话的 `created_at` 是分享创建时间，只作辅助。
 
 `build-timeline-page.mjs` 从导入页骨架生成顶层 `replay/timeline.html`，页内分「时间线」（列表）和「时间轴」（缩略 + 详情）两个 tab；视图状态写入 `?view=axis` 与 `localStorage`，由 `timeline.js` 切换。侧栏入口由 `build-timeline-nav.mjs` 克隆官方「项目」行插入到「项目」与「更多」之间（每趟先清后插），标签为「时间」，当前页带 `aria-current="page"`。
 

@@ -23,14 +23,48 @@
   let built = false;
   let loading = false;
   let refs = null;
+  const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  let timezone = browserTimezone;
+  let zoneFormatter = null;
+  let zoneFormatterKey = '';
   const pad = value => String(value).padStart(2, '0');
+  const normalizeTimezone = value => {
+    if (!value || value === 'local') return browserTimezone;
+    try {
+      new Intl.DateTimeFormat('en-CA', { timeZone: value });
+      return value;
+    } catch {
+      return browserTimezone;
+    }
+  };
   const parts = seconds => {
-    const date = new Date(seconds * 1000);
-    return { year: date.getFullYear(), month: date.getMonth() + 1, day: date.getDate(), hours: pad(date.getHours()), minutes: pad(date.getMinutes()) };
+    if (zoneFormatterKey !== timezone) {
+      zoneFormatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      });
+      zoneFormatterKey = timezone;
+    }
+    const values = {};
+    for (const part of zoneFormatter.formatToParts(new Date(seconds * 1000))) {
+      if (part.type !== 'literal') values[part.type] = part.value;
+    }
+    return {
+      year: Number(values.year),
+      month: Number(values.month),
+      day: Number(values.day),
+      hours: values.hour,
+      minutes: values.minute,
+    };
   };
   const dayNumber = seconds => {
-    const date = new Date(seconds * 1000);
-    return Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000);
+    const p = parts(seconds);
+    return Math.floor(Date.UTC(p.year, p.month - 1, p.day) / 86400000);
   };
   const fmtDay = seconds => { const p = parts(seconds); return `${p.year}-${pad(p.month)}-${pad(p.day)}`; };
   const fmtShortDay = seconds => { const p = parts(seconds); return `${p.month}/${p.day}`; };
@@ -63,29 +97,26 @@
       status('本地档案里还没有会话。');
       return;
     }
-    const firstDate = new Date(items[0].first * 1000);
-    const lastDate = new Date(items[items.length - 1].last * 1000);
-    const cursor = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
-    const endCursor = new Date(lastDate.getFullYear(), lastDate.getMonth() + 1, 1);
+    const firstParts = parts(items[0].first);
+    const lastParts = parts(items[items.length - 1].last);
     const months = [];
     const dates = [];
     let offset = 0;
-    while (cursor < endCursor) {
-      const days = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
-      const key = `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}`;
-      const month = { key, label: `${Number(key.slice(5))} 月`, days, offset };
-      months.push(month);
+    let year = firstParts.year;
+    let month = firstParts.month;
+    while (year < lastParts.year || (year === lastParts.year && month <= lastParts.month)) {
+      const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
+      const key = `${year}-${pad(month)}`;
+      months.push({ key, label: `${month} 月`, days, offset });
       for (let day = 1; day <= days; day += 1) dates.push(`${key}-${pad(day)}`);
       offset += days;
-      cursor.setMonth(cursor.getMonth() + 1);
+      month += 1;
+      if (month > 12) { month = 1; year += 1; }
     }
     const totalDays = dates.length;
-    const firstDayNumber = Math.floor(Date.UTC(firstDate.getFullYear(), firstDate.getMonth(), 1) / 86400000);
+    const firstDayNumber = Math.floor(Date.UTC(firstParts.year, firstParts.month - 1, 1) / 86400000);
     const dayIndex = seconds => dayNumber(seconds) - firstDayNumber;
-    const dayByIndex = index => {
-      const date = new Date((firstDayNumber + index) * 86400000);
-      return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
-    };
+    const dayByIndex = index => dates[index] || '';
 
     // Three shared lanes. Max concurrency in the archive is 3, so no crossing.
     const lanes = [[], [], []];
@@ -200,7 +231,7 @@
       const dot = el('span', 'ceobe-axis-detail-dot');
       dot.style.left = `${x}px`;
       axis.append(dot);
-      const label = el('span', 'ceobe-axis-detail-date', fmtShortDay(new Date((firstDayNumber + index) * 86400000).getTime() / 1000));
+      const label = el('span', 'ceobe-axis-detail-date', dates[index].slice(5).replace('-', '/'));
       label.style.left = `${x}px`;
       axis.append(label);
     });
@@ -329,6 +360,7 @@
         return;
       }
       built = true;
+      timezone = normalizeTimezone(index.timezone);
       build(index, new Map((catalog?.chats || []).map(chat => [chat.id, chat.title])));
     } catch (error) {
       status('时间轴索引不可用：' + (error?.message || error) + '。请运行 npm run library 重建阅读页。');

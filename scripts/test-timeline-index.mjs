@@ -39,7 +39,7 @@ assert.equal(timeline.days[Object.keys(timeline.days).sort()[1]], 2, 'second day
 const index = buildTimelineIndex([{ id: 'timeline-fixture', conversation }]);
 assert.equal(index.kind, TIMELINE_INDEX_KIND);
 assert.equal(index.schema_version, '1.0.0');
-assert.equal(index.timezone, 'local');
+assert.equal(index.timezone, Intl.DateTimeFormat().resolvedOptions().timeZone);
 assert.deepEqual(index.conversations, [{ id: 'timeline-fixture', ...timeline }]);
 assert.equal('title' in index.conversations[0], false, 'titles stay in chats.json');
 

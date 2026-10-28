@@ -6,10 +6,11 @@ import { turnTarget } from './bookmark-targets.mjs';
 export const TIMELINE_INDEX_FILE = 'timeline-index.json';
 export const TIMELINE_INDEX_KIND = 'ceobe.timeline-index';
 export const TIMELINE_INDEX_VERSION = '1.0.0';
+export const TIMELINE_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
 const pad = value => String(value).padStart(2, '0');
-// 时间线按阅读器所在的本地时区分组；索引在构建机上生成，阅读页与构建机同机时口径一致。
-// 存 epoch 秒 + 本地日期桶，页面只做展示，不再重算时区。
+// 时间线按构建机本地时区分组；把 IANA 时区写进索引，页面用同一时区格式化，
+// 这样把静态产物拿到别的时区浏览也不会出现“日期天数与 days 桶不一致”。
 const localDay = seconds => {
   const date = new Date(seconds * 1000);
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -53,7 +54,7 @@ export function buildTimelineIndex(entries) {
   return {
     schema_version: TIMELINE_INDEX_VERSION,
     kind: TIMELINE_INDEX_KIND,
-    timezone: 'local',
+    timezone: TIMELINE_TIMEZONE,
     conversations,
   };
 }

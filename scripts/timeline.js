@@ -17,29 +17,57 @@
   } catch { /* 隐私模式下没有 localStorage */ }
   let index = null;
   let titles = new Map();
+  const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  let timezone = browserTimezone;
+  let zoneFormatter = null;
+  let zoneFormatterKey = '';
 
   const pad = value => String(value).padStart(2, '0');
+  const normalizeTimezone = value => {
+    if (!value || value === 'local') return browserTimezone;
+    try {
+      new Intl.DateTimeFormat('en-CA', { timeZone: value });
+      return value;
+    } catch {
+      return browserTimezone;
+    }
+  };
   const parts = seconds => {
-    const date = new Date(seconds * 1000);
+    if (zoneFormatterKey !== timezone) {
+      zoneFormatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      });
+      zoneFormatterKey = timezone;
+    }
+    const values = {};
+    for (const part of zoneFormatter.formatToParts(new Date(seconds * 1000))) {
+      if (part.type !== 'literal') values[part.type] = part.value;
+    }
     return {
-      year: date.getFullYear(),
-      month: date.getMonth() + 1,
-      day: date.getDate(),
-      hours: date.getHours(),
-      minutes: date.getMinutes(),
-      date,
+      year: Number(values.year),
+      month: Number(values.month),
+      day: Number(values.day),
+      hours: Number(values.hour),
+      minutes: Number(values.minute),
     };
   };
   const monthKey = seconds => { const p = parts(seconds); return `${p.year}-${pad(p.month)}`; };
   const monthLabel = key => { const [year, month] = key.split('-'); return `${year} 年 ${Number(month)} 月`; };
   const dayLabel = p => `${p.month}月${p.day}日`;
   const clockLabel = p => `${pad(p.hours)}:${pad(p.minutes)}`;
+  const sameDay = (a, b) => a.year === b.year && a.month === b.month && a.day === b.day;
   const rangeLabel = (first, last) => {
     if (!Number.isFinite(first)) return '时间未知';
     const a = parts(first);
     if (!Number.isFinite(last) || last === first) return `${dayLabel(a)} ${clockLabel(a)}`;
     const b = parts(last);
-    if (a.date.toDateString() === b.date.toDateString()) return `${dayLabel(a)} ${clockLabel(a)}–${clockLabel(b)}`;
+    if (sameDay(a, b)) return `${dayLabel(a)} ${clockLabel(a)}–${clockLabel(b)}`;
     if (a.year === b.year) return `${dayLabel(a)} ${clockLabel(a)} → ${dayLabel(b)} ${clockLabel(b)}`;
     return `${a.year}年${dayLabel(a)} ${clockLabel(a)} → ${b.year}年${dayLabel(b)} ${clockLabel(b)}`;
   };
@@ -50,11 +78,10 @@
     const b = parts(last);
     return Math.round((Date.UTC(b.year, b.month - 1, b.day) - Date.UTC(a.year, a.month - 1, a.day)) / 86400000) + 1;
   };
-  const activeOf = item => Object.keys(item.days || {}).length;
   const dayKeyAt = (first, offset) => {
-    const date = new Date(first * 1000);
-    date.setDate(date.getDate() + offset);
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    const p = parts(first);
+    const date = new Date(Date.UTC(p.year, p.month - 1, p.day + offset));
+    return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
   };
 
   const syncOrderButtons = () => {
@@ -158,15 +185,16 @@
       let accessible = [titleOf(item), when, turns].filter(Boolean).join('，');
       if (!undated) {
         const span = spanOf(item.first, item.last);
-        const active = activeOf(item);
         if (span > 1) {
+          let active = 0;
           const progress = document.createElement('span');
           progress.className = 'ceobe-timeline-card-progress';
           progress.setAttribute('aria-hidden', 'true');
           for (let offset = 0; offset < span; offset += 1) {
+            const filled = Boolean((item.days || {})[dayKeyAt(item.first, offset)]);
+            if (filled) active += 1;
             const segment = document.createElement('span');
-            segment.className = 'ceobe-timeline-card-segment'
-              + ((item.days || {})[dayKeyAt(item.first, offset)] ? ' is-filled' : '');
+            segment.className = 'ceobe-timeline-card-segment' + (filled ? ' is-filled' : '');
             progress.append(segment);
           }
           const label = document.createElement('span');
@@ -305,6 +333,7 @@
       return;
     }
     index = payload;
+    timezone = normalizeTimezone(payload.timezone);
     titles = new Map((catalog?.chats || []).map(chat => [chat.id, chat.title]));
     draw();
   }).catch(error => fail('时间线索引不可用：' + (error?.message || error) + '。请运行 npm run library 重建阅读页。'));

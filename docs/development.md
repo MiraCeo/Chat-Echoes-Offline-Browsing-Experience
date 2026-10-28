@@ -297,6 +297,9 @@ XLSX 走“构建期解析 + 静态片段”的只读路线，分三段：
   状态写入 `?view=axis` 与 `localStorage`；切到时间轴才首次加载 `timeline-axis.js` 的图表；
   时间线面板内再用 `data-ceobe-timeline-layout` 切「列表 / 卡片」，布局写 `localStorage`；
   卡片复用同一批数据、排序与月份分组，多日会话渲染逐日进度条，单日显示「当天」；
+- 时区：`timeline-index.mjs` 把构建机 IANA 时区写入索引 `timezone`；`timeline.js` 与
+  `timeline-axis.js` 用 `Intl.DateTimeFormat` 按该时区格式化（不跟随浏览器时区），
+  卡片进度只统计当前跨度内的已填充日，避免出现 `3/2`；
 - 时间轴：真实日历（完整 7–10 月、123 天），缩略 7px/天、详情 96px/天；3 条泳道、
   白卡前后各 40%；视口框 ↔ 详情双向同步，`ResizeObserver` 更新，窄屏自动滚到视口；
   视口框有 `role="slider"` 与方向键/Home/End；

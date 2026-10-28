@@ -223,8 +223,44 @@ try {
     assert.equal(await page.title(), '时间', '从会话页可以回到时间');
   }
 
+  // 时区回归：浏览器在 UTC 时，展示仍应使用索引记录的构建时区，进度不能出现 3/2。
+  if (expected) {
+    const utcContext = await browser.newContext({ timezoneId: 'UTC', viewport: { width: 1280, height: 900 } });
+    const utcPage = await utcContext.newPage();
+    const utcErrors = [];
+    utcPage.on('pageerror', error => utcErrors.push(error.message));
+    await utcPage.goto(base + 'timeline.html', { waitUntil: 'networkidle' });
+    const utcState = await utcPage.evaluate(() => ({
+      tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      firstMeta: document.querySelector('.ceobe-timeline-row .ceobe-timeline-meta')?.textContent || '',
+    }));
+    const newest = [...index.conversations].filter(item => Number.isFinite(item.first)).sort((a, b) => b.first - a.first)[0];
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone: index.timezone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+    });
+    const values = Object.fromEntries(fmt.formatToParts(new Date(newest.first * 1000)).filter(part => part.type !== 'literal').map(part => [part.type, part.value]));
+    const expectedTime = `${Number(values.month)}月${Number(values.day)}日 ${values.hour}:${values.minute}`;
+    assert.equal(utcState.tz, 'UTC');
+    assert.ok(utcState.firstMeta.includes(expectedTime), 'UTC 浏览器仍按构建时区显示首条时间');
+    await utcPage.locator('[data-ceobe-timeline-layout="cards"]').click();
+    const utcCards = await utcPage.evaluate(() => ({
+      labels: [...document.querySelectorAll('.ceobe-timeline-card-progress-label')].map(node => node.textContent),
+      invalid: [...document.querySelectorAll('.ceobe-timeline-card-progress-label')]
+        .map(node => node.textContent.match(/^(\d+)\/(\d+) 天有消息$/))
+        .filter(Boolean)
+        .filter(match => Number(match[1]) > Number(match[2]))
+        .map(match => match[0]),
+    }));
+    assert.deepEqual(utcCards.invalid, [], '进度不能出现“有消息天数 > 跨度”');
+    await utcPage.locator('[data-ceobe-view="axis"]').click();
+    await utcPage.waitForFunction(() => document.querySelectorAll('.ceobe-axis-card').length > 0);
+    assert.equal(await utcPage.locator('.ceobe-axis-card').count(), expected, 'UTC 浏览器时间轴仍有全部会话');
+    assert.deepEqual(utcErrors, [], 'UTC 浏览器没有页面错误');
+    await utcContext.close();
+  }
+
   assert.deepEqual(errors, [], '没有页面错误');
-  console.log('PASS timeline browser: 时间 nav slot, 时间线 列表/卡片, 时间轴 views, list ordering, month groups, axis overview/detail sync, mobile viewport, conversation jump, no overflow/errors');
+  console.log('PASS timeline browser: 时间 nav slot, 时间线 列表/卡片, 时间轴 views, list ordering, month groups, axis overview/detail sync, UTC timezone, mobile viewport, conversation jump, no overflow/errors');
 } finally {
   await browser.close();
 }
