@@ -105,43 +105,10 @@ a { color: inherit; }
   gap: 8px;
   margin-top: 8px;
 }
-.proto-track {
-  position: relative;
-  flex: 1;
-  height: 5px;
-  overflow: hidden;
-  border-radius: 3px;
-  background: #f2f4f7;
-}
-.proto-bar {
-  height: 100%;
-  border-radius: 3px;
-  background: #667085;
-}
-.proto-day-track {
-  position: relative;
-  flex: 1;
-  height: 8px;
-  border-bottom: 1px solid #f2f4f7;
-}
-.proto-tick {
-  position: absolute;
-  top: 0;
-  width: 4px;
-  height: 8px;
-  margin-left: -2px;
-  border-radius: 1px;
-  background: #475467;
-}
 .proto-coverage-label {
   color: #667085;
   font-size: 10px;
   white-space: nowrap;
-}
-.proto-track-tall {
-  height: 10px;
-  overflow: visible;
-  background: #f2f4f7;
 }
 .proto-segments {
   display: flex;
@@ -157,7 +124,7 @@ a { color: inherit; }
 }
 .proto-seg.filled { background: #475467; }
 
-/* P1/P2/P3: horizontal, equidistant slots, cards alternate above/below */
+/* P1/P2: horizontal, equidistant slots, cards alternate above/below */
 .hrl-wrap { margin-top: 4px; }
 .hrl-scroll {
   overflow-x: auto;

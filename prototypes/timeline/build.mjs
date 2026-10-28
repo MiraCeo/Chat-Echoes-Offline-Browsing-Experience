@@ -48,14 +48,10 @@ const html = `<!DOCTYPE html>
       <p class="proto-sub"><span data-proto-count>${conversations.length}</span> 个会话 · ${range} · 只读原型，不影响正式时间线</p>
     </div>
     <nav class="proto-tabs" aria-label="原型">
-      <a data-variant-link="p1" href="?v=p1">P1 横向等距</a>
-      <a data-variant-link="p2" href="?v=p2">P2 横向覆盖条</a>
-      <a data-variant-link="p3" href="?v=p3">P3 横向活跃日</a>
-      <a data-variant-link="p4" href="?v=p4">P4 完整进度条</a>
-      <a data-variant-link="p5" href="?v=p5">P5 日期节点</a>
-      <a data-variant-link="p6" href="?v=p6">P6 日期+跨度</a>
-      <a data-variant-link="p7" href="?v=p7">P7 日期+活跃日</a>
-      <a data-variant-link="p8" href="?v=p8">P8 日期+完整条</a>
+      <a data-variant-link="p1" href="?v=p1">P1 会话基础</a>
+      <a data-variant-link="p2" href="?v=p2">P2 会话进度</a>
+      <a data-variant-link="p3" href="?v=p3">P3 日期基础</a>
+      <a data-variant-link="p4" href="?v=p4">P4 日期进度</a>
     </nav>
   </header>
   <p class="proto-desc" data-proto-desc></p>

@@ -5,17 +5,13 @@
   const description = document.querySelector('[data-proto-desc]');
   const count = document.querySelector('[data-proto-count]');
   const params = new URLSearchParams(location.search);
-  const variant = ['p1', 'p2', 'p3', 'p4', 'p5', 'p6', 'p7', 'p8'].includes(params.get('v')) ? params.get('v') : 'p1';
+  const variant = ['p1', 'p2', 'p3', 'p4'].includes(params.get('v')) ? params.get('v') : 'p1';
 
   const descriptions = {
-    p1: 'P1 横向等距：横轴按会话先后等距排布，卡片上下交替；只表达先后，不表达真实间隔或覆盖。左右拖动平移画布。',
-    p2: 'P2 横向覆盖条：与 P1 相同的横轴，卡片内加一条连续跨度条（按最长会话归一化）；能比较长短，不做全档案真实位置。',
-    p3: 'P3 横向活跃日：卡片内的点 = 真的有消息的日子，空隙保留；能看出“聊了两天、停了一天又回来”。',
-    p4: 'P4 完整进度条：整条代表该会话自身的总跨度，按天切成等宽格子；有消息的日子填充，没消息留空。比如 2/3 天就是“填充、空、填充”。',
-    p5: 'P5 日期节点：只保留有会话的日期，日期等距；每个日期节点用一条分支挂出当天所有会话卡片（按开始时间），卡片标注持续天数。',
-    p6: 'P6 日期节点 + 跨度：在日期卡片里加 P2 的连续跨度条，条长按全部会话归一化。',
-    p7: 'P7 日期节点 + 活跃日：在日期卡片里加 P3 的活跃日点，显示当天会话在自身跨度里哪几天有消息。',
-    p8: 'P8 日期节点 + 完整条：在日期卡片里加 P4 的逐日填充条，整条=该会话总跨度，填充=有消息的日子。',
+    p1: 'P1 会话基础：横轴等距槽位，卡片上下交替；只表达先后，可左右拖动。',
+    p2: 'P2 会话进度：会话卡片内加完整进度条；整条=该会话自身跨度，按天填充，填充=有消息的日子（例如 2/3）。',
+    p3: 'P3 日期基础：只保留有会话的日期，日期等距；每个日期节点分支挂当天所有会话卡片（按开始时间），卡片标注持续天数。',
+    p4: 'P4 日期进度：日期节点 + 完整进度条；日期卡片内逐日填充，整条=该会话总跨度，填充=有消息的日子。',
   };
   description.textContent = descriptions[variant];
   count.textContent = String(data.conversations.length);
@@ -48,7 +44,6 @@
     .filter(item => Number.isFinite(item.first) && Number.isFinite(item.last))
     .sort((a, b) => b.first - a.first);
   const itemsAsc = [...items].reverse();
-  const maxSpan = Math.max(1, ...items.map(item => spanDays(item.first, item.last)));
   const el = (tag, cls, text) => {
     const node = document.createElement(tag);
     if (cls) node.className = cls;
@@ -71,37 +66,6 @@
     meta.append(el('span', 'proto-turns', `${item.turns} 轮`));
     link.append(meta);
     return link;
-  };
-
-  const coverageBar = item => {
-    const span = spanDays(item.first, item.last);
-    const wrap = el('div', 'proto-coverage');
-    const track = el('div', 'proto-track');
-    const bar = el('div', 'proto-bar');
-    bar.style.width = Math.max(4, (span / maxSpan) * 100).toFixed(1) + '%';
-    track.append(bar);
-    wrap.append(track, el('span', 'proto-coverage-label', `跨度 ${span} 天`));
-    return wrap;
-  };
-
-  const dayTicks = item => {
-    const keys = Object.keys(item.days || {}).sort();
-    const span = spanDays(item.first, item.last);
-    const start = dayNumber(item.first);
-    const wrap = el('div', 'proto-coverage');
-    const track = el('div', 'proto-day-track');
-    for (const key of keys) {
-      const date = new Date(key + 'T00:00:00');
-      if (Number.isNaN(date.getTime())) continue;
-      const index = Math.max(0, Math.min(span - 1, Math.floor(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / 86400000) - start));
-      const left = span === 1 ? 50 : (index / (span - 1)) * 100;
-      const tick = el('span', 'proto-tick');
-      tick.style.left = left.toFixed(1) + '%';
-      tick.title = key;
-      track.append(tick);
-    }
-    wrap.append(track, el('span', 'proto-coverage-label', `${keys.length} 天有消息`));
-    return wrap;
   };
 
   const segmentedCoverage = item => {
@@ -170,10 +134,7 @@
     const width = itemsAsc.length * SLOT;
     const wrap = el('div', 'hrl-wrap');
     const toolbar = el('div', 'htl-toolbar');
-    const modeLabel = variant === 'p2' ? '横向覆盖条'
-      : variant === 'p3' ? '横向活跃日'
-        : variant === 'p4' ? '完整进度条'
-          : '横向等距';
+    const modeLabel = variant === 'p2' ? '会话进度' : '会话基础';
     const hint = el('span', 'htl-hint');
     const current = el('span', 'hrl-current', monthLabel(monthKey(itemsAsc[itemsAsc.length - 1].first)));
     hint.append(`${modeLabel} · ${itemsAsc.length} 个会话 · `, current, ' · 左右拖动平移');
@@ -207,9 +168,7 @@
       const side = index % 2 === 0 ? 'above' : 'below';
       const card = makeCard(item);
       card.classList.add('hrl-card', side);
-      if (variant === 'p2') card.append(coverageBar(item));
-      if (variant === 'p3') card.append(dayTicks(item));
-      if (variant === 'p4') card.append(segmentedCoverage(item));
+      if (variant === 'p2') card.append(segmentedCoverage(item));
       slot.append(card, el('span', 'hrl-dot'));
       slots.append(slot);
     });
@@ -229,12 +188,9 @@
   const CARD_H = 42;
   const CARD_GAP = 6;
   const renderDateRail = mode => {
-    const visual = mode !== 'p5';
+    const visual = mode === 'progress';
     const cardH = visual ? 58 : CARD_H;
-    const modeLabel = mode === 'p6' ? '日期节点 + 跨度'
-      : mode === 'p7' ? '日期节点 + 活跃日'
-        : mode === 'p8' ? '日期节点 + 完整条'
-          : '日期节点';
+    const modeLabel = visual ? '日期进度' : '日期基础';
     const groups = new Map();
     for (const item of itemsAsc) {
       const key = fmtDay(item.first);
@@ -314,11 +270,9 @@
         card.title = `${item.title}\n${fmtRange(item.first, item.last)}\n${item.turns} 轮`;
         card.append(el('span', 'drl-title', item.title));
         const span = spanDays(item.first, item.last);
-        const meta = el('span', 'drl-meta', `${fmtTime(item.first)} · ${item.turns} 轮${mode === 'p5' ? ` · 持续 ${span} 天` : ''}`);
+        const meta = el('span', 'drl-meta', `${fmtTime(item.first)} · ${item.turns} 轮${mode === 'base' ? ` · 持续 ${span} 天` : ''}`);
         card.append(meta);
-        if (mode === 'p6') card.append(coverageBar(item));
-        if (mode === 'p7') card.append(dayTicks(item));
-        if (mode === 'p8') card.append(segmentedCoverage(item));
+        if (mode === 'progress') card.append(segmentedCoverage(item));
         slot.append(card);
       });
       const stem = el('div', 'drl-stem');
@@ -348,6 +302,6 @@
     attachPan(scroll, latest);
   };
 
-  if (['p5', 'p6', 'p7', 'p8'].includes(variant)) renderDateRail(variant);
+  if (variant === 'p3' || variant === 'p4') renderDateRail(variant === 'p4' ? 'progress' : 'base');
   else renderHorizontalRail();
 })();
