@@ -5,10 +5,13 @@
 这里只记录**还没做**或**等你决定**的事。已完成的能力、性能数字和踩过的坑都在
 [HANDOVER](HANDOVER.md) 与 [CHANGELOG](CHANGELOG.md) 里，不在这里重复。
 
+**当前进行中（2026-10-28 起）**：第一层「消息 DAG」的 UI 优化（阅读器结构/导航）；
+事件时间线与会话内事件树见第七节，属于更后面的层级。
+
 ## 一、需要你决定或提供材料
 
-（目前没有需要你拍板的开发项。时间线 v1 已随 1.2.0 交付；事件／观点时间线、AI 记忆等候选路线
-仍未批准，见 [docs/direction.md](docs/direction.md)。）
+（目前没有需要你拍板的开发项。时间线 v1 已随 1.2.0 交付；事件／观点时间线、会话内事件树、
+AI 记忆等候选路线仍未批准，见第七节与 [docs/direction.md](docs/direction.md)。）
 
 ## 二、已批准、待开工
 
@@ -60,6 +63,31 @@
 - Windows 若把 5150–5249 列为保留端口，`npm run dev` 绑不上 5173，需换端口启动（见开发指南）；
 - 单文件 HTML 导出仍是实验性：助手侧图片未内嵌、大会话体积偏大；
 - 删除一个会话仍不是“秒级”：重建约 15s，另有档案复制与回写；页面本身已经不再重写。
+
+## 七、后期候选（只记录，未批准）
+
+按依赖顺序排列；三层共用“消息 ID + 原文”这一证据层，任何 AI 结果都只写衍生数据，不碰 `archive/`。
+
+1. **第二层：事件时间线（1.3 候选）**：从聊天里整理出带时间的“事件”，与档案时间线共用同一条时间轴；
+   字段至少包含 `occurred_at`（发生，可模糊到年/月/区间）、`recorded_at`（哪条消息记录）、
+   `sources`（会话/消息 ID + 摘录）、`status`（asserted/inferred/disputed）、`confidence`、`revision`、
+   `model.prompt_version`。先做数据契约与只读视图，抽取放 1.4；参考
+   `cyresearch/chatgpt-memory-extraction`（按季度整理 + 人工复核）、`Gusarovv/chatgpt-export-viewer`
+   （年/月导航）。
+2. **第三层：会话内话题/事件树（后期）**：节点是语义话题，不是编辑分支；`parent_id/children` 表达层级，
+   `spans[]` 允许**多段不连续消息**（话题跳走又回来），`links[]` 表达跨会话续接/关联；
+   AI 负责分段、聚类、父子推断与标题，人工负责合并/拆分/改父节点；只在有分支数据时显示分支 UI。
+3. **长期记忆/事实层（与事件树同层）**：事实带有效期（`valid_at/invalid_at`，参考 Graphiti），
+   与事件树互相反哺——树给记忆提供聚焦的分支上下文，记忆给树提供人物/项目/偏好等语义锚点；
+   用户直接陈述、AI 推断、未验证假设要分开存。
+4. **跨会话主题合并（树的一部分）**：同一主题在不同聊天里出现时，先只给“建议续接”，不自动合并；
+   合并结果保留两侧原文链接与冲突。
+5. **MCP 薄适配层**：见第三节，等检索/事件/记忆内核出现后再做，只读、本地、默认关闭。
+
+参考项目（README 级调研，2026-10-28）：`getzep/graphiti`（双时间事实）、`mem0ai/mem0`（记忆更新语义）、
+`basicmachines-co/basic-memory`（AGPL，只借思路）、`JerryZLiu/Dayflow` 与 `ActivityWatch/activitywatch`
+（时间线 UX）、`syncable-dev/memtrace-public`（双时间 + MCP）、`cyresearch/chatgpt-memory-extraction`
+（聊天→季度事件，最接近本项目的设想）。
 
 ---
 

@@ -89,6 +89,14 @@
 3. **事件时间线原型**（独立进程／独立仓库）：消费 JSON，产出带来源指针的衍生数据；
    CEOBE 只负责导入并渲染衍生时间线，不执行推理。
 4. **长期记忆**（更后）：在事件时间线稳定后，加入记忆条目、来源、修订历史与纠错界面。
+5. **会话内话题/事件树（后期）**：节点是语义话题，`parent_id/children` 表达层级，`spans[]` 允许
+   多段不连续消息（话题跳走又回来），`links[]` 表达跨会话续接；AI 分段与父子推断，人工合并/拆分/
+   改父节点；与长期记忆互相反哺。只记录，未批准，范围见 `TODO.md` 第七节。
+
+事件/记忆层的 README 级参考（2026-10-28）：`getzep/graphiti`（双时间事实）、`mem0ai/mem0`
+（记忆更新语义）、`basicmachines-co/basic-memory`（AGPL，只借思路）、`JerryZLiu/Dayflow` 与
+`ActivityWatch/activitywatch`（时间线 UX）、`syncable-dev/memtrace-public`（双时间 + MCP）、
+`cyresearch/chatgpt-memory-extraction`（聊天 → 季度事件 + 人工复核，最接近本项目的设想）。
 
 ## 七、测试案例（现成的）
 
