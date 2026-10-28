@@ -27,7 +27,7 @@ HEAD        （见 git log -1；包含“侧栏客户端渲染”“后处理幂
              只重做 5/41 页、页面字节不变；换首页或导入后为 5–6/41 页、约 19–25s（修复前为 40/40、107–118s）
 删除        重建部分约 15s＋档案复制约 1s（原为 52.5s）；会话页逐字节不变
 导出        官方 JSON 65.3 MB（36 会话；可选附件 323 个文件／254.3 MB）；Markdown 走 export:md
-扩展        MV3 0.5.0：直连发送、页内按钮、ZIP 兜底、端口探测、采集包 format/version 握手
+扩展        MV3 0.5.1：直连发送、页内按钮、ZIP 兜底、端口探测、采集包 format/version 握手
 侧栏        浏览器按 replay/chats.json 渲染；每页只剩“当前会话一行 + 行模板”，不再内嵌全部会话
 历史        2026-10-26 做过一次脱敏重写：旧夹具与「测试消息/」「图表/」「文件/」「新界面/」从全部
              历史移除、本机用户名替换为占位；提交时间保持不变，但**旧 SHA 全部失效**
@@ -71,7 +71,7 @@ npm run verify:archive      # 只读检查档案结构
 - 官方格式 JSON 导出：`npm run export:json -- --all --out <目录>`（或 `--id`），产物为
   `conversations.json` + `attachments/<sha256>.<ext>` + `manifest.json`；`mapping` 由 `nodes` 生成、
   `content.raw` 原样透传、缺 `nodes` 时降级为线性 mapping；附件默认复制（`--no-assets` 关闭）；
-- 采集扩展 0.5.0：popup 直接发送 + 端口探测、分享页内「发送到 CEOBE」按钮、无服务时导出 ZIP；
+- 采集扩展 0.5.1：popup 直接发送 + 端口探测、分享页内「发送到 CEOBE」按钮、无服务时导出 ZIP；
   采集包带 `format`/`version` 握手（旧包按 legacy 接受）；书签小工具打开导入页预填链接；
 - 资料库可以自建文件夹（当标签用，一条资源可属多个）并上传自己的文件；
   上传字节在 `data/private/library-files/`，不进 `archive/`，任何路径都不删原文件；
@@ -271,7 +271,7 @@ npm run verify:archive      # 只读检查档案结构
 
 **采集扩展补齐（本轮完成）**
 
-- `extension/` 0.5.0（MV3）：`zip.js`（浏览器与 Node 共用的 STORE ZIP 写出）、`capture.js`
+- `extension/` 0.5.1（MV3）：`zip.js`（浏览器与 Node 共用的 STORE ZIP 写出）、`capture.js`
   （匿名抓取／投递／端口探测）、`background.js`（Service Worker 消息路由）、popup 直接发送与 ZIP 导出、
   `content.js/css` 分享页内按钮；抓取在扩展上下文里做，不受页面 CSP 限制；
 - **ZIP 在 popup 内生成**：`chrome.runtime.sendMessage` 是 JSON 序列化，把 `Uint8Array` 传给 popup

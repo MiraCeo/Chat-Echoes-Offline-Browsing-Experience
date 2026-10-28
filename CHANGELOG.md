@@ -22,7 +22,7 @@
 
 ### 采集扩展补齐
 
-- `extension/` 升到 0.5.0（MV3）：popup 增加**直接发送到本地 CEOBE** 与端口探测；分享页
+- `extension/` 升到 0.5.1（MV3）：popup 增加**直接发送到本地 CEOBE** 与端口探测；分享页
   `chatgpt.com/share/*` 注入「发送到 CEOBE」按钮；没有本地服务时仍可导出 ZIP。
   抓取放在 Service Worker（`background.js`）里，不受分享页 CSP 限制；`zip.js` 是浏览器与 Node
   共用的 STORE ZIP 写出器，`capture.js` 负责抓取／投递／探测。

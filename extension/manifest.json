@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CEOBE 采集器（扩展版）",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "匿名抓取公开分享页，直接发送到本地 CEOBE，或导出与 archive/ 同结构的 ZIP。",
   "permissions": ["downloads", "storage"],
   "host_permissions": [

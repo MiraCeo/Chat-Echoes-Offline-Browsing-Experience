@@ -33,7 +33,7 @@ XLSX 只读预览（大表截断 500×60、点选高亮行列、缩放、隐藏�
 缺 `nodes` 降级、附件内容寻址、两次导出逐字节一致；单测 `test-export-json.mjs` 已进 `npm test`）、
 **装饰指纹精度修复**（共享输入改为项目数据文件；换首页 40/40 → 5/40、107–118s → 19–22s；
 `test-decoration-plan.mjs` 已进 `npm test`）、
-**采集扩展补齐**（0.5.0：直连发送、页内按钮、端口探测、ZIP 兜底；`format`/`version` 握手；
+**采集扩展补齐**（0.5.1：直连发送、页内按钮、端口探测、ZIP 兜底；`format`/`version` 握手；
 书签小工具打开导入页预填；`test-share-package.mjs` 与扩展的 `test-local-import-api.mjs` 已进 `npm test`；
 **实机修复**：采集包导入后先全量重建索引/页面再返回、失败返回 `archived` 标记、`build-library --only`
 落后索引时自动重建一次、ZIP 改在 popup 内生成；`test-local-import-package-api.mjs`、
