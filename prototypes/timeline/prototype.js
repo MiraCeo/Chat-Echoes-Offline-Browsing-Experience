@@ -8,10 +8,10 @@
   const variant = ['p1', 'p2', 'p3', 'p4'].includes(params.get('v')) ? params.get('v') : 'p1';
 
   const descriptions = {
-    p1: 'P1 等距：竖线只表达先后，不表达真实间隔或覆盖。卡片左右交替，适合快速回看“发生了什么”，但不回答“隔了多久、覆盖多长”。',
-    p2: 'P2 横向月轴：每月固定 30 天（不是真实日历比例，31 日按月末处理），会话跨度画成横条；左右拖动平移画布，按钮回到最新。',
-    p3: 'P3 覆盖条：竖线给顺序，卡片内的条按“最长的会话”归一化显示首末跨度；能比较长短，但不做全档案真实比例。',
-    p4: 'P4 活跃日：卡片内的点 = 真的发过消息的日子，空隙保留；能看出“聊了两天、停了一天又回来”，但条本身不再表示连续覆盖。',
+    p1: 'P1 横向等距：横轴按会话先后等距排布，卡片上下交替；只表达先后，不表达真实间隔或覆盖。左右拖动平移画布。',
+    p2: 'P2 横向覆盖条：与 P1 相同的横轴，卡片内加一条连续跨度条（按最长会话归一化）；能比较长短，不做全档案真实位置。',
+    p3: 'P3 横向活跃日：卡片内的点 = 真的有消息的日子，空隙保留；能看出“聊了两天、停了一天又回来”。',
+    p4: 'P4 固定 30 天轴：每月固定 30 天（不是真实日历比例，31 日按月末处理），每行一条会话，条长 = 首末跨度；左右拖动平移。',
   };
   description.textContent = descriptions[variant];
   count.textContent = String(data.conversations.length);
@@ -42,6 +42,7 @@
   const items = data.conversations
     .filter(item => Number.isFinite(item.first) && Number.isFinite(item.last))
     .sort((a, b) => b.first - a.first);
+  const itemsAsc = [...items].reverse();
   const maxSpan = Math.max(1, ...items.map(item => spanDays(item.first, item.last)));
   const el = (tag, cls, text) => {
     const node = document.createElement(tag);
@@ -97,32 +98,110 @@
     return wrap;
   };
 
-  const renderRail = () => {
-    const rail = el('div', 'proto-rail');
-    rail.append(el('div', 'proto-rail-line'));
-    const byMonth = new Map();
-    for (const item of items) {
-      const key = monthKey(item.first);
-      if (!byMonth.has(key)) byMonth.set(key, []);
-      byMonth.get(key).push(item);
-    }
-    for (const [key, list] of byMonth) {
-      rail.append(el('div', 'proto-month', monthLabel(key)));
-      list.forEach((item, index) => {
-        const side = index % 2 === 0 ? 'left' : 'right';
-        const row = el('div', 'proto-row ' + side);
-        const card = makeCard(item);
-        card.classList.add(side);
-        if (variant === 'p3') card.append(coverageBar(item));
-        if (variant === 'p4') card.append(dayTicks(item));
-        row.append(card, el('span', 'proto-dot'));
-        rail.append(row);
-      });
-    }
-    main.append(rail);
+  const attachPan = (scroll, latest) => {
+    const target = () => scroll.scrollWidth - scroll.clientWidth;
+    requestAnimationFrame(() => { scroll.scrollLeft = target(); });
+    let down = false;
+    let moved = false;
+    let startX = 0;
+    let startLeft = 0;
+    scroll.addEventListener('pointerdown', event => {
+      if (event.button !== 0) return;
+      down = true;
+      moved = false;
+      startX = event.clientX;
+      startLeft = scroll.scrollLeft;
+      scroll.classList.add('is-dragging');
+      scroll.setPointerCapture(event.pointerId);
+    });
+    scroll.addEventListener('pointermove', event => {
+      if (!down) return;
+      const dx = event.clientX - startX;
+      if (Math.abs(dx) > 3) moved = true;
+      scroll.scrollLeft = startLeft - dx;
+    });
+    const endDrag = () => {
+      if (!down) return;
+      down = false;
+      scroll.classList.remove('is-dragging');
+    };
+    scroll.addEventListener('pointerup', endDrag);
+    scroll.addEventListener('pointercancel', endDrag);
+    scroll.addEventListener('click', event => {
+      if (!moved) return;
+      event.preventDefault();
+      event.stopPropagation();
+      moved = false;
+    }, true);
+    latest?.addEventListener('click', () => scroll.scrollTo({ left: target(), behavior: 'auto' }));
   };
 
-  const renderHorizontal = () => {
+  const SLOT = 232;
+  const renderHorizontalRail = () => {
+    const groups = new Map();
+    for (const item of itemsAsc) {
+      const key = monthKey(item.first);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(item);
+    }
+    const width = itemsAsc.length * SLOT;
+    const wrap = el('div', 'hrl-wrap');
+    const toolbar = el('div', 'htl-toolbar');
+    const modeLabel = variant === 'p2' ? '横向覆盖条' : variant === 'p3' ? '横向活跃日' : '横向等距';
+    const hint = el('span', 'htl-hint');
+    const current = el('span', 'hrl-current', monthLabel(monthKey(itemsAsc[itemsAsc.length - 1].first)));
+    hint.append(`${modeLabel} · ${itemsAsc.length} 个会话 · `, current, ' · 左右拖动平移');
+    toolbar.append(hint);
+    const latest = el('button', 'htl-latest', '回到最新');
+    latest.type = 'button';
+    toolbar.append(latest);
+
+    const scroll = el('div', 'hrl-scroll');
+    const strip = el('div', 'hrl-strip');
+    strip.style.width = `${width}px`;
+    const months = el('div', 'hrl-months');
+    for (const [key, list] of groups) {
+      const block = el('div', 'hrl-month-block');
+      block.style.width = `${list.length * SLOT}px`;
+      block.append(el('span', 'hrl-month-label', monthLabel(key)));
+      months.append(block);
+    }
+    const slots = el('div', 'hrl-slots');
+    slots.style.width = `${width}px`;
+    slots.append(el('div', 'hrl-rail-line'));
+    let boundary = 0;
+    for (const [, list] of groups) {
+      const line = el('div', 'hrl-month-line');
+      line.style.left = `${boundary}px`;
+      slots.append(line);
+      boundary += list.length * SLOT;
+    }
+    itemsAsc.forEach((item, index) => {
+      const slot = el('div', 'hrl-slot');
+      const side = index % 2 === 0 ? 'above' : 'below';
+      const card = makeCard(item);
+      card.classList.add('hrl-card', side);
+      if (variant === 'p2') card.append(coverageBar(item));
+      if (variant === 'p3') card.append(dayTicks(item));
+      slot.append(card, el('span', 'hrl-dot'));
+      slots.append(slot);
+    });
+    strip.append(months, slots);
+    scroll.append(strip);
+    wrap.append(toolbar, scroll);
+    main.append(wrap, el('p', 'proto-note', '横轴按会话先后等距排布，卡片上下交替；拖动平移画布，点击卡片打开会话。'));
+    const updateCurrent = () => {
+      const index = Math.min(itemsAsc.length - 1, Math.max(0, Math.ceil(scroll.scrollLeft / SLOT)));
+      current.textContent = monthLabel(monthKey(itemsAsc[index].first));
+    };
+    scroll.addEventListener('scroll', updateCurrent);
+    requestAnimationFrame(updateCurrent);
+    attachPan(scroll, latest);
+  };
+
+  const MONTH = 30;
+  const DAY = 12;
+  const renderFixedMonthAxis = () => {
     const min = Math.min(...items.map(item => item.first));
     const max = Math.max(...items.map(item => item.last));
     const startDate = new Date(min * 1000);
@@ -134,8 +213,6 @@
       cursor.setMonth(cursor.getMonth() + 1);
     }
     const monthIndex = new Map(months.map((key, index) => [key, index]));
-    const DAY = 12;
-    const MONTH = 30;
     const WIDTH = months.length * MONTH * DAY;
 
     const axisPoint = (seconds, isEnd = false) => {
@@ -208,50 +285,14 @@
     toolbar.append(el('span', 'htl-hint', `每月固定 30 天 · ${months[0]} → ${months[months.length - 1]} · 左右拖动平移，31 日按月末处理`));
     const latest = el('button', 'htl-latest', '回到最新');
     latest.type = 'button';
-    latest.dataset.htlLatest = '';
     toolbar.append(latest);
     const scroll = el('div', 'htl-scroll');
-    scroll.dataset.htlScroll = '';
     scroll.append(head, body);
     wrap.append(toolbar, scroll);
     main.append(wrap, el('p', 'proto-note', '横轴：每月固定 30 天（不是真实日历比例）；条长 = 会话首末跨度；点击左侧标题打开会话。'));
-
-    requestAnimationFrame(() => { scroll.scrollLeft = scroll.scrollWidth; });
-    let down = false;
-    let moved = false;
-    let startX = 0;
-    let startLeft = 0;
-    scroll.addEventListener('pointerdown', event => {
-      if (event.button !== 0) return;
-      down = true;
-      moved = false;
-      startX = event.clientX;
-      startLeft = scroll.scrollLeft;
-      scroll.classList.add('is-dragging');
-      scroll.setPointerCapture(event.pointerId);
-    });
-    scroll.addEventListener('pointermove', event => {
-      if (!down) return;
-      const dx = event.clientX - startX;
-      if (Math.abs(dx) > 3) moved = true;
-      scroll.scrollLeft = startLeft - dx;
-    });
-    const endDrag = () => {
-      if (!down) return;
-      down = false;
-      scroll.classList.remove('is-dragging');
-    };
-    scroll.addEventListener('pointerup', endDrag);
-    scroll.addEventListener('pointercancel', endDrag);
-    scroll.addEventListener('click', event => {
-      if (!moved) return;
-      event.preventDefault();
-      event.stopPropagation();
-      moved = false;
-    }, true);
-    latest.addEventListener('click', () => scroll.scrollTo({ left: scroll.scrollWidth, behavior: 'smooth' }));
+    attachPan(scroll, latest);
   };
 
-  if (variant === 'p2') renderHorizontal();
-  else renderRail();
+  if (variant === 'p4') renderFixedMonthAxis();
+  else renderHorizontalRail();
 })();
