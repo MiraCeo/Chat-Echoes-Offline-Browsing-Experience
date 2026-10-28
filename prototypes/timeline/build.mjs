@@ -51,7 +51,8 @@ const html = `<!DOCTYPE html>
       <a data-variant-link="p1" href="?v=p1">P1 横向等距</a>
       <a data-variant-link="p2" href="?v=p2">P2 横向覆盖条</a>
       <a data-variant-link="p3" href="?v=p3">P3 横向活跃日</a>
-      <a data-variant-link="p4" href="?v=p4">P4 日期节点</a>
+      <a data-variant-link="p4" href="?v=p4">P4 跨度+活跃日</a>
+      <a data-variant-link="p5" href="?v=p5">P5 日期节点</a>
     </nav>
   </header>
   <p class="proto-desc" data-proto-desc></p>
