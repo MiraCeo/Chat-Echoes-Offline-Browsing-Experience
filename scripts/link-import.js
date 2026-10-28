@@ -355,6 +355,14 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
     }
   });
   input.setAttribute('contenteditable','false');
+  // 书签小工具兜底：/import.html?url=<分享链接> 预填输入框（只打开本地页面，不做跨站 POST）。
+  try {
+    const preset = new URLSearchParams(location.search).get('url');
+    if (preset && /^https:\/\/chatgpt\.com\/share\/[\w-]+\/?$/.test(preset)) {
+      input.textContent = preset;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  } catch { /* 参数无效时保持空输入 */ }
   showStatus('正在检查本地导入服务…','idle');updateButton();
   fetch('/api/capabilities',{cache:'no-store',signal:AbortSignal.timeout(5000)}).then(async response=>{const data=await response.json();if(!response.ok||data.importShare!==true)throw Error();available=true;input.setAttribute('contenteditable','true');showStatus('','idle');updateButton()}).catch(()=>{available=false;input.setAttribute('contenteditable','false');showStatus('当前为只读页面或本地服务不可用，无法导入。请启动 npm run dev，或构建后运行 npm run preview，再刷新页面。','unavailable');updateButton()});
 }

@@ -3,20 +3,37 @@
 <head>
 <meta charset="utf-8">
 <style>
-  body { width: 320px; margin: 0; padding: 14px; font: 13px/1.6 system-ui, "Microsoft YaHei", sans-serif; }
+  body { width: 340px; margin: 0; padding: 14px; font: 13px/1.55 system-ui, "Microsoft YaHei", sans-serif; color: #1f2937; }
   h1 { font-size: 14px; margin: 0 0 10px; }
+  label { display: block; margin: 10px 0 4px; font-size: 12px; color: #475467; }
   input { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 1px solid #d0d5dd; border-radius: 8px; font: 13px system-ui; }
-  button { margin-top: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: #1f2937; color: #fff; font: 13px system-ui; cursor: pointer; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row > input { flex: 1; min-width: 0; }
+  button { padding: 8px 10px; border: 0; border-radius: 8px; background: #1f2937; color: #fff; font: 13px system-ui; cursor: pointer; }
+  button.ghost { background: #f2f4f7; color: #1f2937; border: 1px solid #d0d5dd; }
   button:disabled { opacity: .55; cursor: default; }
+  #send, #zip { width: 100%; margin-top: 8px; }
   p { margin: 10px 0 0; color: #475467; }
+  p[data-state=error] { color: #b42318; }
+  p[data-state=success] { color: #067647; }
+  p a { color: #175cd3; }
   code { background: #f2f4f7; padding: 0 4px; border-radius: 4px; }
+  small { color: #667085; }
 </style>
 </head>
 <body>
 <h1>CEOBE 采集分享链接</h1>
+<label for="url">公开分享链接</label>
 <input id="url" placeholder="https://chatgpt.com/share/…" autocomplete="off">
-<button id="go">抓取并导出 ZIP</button>
-<p id="status">ZIP 结构：<code>raw/share.html</code> + <code>capture.json</code>，与 <code>archive/</code> 对齐。</p>
-<script src="popup.js"></script>
+<label for="endpoint">本地服务</label>
+<div class="row">
+  <input id="endpoint" placeholder="http://127.0.0.1:5173" autocomplete="off">
+  <button id="probe" class="ghost" type="button">检测</button>
+</div>
+<button id="send" type="button">发送到本地 CEOBE</button>
+<button id="zip" class="ghost" type="button">导出 ZIP（离线导入用）</button>
+<p id="status" role="status" data-state="idle">ZIP 结构：<code>raw/share.html</code> + <code>capture.json</code>；直接发送需要本地服务已启动。</p>
+<small>扩展只做匿名抓取，不读 cookie、不解析正文；附件由本地管线下载。</small>
+<script type="module" src="popup.js"></script>
 </body>
 </html>

@@ -6,8 +6,8 @@
 先读这些文件，再动手：
 
 1. `HANDOVER.md` —— 当前状态、能力清单、已知问题、过程记录（**先读这个**）；
-2. `TODO.md` —— 还没做的事：第二节是**已批准、待开工**项（当前只剩扩展补齐），
-   第一/三/四节是待拍板、已评估与明确不做的范围，别自己开工；
+2. `TODO.md` —— 还没做的事：第二节「已批准、待开工」当前为空；第一节是待拍板（时间线 v1），
+   第三/四节是已评估与明确不做的范围，别自己开工；
 3. `docs/ecosystem.md` —— 同类项目调研（36 个仓库）、可借的设计、四个方向的完整口径与验收方式
    （MCP 已改为“已评估、暂不做”）；
 4. `docs/direction.md` —— 2026-10-28 的方向讨论：两种记忆、两种时间线、数据契约、AI 模块的位置；
@@ -33,18 +33,23 @@ XLSX 只读预览（大表截断 500×60、点选高亮行列、缩放、隐藏�
 缺 `nodes` 降级、附件内容寻址、两次导出逐字节一致；单测 `test-export-json.mjs` 已进 `npm test`）、
 **装饰指纹精度修复**（共享输入改为项目数据文件；换首页 40/40 → 5/40、107–118s → 19–22s；
 `test-decoration-plan.mjs` 已进 `npm test`）、
+**采集扩展补齐**（0.5.0：直连发送、页内按钮、端口探测、ZIP 兜底；`format`/`version` 握手；
+书签小工具打开导入页预填；`test-share-package.mjs` 与扩展的 `test-local-import-api.mjs` 已进 `npm test`；
+popup/页内按钮仍需手动在浏览器验收）、
 **方向记录与 MCP 归档**（`docs/direction.md`；MCP 已评估、暂不做）、
 README 四张脱敏截图（`scripts/make-readme-fixture.mjs` + `scripts/shoot-readme.mjs`）、
 远端仓库删库重建 + 本地旧对象清理（`pre-rewrite.bundle` 与 `refs/codex/*` 已删，`.git` 3.77 MiB）。
 
 基线：35 个分享会话 / 43 个快照 / 14871 条消息、40 页巡检 0 问题；
 `npm test`（含书签与表格两套浏览器测试）、`npm run check`、`npm run build` 全绿；
-数据没变时重建 13–15s、只重做 5/39 页、页面字节不变。
+数据没变时重建 13–15s、只重做 5/40 页、页面字节不变；换首页 5/40、约 19–22s。
 
-## 当前任务（按优先级，口径见 `TODO.md` 第二节与 `docs/ecosystem.md`）
+## 当前任务（口径见 `TODO.md` 与 `docs/direction.md`）
 
-1. **档案 MCP server**（约 1–2 天）：只读 stdio，工具 search/list/read/stats，复用 `scripts/search-query.mjs`；
-2. **采集扩展补齐**（约 1–2 天）：扩展直连 `/api/archive-package`、分享页内按钮、采集包版本握手、书签小工具。
+目前**没有已批准、待开工项**。下一步等作者拍板：建议先做**时间线 v1**（不依赖 AI 的历史档案时间线，
+按消息时间聚合、可跳转），范围、三类时间的坑与验收见 `docs/direction.md`；MCP 已评估、暂不做。
+
+发布前请手动验收扩展 UI：在 Edge/Chrome 加载 `extension/`，走一遍 popup 直连、页内按钮与 ZIP 兜底。
 
 其余条目（已定案、已知限制）不要自行开工。
 

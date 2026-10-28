@@ -177,6 +177,20 @@ Windows 快捷键：`Ctrl+K` 搜索（标题和正文，支持 `title:`／`has:`
 
 ## 导出
 
+### 浏览器扩展：直接归档
+
+不装扩展也可以只用网页导入；装了扩展可以省掉「下载 ZIP → 拖进页面」两步：
+
+1. `edge://extensions/`（或 `chrome://extensions/`）打开开发人员模式，加载 `extension/` 目录；更新文件后点扩展卡片上的「重新加载」；
+2. 先运行 `npm run dev`（或 `npm run preview`），点扩展图标 →「检测」找到本地服务（默认 `http://127.0.0.1:5173`，端口不同也可以手填）；
+3. 在 `chatgpt.com/share/…` 页面右下角点「发送到 CEOBE」，或在 popup 里粘贴链接点「发送到本地 CEOBE」。
+
+- 抓取是匿名的（`credentials: 'omit'`、不跟随重定向），附件仍由本地管线发现和下载；
+- 没有本地服务时，用 popup 里的「导出 ZIP」把采集包下载下来，再拖到导入输入框；
+- 不装扩展时，用 `extension/bookmarklet.md` 里的书签小工具：点一下打开本地导入页并预填链接（不跨站 POST）；
+- 采集包带 `format`/`version` 握手：0.4.x 的旧 ZIP 仍可导入；比本地支持更高的版本会明确提示更新，不会带着半个包解码；
+- 本地服务只放行扩展 scheme（`chrome-extension://` 等）的跨源请求，普通网站仍受同源与 `Sec-Fetch-Site` 检查保护。
+
 ### 批量导入分享链接
 
 在「导入会话」的输入框里**一次粘贴多条** `https://chatgpt.com/share/…` 链接（每行一条），提交后会：

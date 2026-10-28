@@ -13,10 +13,9 @@
   都未批准。
 - 其余已批准项的验收口径在 [docs/ecosystem.md](docs/ecosystem.md)。
 
-## 二、已批准、待开工（2026-10-27 定）
+## 二、已批准、待开工
 
-1. **采集扩展补齐**（约 1–2 天）：扩展直接 `POST /api/archive-package`、`chatgpt.com/share/*` 页面内
-   “发送到 CEOBE”按钮、采集包加 `format`/`version` 握手、书签小工具兜底。现状见 `extension/README.md`。
+（暂无。时间线 v1 与其余候选路线见第一节与 [docs/direction.md](docs/direction.md)，待拍板。）
 
 ## 三、已评估、暂不做
 

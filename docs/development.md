@@ -255,6 +255,19 @@ XLSX 走“构建期解析 + 静态片段”的只读路线，分三段：
 - 加新站点时：在注册表里加一个 descriptor + 一个 Python 导入器，**不要**在调用方写 `hostname === …`；
   `test-sources-registry.mjs` 会检查两个调用方确实从注册表导入、且没有硬编码 host 判断。
 
+## 浏览器扩展与采集包
+
+- `extension/` 是 MV3：`zip.js`（STORE ZIP 写出，Node 测试也用它）、`capture.js`（抓取／投递／端口探测，
+  纯 fetch + crypto，Node 可直接 import）、`background.js`（Service Worker 消息路由）、`popup` 与
+  `content.js/css`（分享页内按钮）；抓取放在扩展上下文里，避免分享页 CSP 限制 `connect-src`；
+- 本地服务只认扩展 scheme 的来源：`isTrustedExtensionOrigin()` 在 `local-import-api.mjs` 里，
+  普通网站仍走同源 + `sec-fetch-site` 检查；`OPTIONS` 预检也只对白名单开放。改这段先补
+  `test-local-import-api.mjs`；
+- 采集包契约在 `scripts/share-package-format.mjs`（`format`/`version`），扩展写、导入读；
+  旧包按 legacy 接受。改版本要同时改扩展与 `CAPTURE_PACKAGE_VERSION`，并把兼容范围写进 `extension/README.md`；
+- 测试：`test-share-package.mjs`（ZIP 往返、握手、URL 解析）、`test-local-import-api.mjs`（预检与来源白名单）；
+  扩展 UI（popup、页内按钮）需要在 Edge/Chrome 里加载目录手动检查，仓库里的 Playwright 不加载扩展。
+
 ## Markdown 导出
 
 三个入口共用一套规则，区别只在“要不要附件”：
@@ -341,7 +354,7 @@ node scripts/test-copy-content.mjs
 | 阅读边缘：书签面板停靠与上次阅读位置 | `test-reader-margin-browser.mjs`（`npm run test:reader-margins`）；在临时目录构建隔离副本（同一夹具，120／60 条消息、24／12 条书签），检查 1440→420 各宽度下展开或收起面板都不移动、不压缩正文，留白足够时停靠在正文左侧、不足时改为短浮层且点击别处即收起，空列表收缩为一行提示，以及按聊天恢复阅读位置的精确跳转、从头阅读、清除与只保存 ID＋偏移；全程只读 GET，不依赖本地 5173，不读写使用者归档；支持 `CEOBE_TEST_DIST=1` 与 `CEOBE_TEST_HEADED=1` |
 | 侧栏、搜索与整理 | `test-sidebar-controls.mjs`（标题与正文搜索、语法查询、片段高亮、页内精确跳转与跨页哈希跳转，新查询把结果列表送回顶部、后台刷新保留焦点与位置；正文索引和 `/api/chats` 均为只读夹具）、`test-search-query.mjs`（搜索语法：引号短语、排除、`A/B`、`title:`／`from:`／`has:`／`created:`／`messages:`、折叠与高亮切片）、`test-search-index.mjs`（索引只含可见提问／回复／代码，排除推理、隐藏上下文、引用与附件名；`kinds` 标签覆盖代码、表格、图片与附件）、`test-sidebar-polish.mjs`、`test-chat-organizer.mjs` |
 | 侧栏客户端渲染（删除不改页面） | `test-sidebar-client-render.mjs`：在临时目录真实复制运行时 + 三份夹具会话，跑真实构建与真实删除流程；断言“数据不变时重建逐字节一致”“删除一个会话后其余页面哈希不变、只有被删页面消失”“页面里没有 `#ceobe-chat-catalog`、保留一行静态回退与行模板”。不读写使用者归档；`test-decoration-plan.mjs` 锁住装饰指纹的精度（换首页只重做 5 个顶层页、项目数据变化才全量、单页改动只重做该页、指纹损坏回退全量） |
-| 导入与发布 | `test-local-import-api.mjs`、`test-production-import.mjs`、`test-link-import-browser.mjs` |
+| 导入与发布 | `test-local-import-api.mjs`（能力探测、同源/跨站拒绝、扩展 scheme 的 OPTIONS 预检与白名单、持久化重试与发布恢复）、`test-share-package.mjs`（扩展 ZIP 写出与本地读取的往返、`format`/`version` 握手、旧包兼容、未来版本拒绝）、`test-production-import.mjs`、`test-link-import-browser.mjs` |
 | 离线资源 | `test-offline-resources.mjs` |
 
 例如：

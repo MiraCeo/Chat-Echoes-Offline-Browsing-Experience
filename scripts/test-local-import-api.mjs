@@ -3,6 +3,15 @@ await mkdir('data/private',{recursive:true});const root=await mkdtemp('data/priv
 const options={mode:'production',archive:async()=>{captures++;await mkdir(join(root,'archive'),{recursive:true});await writeFile(join(root,'archive/original.txt'),'unchanged archive')},rebuild:async()=>{builds++;await writeFile(join(root,'archive/library.ceobe.json'),JSON.stringify({conversations:[{id,title:'测试',message_count:8,turn_count:4,user_turn_count:2,assistant_turn_count:2,resource_counts:{}}]}))},publish:async()=>{publishes++;if(fail)throw Error('injected publication failure')}};
 try{let middleware=localImportMiddleware(root,options);server=createServer((q,s)=>middleware(q,s,()=>{s.statusCode=404;s.end()}));await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port,post=(body,extra={})=>fetch(base+'/api/archive-share',{method:'POST',headers:{'Content-Type':'application/json',...extra},body:JSON.stringify(body)});
 assert.equal((await(await fetch(base+'/api/capabilities')).json()).importShare,true);assert.equal((await fetch(base+'/api/archive-share')).status,405);
+// 扩展直连：capabilities 带包格式握手；扩展 scheme 可以跨源预检与 POST，普通网站不行。
+const capabilities=await(await fetch(base+'/api/capabilities')).json();assert.equal(capabilities.packageFormat,'ceobe.capture');assert.equal(capabilities.packageVersion,1);
+const extension={Origin:'chrome-extension://abcdefghijklmnop'};
+const preflight=await fetch(base+'/api/archive-package',{method:'OPTIONS',headers:{...extension,'Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'content-type'}});
+assert.equal(preflight.status,204);assert.equal(preflight.headers.get('access-control-allow-origin'),extension.Origin);assert.match(preflight.headers.get('access-control-allow-methods'),/POST/);assert.equal(preflight.headers.get('access-control-allow-headers')?.toLowerCase(),'content-type');
+assert.equal((await fetch(base+'/api/archive-package',{method:'OPTIONS',headers:{Origin:'https://example.com'}})).status,403,'a normal site cannot preflight');
+assert.equal((await fetch(base+'/api/archive-package',{method:'OPTIONS'})).status,403,'without an extension origin there is no CORS');
+assert.equal((await post({url:'https://example.com/',requestId},{...extension,'Sec-Fetch-Site':'cross-site'})).status,400,'the extension origin passes the cross-site guard (400 = invalid URL, not 403)');
+assert.equal((await post({url:'https://example.com/',requestId},{Origin:'https://example.com','Sec-Fetch-Site':'cross-site'})).status,403);
 assert.equal((await post({url:'https://example.com/',requestId})).status,400);assert.equal((await post({url,requestId:'../../evil'})).status,400);assert.equal((await post({url,requestId},{Origin:'https://example.com'})).status,403);assert.equal(captures,0);
 let response=await post({url,requestId}),data=await response.json();assert.equal(response.status,500);assert.equal(data.retryPublish,true);assert.equal(captures,1);assert.equal(publishes,1);
 // A recreated middleware represents a restarted service; the durable ID resumes publication.

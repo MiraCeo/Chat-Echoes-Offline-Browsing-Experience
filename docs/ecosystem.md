@@ -105,10 +105,15 @@ npm run export:json -- --id <share-id> --out <目录>
 验收口径（已通过）：`test-export-json.mjs` 断言 `mapping` 重建顺序 == `linear_message_ids`、`content.raw` 逐字节一致、
 `current_node` 可达；缺 `nodes` 的快照走降级分支；同一输入导出两次逐字节一致。
 
-### 方向 4：采集扩展的生态补齐（已确认要做，优先级最低）
+### 方向 4：采集扩展的生态补齐（已完成）
 
-现状：`extension/`（MV3 v0.4.1）只做匿名抓取——popup 粘贴分享链接 → `raw/share.html` + `capture.json` →
-导出 `ceobe-capture-*.zip` → 拖进导入页（或 `scripts/import-share-package.mjs`）。
+已落地：扩展直连 `/api/archive-package`（扩展 scheme 白名单 + OPTIONS 预检）、`chatgpt.com/share/*`
+页面内「发送到 CEOBE」按钮（Service Worker 抓取，规避页面 CSP）、采集包 `format`/`version` 握手
+（旧包按 legacy 接受，更高版本明确报错）、书签小工具兜底（打开导入页预填链接，不跨站 POST）。
+测试：`test-share-package.mjs`、`test-local-import-api.mjs`；扩展 UI 需手动在 Edge/Chrome 加载检查。
+⑤ 多站点仍暂缓（需要素材）。
+
+原始缺口与动作（保留备查）：
 
 | 缺口 | 补齐动作 | 成本 |
 |---|---|---|

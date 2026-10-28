@@ -7,7 +7,11 @@ import {acquireMutation} from './workspace-mutation.mjs';
 import {assertSafeTree} from './chat-store.mjs';
 import {createThrottle} from './import-throttle.mjs';
 import {findSource} from './sources/registry.mjs';
+import { CAPTURE_PACKAGE_FORMAT, CAPTURE_PACKAGE_VERSION } from './share-package-format.mjs';
 const bad=(message,status=400)=>Object.assign(new Error(message),{status});
+// 浏览器扩展的来源白名单：只认扩展 scheme（Chromium 系 / Firefox / Safari Web Extension），
+// 不认普通网站。扩展直连本地服务必须走这里，不能靠放宽 same-origin 判断。
+export const isTrustedExtensionOrigin=origin=>typeof origin==='string'&&/^(?:chrome|moz|safari-web)-extension:\/\/[a-z0-9._-]+$/i.test(origin);
 const summarize=log=>{
  const lines=String(log||'').split('\n').map(l=>l.trim()).filter(Boolean);
  const key=lines.filter(l=>/fetch failed|ECONNRESET|ETIMEDOUT|EAI_AGAIN|Error|Traceback|失败/i.test(l)).at(-1);
@@ -33,8 +37,23 @@ export function localImportMiddleware(root,{mode='development',archive=url=>runL
   const send=(code,data)=>{res.statusCode=code;res.setHeader('Content-Type','application/json; charset=utf-8');res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.end(JSON.stringify(data))};
   let release,record,file;
   try{
-   if(req.headers['sec-fetch-site']==='cross-site'||req.headers.origin&&new URL(req.headers.origin).host!==req.headers.host)throw bad('不允许跨站操作',403);
-   if(path==='/api/capabilities'){if(req.method!=='GET')throw bad('仅支持 GET',405);return send(200,{mode,importShare:true})}
+   const origin=req.headers.origin,trustedExtension=isTrustedExtensionOrigin(origin);
+   if(trustedExtension){
+    res.setHeader('Access-Control-Allow-Origin',origin);
+    res.setHeader('Vary','Origin');
+    res.setHeader('Access-Control-Allow-Methods','GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers','Content-Type');
+    res.setHeader('Access-Control-Max-Age','600');
+   }
+   // 扩展的 application/zip 会先发 OPTIONS 预检；只有白名单里的扩展 scheme 可以跨源。
+   if(req.method==='OPTIONS'){
+    if(!trustedExtension)throw bad('仅扩展可以跨源预检',403);
+    res.statusCode=204;res.setHeader('Content-Length','0');return res.end();
+   }
+   const sameOrigin=!origin||(()=>{try{return new URL(origin).host===req.headers.host}catch{return false}})();
+   if(req.headers['sec-fetch-site']==='cross-site'&&!trustedExtension)throw bad('不允许跨站操作',403);
+   if(!trustedExtension&&!sameOrigin)throw bad('不允许跨站操作',403);
+   if(path==='/api/capabilities'){if(req.method!=='GET')throw bad('仅支持 GET',405);return send(200,{mode,importShare:true,packageFormat:CAPTURE_PACKAGE_FORMAT,packageVersion:CAPTURE_PACKAGE_VERSION})}
    if(req.method!=='POST')throw bad('仅支持 POST',405);
    if(path==='/api/archive-package'){
    if(!/^(application\/zip|application\/octet-stream)(?:;|$)/i.test(req.headers['content-type']||''))throw bad('需要 zip 文件',415);

@@ -120,6 +120,18 @@ ChatGPT 分享页面及公开资源
 
 写入由工作区锁协调，项目存储使用原子文件替换。简介保存携带旧值以检测并发冲突，避免静默覆盖其他窗口的更新。
 
+### 浏览器扩展与采集包
+
+- `extension/` 是 MV3：`zip.js` 写 STORE ZIP、`capture.js` 负责匿名抓取／投递／端口探测、`background.js`
+  是 Service Worker 消息路由，`popup` 与内容脚本是两个入口；抓取放在扩展上下文里，不受分享页 CSP 限制；
+- 本地服务对 `/api/archive-package`、`/api/archive-share`、`/api/capabilities` 增加扩展 scheme 白名单
+  （`chrome-extension://`／`moz-extension://`／`safari-web-extension://`）。`application/zip` 的 OPTIONS
+  预检只对这些来源开放；普通网站仍按同源与 `sec-fetch-site` 拒绝；
+- 采集包契约在 `scripts/share-package-format.mjs`：`capture.json` 的 `format: "ceobe.capture"` 与
+  `version: 1`；旧包（没有字段）按 legacy 接受，未来版本明确报错。`/api/capabilities` 返回同样的
+  `packageFormat`／`packageVersion` 供扩展自检；
+- 导入仍走归档守卫与 Python importer，扩展不写 `archive/`；附件由本地管线发现与下载。
+
 聊天删除会先在私有工作目录准备剩余档案和新页面，再切换；遇到可正常处理的异常可回滚。符号链接、目录联接和不明确的跨归档资源关系会触发保护，而不是猜测删除范围。
 
 生产导入先保存归档，再构建并发布页面。二者不是一笔统一事务：发布失败不会删除已保存归档，后续重试可只做发布。旧哈希资源会保留，以兼容已经打开的页面。

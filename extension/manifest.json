@@ -1,16 +1,28 @@
 {
   "manifest_version": 3,
   "name": "CEOBE 采集器（扩展版）",
-  "version": "0.4.1",
-  "description": "输入分享链接，抓取原始页面并导出与 archive/ 同结构的 ZIP。",
-  "permissions": [
-    "downloads"
-  ],
+  "version": "0.5.0",
+  "description": "匿名抓取公开分享页，直接发送到本地 CEOBE，或导出与 archive/ 同结构的 ZIP。",
+  "permissions": ["downloads", "storage"],
   "host_permissions": [
-    "https://chatgpt.com/*"
+    "https://chatgpt.com/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
   ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_title": "CEOBE 采集分享链接"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/share/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
 }

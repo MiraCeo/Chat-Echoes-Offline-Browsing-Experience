@@ -17,6 +17,9 @@ import { assertSnapshotTarget, planSnapshot } from './archive-guard.mjs';
 import { exportConversationMarkdown } from './export-conversation-markdown.mjs';
 import { downloadResources, resourceMatches } from './archive-resources.mjs';
 import { resolveShareResources } from './resolve-share-resources.mjs';
+import { CAPTURE_PACKAGE_FORMAT, CAPTURE_PACKAGE_VERSION, validateCapturePackage } from './share-package-format.mjs';
+
+export { CAPTURE_PACKAGE_FORMAT, CAPTURE_PACKAGE_VERSION, validateCapturePackage };
 
 const projectRoot = resolve(import.meta.dirname, '..');
 
@@ -56,6 +59,8 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.filename
     const captureBytes = zip.get('capture.json');
     if (!html || !captureBytes) throw new Error('package must contain raw/share.html and capture.json');
     const capture = JSON.parse(new TextDecoder().decode(captureBytes));
+    const packageInfo = validateCapturePackage(capture);
+    if (packageInfo.legacy) console.log('采集包没有 format/version（旧版扩展），按 legacy 包导入。');
     const shareId = shareIdOf(capture.source_url);
     if (!shareId) throw new Error('capture.json has no valid chatgpt.com/share URL');
 

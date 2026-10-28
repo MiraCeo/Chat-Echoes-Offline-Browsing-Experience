@@ -70,6 +70,8 @@ npm run verify:archive      # 只读检查档案结构
 - 官方格式 JSON 导出：`npm run export:json -- --all --out <目录>`（或 `--id`），产物为
   `conversations.json` + `attachments/<sha256>.<ext>` + `manifest.json`；`mapping` 由 `nodes` 生成、
   `content.raw` 原样透传、缺 `nodes` 时降级为线性 mapping；附件默认复制（`--no-assets` 关闭）；
+- 采集扩展 0.5.0：popup 直接发送 + 端口探测、分享页内「发送到 CEOBE」按钮、无服务时导出 ZIP；
+  采集包带 `format`/`version` 握手（旧包按 legacy 接受）；书签小工具打开导入页预填链接；
 - 资料库可以自建文件夹（当标签用，一条资源可属多个）并上传自己的文件；
   上传字节在 `data/private/library-files/`，不进 `archive/`，任何路径都不删原文件；
 - 附件随页拷贝：并行渲染的每一页都写自己会话的附件字节，`replay/archive-resources` 与 `dist` 都是 321 个文件，
@@ -266,11 +268,33 @@ npm run verify:archive      # 只读检查档案结构
   `scripts/test-decoration-plan.mjs` 锁住精度（换首页只动 5 个顶层页、项目数据变化才全量、单页改动
   只重做该页、指纹损坏回退全量），已加入 `npm test`。
 
+**采集扩展补齐（本轮完成）**
+
+- `extension/` 0.5.0（MV3）：`zip.js`（浏览器与 Node 共用的 STORE ZIP 写出）、`capture.js`
+  （匿名抓取／投递／端口探测）、`background.js`（Service Worker 消息路由）、popup 直接发送与 ZIP 导出、
+  `content.js/css` 分享页内按钮；抓取在扩展上下文里做，不受页面 CSP 限制；
+- 本地服务只对扩展 scheme 开放跨源（`chrome-extension://`／`moz-extension://`／
+  `safari-web-extension://`），`application/zip` 的 OPTIONS 预检同样只对这些来源开放；普通网站仍被
+  同源与 `sec-fetch-site` 检查拒绝；`/api/capabilities` 返回 `packageFormat`／`packageVersion`；
+- 采集包契约（`scripts/share-package-format.mjs`）：`capture.json` 带 `format: ceobe.capture` 与
+  `version: 1`；旧包按 legacy 接受，未知格式或更高版本明确报错；
+- 书签小工具（`extension/bookmarklet.md`）打开 `import.html?url=<分享链接>`，导入页会预填并校验；
+  这条路线不跨站 POST，不放宽 CSRF；
+- 验证：`test-share-package.mjs`（ZIP 往返、握手、URL 解析，扩展写出的 ZIP 也通过 Python `zipfile`
+  读取）、`test-local-import-api.mjs`（扩展预检/白名单、普通网站仍 403）；均进 `npm test`。
+  **扩展 UI（popup、页内按钮）本轮没有在真实浏览器里加载验收**，只做了语法检查与契约测试；
+  发布前需在 Edge/Chrome 手动加载 `extension/` 走一遍。
+
 ## 5. 已知问题
 
 - 删除会话仍不是“秒级”：重建约 15s，另有档案复制与安装回写；页面本身已经不再重写（见第 4 节）；
 - 导入仍包含匿名解析/下载资源与重建。本次导入 118s 里约 90s 是全量装饰（根因已修：换首页 40/40 → 5/40、
   107–118s → 19–22s）；修复后的新导入尚未重新计时，预计仍在几十秒量级；
+- 扩展 UI（popup、分享页按钮）本轮没有在真实浏览器里加载验收，只做了语法检查与契约测试；
+  发布前需在 Edge/Chrome 手动加载 `extension/` 走一遍；
+- 书签小工具的端口默认写死 5173；`npm run dev` 换端口时需要手改书签地址；
+- 扩展白名单按 scheme 放行：本机已安装的任意扩展都能请求本地服务（浏览器的内网请求里无法区分具体扩展），
+  属于本机信任边界；直连发送依赖本地服务，纯静态部署只能用 ZIP 或书签小工具；
 - 官方安全检查拦下的资源匿名拿不到，缺口清单里标「获取失败」；
 - 指向作者本机的图片永远没有字节，显示「图片未归档」占位；
 - 单文件 HTML 导出仍是实验性（助手侧图片未内嵌）；

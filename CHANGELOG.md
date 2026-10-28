@@ -4,6 +4,27 @@
 
 ## 未发布（本轮）
 
+### 采集扩展补齐
+
+- `extension/` 升到 0.5.0（MV3）：popup 增加**直接发送到本地 CEOBE** 与端口探测；分享页
+  `chatgpt.com/share/*` 注入「发送到 CEOBE」按钮；没有本地服务时仍可导出 ZIP。
+  抓取放在 Service Worker（`background.js`）里，不受分享页 CSP 限制；`zip.js` 是浏览器与 Node
+  共用的 STORE ZIP 写出器，`capture.js` 负责抓取／投递／探测。
+- 本地服务增加**扩展来源白名单**：只对 `chrome-extension://`／`moz-extension://`／`safari-web-extension://`
+  开放跨源，`application/zip` 的 OPTIONS 预检也只对这些来源开放；普通网站仍受同源与
+  `sec-fetch-site` 检查保护。`/api/capabilities` 返回 `packageFormat`／`packageVersion` 供扩展自检。
+- **采集包版本握手**（`scripts/share-package-format.mjs`）：`capture.json` 带
+  `format: "ceobe.capture"` 与 `version: 1`；0.4.x 旧包按 legacy 接受，未知格式或更高版本明确报错，
+  不再带着半个包去解码。
+- **书签小工具兜底**（`extension/bookmarklet.md`）：打开本地导入页并预填 `?url=`；导入页
+  （`link-import.js`）支持该参数。这条路线不跨站 POST，不放宽 CSRF 防护。
+- 测试：新增 `scripts/test-share-package.mjs`（ZIP 往返、握手、旧包/未来版本、URL 解析），
+  扩展 `test-local-import-api.mjs`（预检、白名单、普通网站仍拒绝）；均加入 `npm test`。
+  端到端实测：扩展来源 `OPTIONS` 204、`POST /api/archive-package` 200 且幂等导入不新增快照、
+  非扩展来源 POST 403。扩展 UI 需要手动在 Edge/Chrome 加载 `extension/` 检查。
+- 顺带修正 `test-bookmarks-browser.mjs` 的注释位置断言：首页消息可能先有附件卡片（气泡因此下移），
+  按真实契约改为“注释从整轮顶端开始、位于气泡右侧、不落到气泡下方”。
+
 ### 构建与文档
 
 - **装饰指纹精度修复**：`decoration-plan.mjs` 的共享输入从整份 `replay/projects.html` 改为

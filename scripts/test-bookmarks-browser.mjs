@@ -130,7 +130,9 @@ try {
     const shot = section.querySelector('[data-conversation-screenshot-content]').getBoundingClientRect();
     return {
       rightOf: c.left >= b.right - 8,
-      top: Math.abs(c.top - b.top) < 24,
+      // 注释锚定在“这一轮”的顶端（host 的 top: 0）；用户消息可能先有附件卡片，气泡会比 host 低，
+      // 所以只要求注释从 host 顶端开始、且不落到气泡下方。
+      top: c.top >= shot.top - 1 && c.top <= b.top + 24,
       unshrunk: Math.abs(b.right - shot.right) < 24,
     };
   }, user.message_id);
