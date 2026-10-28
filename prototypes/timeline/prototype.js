@@ -5,16 +5,17 @@
   const description = document.querySelector('[data-proto-desc]');
   const count = document.querySelector('[data-proto-count]');
   const params = new URLSearchParams(location.search);
-  const variant = ['p1', 'p2', 'p3', 'p4', 'p5', 'p5a', 'p6'].includes(params.get('v')) ? params.get('v') : 'p1';
+  const variant = ['p1', 'p2', 'p3', 'p4', 'p5', 'p5a', 'p6', 'p7'].includes(params.get('v')) ? params.get('v') : 'p1';
 
   const descriptions = {
     p1: 'P1 会话基础：横轴等距槽位，卡片上下交替；只表达先后，可左右拖动。',
     p2: 'P2 会话进度：会话卡片内加完整进度条；整条=该会话自身跨度，按天填充，填充=有消息的日子（例如 2/3）。',
     p3: 'P3 日期基础：只保留有会话的日期，日期等距；每个日期节点分支挂当天所有会话卡片（按开始时间），卡片标注持续天数。',
     p4: 'P4 日期进度：日期节点 + 完整进度条；日期卡片内逐日填充，整条=该会话总跨度，填充=有消息的日子。',
-    p5: 'P5 卡片泳道：保留 P3 的白色标题卡；卡片按日期格拉伸（一天=相邻节点中点之间），3 条泳道互不交叉。',
+    p5: 'P5 卡片泳道：真实日历 96px/天；白色标题卡按日期格拉伸（节点前/后各 40%），3 条泳道互不交叉。',
     p5a: 'P5A 分离泳道（对照）：保留 P3 的卡片堆叠，跨度条单独放在下方 3 条泳道。',
-    p6: 'P6 缩略图：按真实日历天数（7px/天）把全档案压缩到一屏；月份宽度=实际天数，3 条泳道、纯色细条、无卡片文字。',
+    p6: 'P6 缩略图：按真实日历天数（7px/天）把全档案压缩到一屏；月份宽度=实际天数，3 条泳道、多色细条、无卡片文字。',
+    p7: 'P7 整合：上方是 P6 缩略图与视口框，下方是 P5 详情；滚动详情同步视口，点击/拖动缩略图定位详情。',
   };
   description.textContent = descriptions[variant];
   count.textContent = String(data.conversations.length);
@@ -492,14 +493,23 @@
     attachPan(scroll, latest);
   };
 
-  const renderCardLanes = () => {
-    const NODE_W = 155;
+  const renderCardLanes = (target = main) => {
+    const NODE_W = 96;
     const HEADER = 26;
     const AXIS_H = 36;
     const LANE_H = 52;
     const CARD_H = 40;
 
-    const dates = [...new Set(itemsAsc.flatMap(item => [fmtDay(item.first), fmtDay(item.last)]))].sort();
+    const firstDate = new Date(itemsAsc[0].first * 1000);
+    const lastDate = new Date(itemsAsc[itemsAsc.length - 1].last * 1000);
+    const cursor = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+    const endCursor = new Date(lastDate.getFullYear(), lastDate.getMonth() + 1, 1);
+    const dates = [];
+    while (cursor < endCursor) {
+      const days = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
+      for (let day = 1; day <= days; day += 1) dates.push(`${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}-${pad(day)}`);
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
     const dateIndex = new Map(dates.map((date, index) => [date, index]));
     const width = dates.length * NODE_W;
     const lanes = [[], [], []];
@@ -523,7 +533,7 @@
     const toolbar = el('div', 'htl-toolbar');
     const current = el('span', 'hrl-current', monthLabel(dates[dates.length - 1].slice(0, 7)));
     const hint = el('span', 'htl-hint');
-    hint.append(`卡片泳道 · ${dates.length} 个日期 · ${itemsAsc.length} 条会话 · ${lanes.length} 条泳道 · `, current, ' · 左右拖动平移');
+    hint.append(`卡片泳道 · ${dates.length} 天 · ${itemsAsc.length} 条会话 · ${lanes.length} 条泳道 · `, current, ' · 左右拖动平移');
     toolbar.append(hint);
     const latest = el('button', 'htl-latest', '回到最新');
     latest.type = 'button';
@@ -605,7 +615,7 @@
 
     scroll.append(strip);
     wrap.append(toolbar, scroll);
-    main.append(wrap, el('p', 'proto-note', '保留日期节点；卡片按日期格拉伸，左右各留 10% 间隙（节点前/后各 40%）；3 条泳道互不交叉。'));
+    target.append(wrap, el('p', 'proto-note', '真实日历 96px/天；卡片按日期格拉伸，节点前/后各 40%（左右留 10% 间隙）；3 条泳道互不交叉。'));
     const updateCurrent = () => {
       scroll.dataset.scrolled = scroll.scrollLeft > 4 ? 'true' : 'false';
       const left = scroll.scrollLeft;
@@ -619,6 +629,7 @@
     scroll.addEventListener('scroll', updateCurrent);
     requestAnimationFrame(updateCurrent);
     attachPan(scroll, latest);
+    return { scroll, width, dayW: NODE_W };
   };
 
   const renderOverview = () => {
@@ -711,7 +722,137 @@
     main.append(wrap, el('p', 'proto-note', '缩略图：按真实日历天数（7px/天），月份宽度=该月天数；颜色仅用于区分会话，空日期也占位，3 条泳道互不交叉。'));
   };
 
-  if (variant === 'p6') renderOverview();
+  const renderIntegrated = () => {
+    const DAY = 7;
+    const HEADER = 20;
+    const LANE_H = 20;
+    const BAR_H = 10;
+    const PALETTE = [
+      '#3b6ea5', '#b46a3c', '#5b8c5a', '#8a5a9e',
+      '#b08a2e', '#4a8a8a', '#a34f5c', '#6b6f9e',
+      '#7a8f3a', '#9a5f8a', '#4f7f9a', '#a07040',
+    ];
+    const firstDate = new Date(itemsAsc[0].first * 1000);
+    const lastDate = new Date(itemsAsc[itemsAsc.length - 1].last * 1000);
+    const cursor = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+    const endCursor = new Date(lastDate.getFullYear(), lastDate.getMonth() + 1, 1);
+    const months = [];
+    let offset = 0;
+    while (cursor < endCursor) {
+      const days = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
+      const key = `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}`;
+      months.push({ key, label: `${Number(key.slice(5))} 月`, days, offset, width: days * DAY });
+      offset += days * DAY;
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    const total = offset;
+    const originDay = Math.floor(Date.UTC(firstDate.getFullYear(), firstDate.getMonth(), 1) / 86400000);
+    const xOf = seconds => (dayNumber(seconds) - originDay) * DAY;
+    const lanes = [[], [], []];
+    const laneOf = new Map();
+    for (const item of itemsAsc) {
+      const left = xOf(item.first);
+      const right = xOf(item.last) + DAY;
+      let lane = lanes.findIndex(list => !list.length || list[list.length - 1] <= left);
+      if (lane < 0) {
+        lane = lanes.length;
+        lanes.push([]);
+      }
+      lanes[lane].push(right);
+      laneOf.set(item, lane);
+    }
+
+    const overview = el('div', 'ix-overview');
+    overview.append(el('div', 'ix-label', '缩略导航 · 点击或拖动定位下方详情'));
+    const ovwScroll = el('div', 'ovw-scroll');
+    const chart = el('div', 'ix-chart');
+    chart.style.width = `${total}px`;
+    chart.style.height = `${HEADER + lanes.length * LANE_H}px`;
+    const head = el('div', 'ovw-head');
+    for (const month of months) {
+      const block = el('div', 'ovw-month');
+      block.style.width = `${month.width}px`;
+      block.append(el('span', 'ovw-month-label', month.label));
+      head.append(block);
+    }
+    const body = el('div', 'ovw-body');
+    body.style.height = `${lanes.length * LANE_H}px`;
+    for (let lane = 0; lane < lanes.length; lane += 1) {
+      const band = el('div', 'ovw-lane' + (lane % 2 ? ' alt' : ''));
+      band.style.top = `${lane * LANE_H}px`;
+      band.style.height = `${LANE_H}px`;
+      body.append(band);
+    }
+    for (const month of months) {
+      const line = el('div', 'ovw-month-line');
+      line.style.left = `${month.offset}px`;
+      body.append(line);
+    }
+    itemsAsc.forEach((item, index) => {
+      const left = xOf(item.first);
+      const widthX = Math.max(2, xOf(item.last) + DAY - left - 1);
+      const laneIndex = laneOf.get(item);
+      const bar = el('span', 'ovw-bar');
+      bar.style.left = `${left}px`;
+      bar.style.width = `${widthX}px`;
+      bar.style.top = `${laneIndex * LANE_H + (LANE_H - BAR_H) / 2}px`;
+      bar.style.background = PALETTE[index % PALETTE.length];
+      bar.title = `#${index + 1} ${item.title}\n${fmtRange(item.first, item.last)}\n${item.turns} 轮 · 泳道 ${laneIndex + 1}`;
+      body.append(bar);
+    });
+    const windowEl = el('div', 'ix-window');
+    windowEl.style.top = `${HEADER}px`;
+    windowEl.style.height = `${lanes.length * LANE_H}px`;
+    chart.append(head, body, windowEl);
+    ovwScroll.append(chart);
+    overview.append(ovwScroll);
+
+    const detailHost = el('div', 'ix-detail');
+    main.append(overview, detailHost);
+    const detail = renderCardLanes(detailHost);
+
+    const clamp = value => Math.max(0, Math.min(detail.width - detail.scroll.clientWidth, value));
+    const updateWindow = () => {
+      const left = detail.scroll.scrollLeft / detail.dayW * DAY;
+      const width = detail.scroll.clientWidth / detail.dayW * DAY;
+      windowEl.style.left = `${Math.min(total - width, Math.max(0, left))}px`;
+      windowEl.style.width = `${width}px`;
+    };
+    detail.scroll.addEventListener('scroll', updateWindow);
+    requestAnimationFrame(updateWindow);
+
+    const jump = clientX => {
+      const rect = chart.getBoundingClientRect();
+      const x = Math.max(0, Math.min(total, clientX - rect.left));
+      detail.scroll.scrollLeft = clamp(x / DAY * detail.dayW - detail.scroll.clientWidth / 2);
+    };
+    chart.addEventListener('pointerdown', event => {
+      if (event.target === windowEl) return;
+      jump(event.clientX);
+    });
+    let dragging = false;
+    let startX = 0;
+    let startLeft = 0;
+    windowEl.addEventListener('pointerdown', event => {
+      dragging = true;
+      startX = event.clientX;
+      startLeft = detail.scroll.scrollLeft;
+      windowEl.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+    windowEl.addEventListener('pointermove', event => {
+      if (!dragging) return;
+      const dx = event.clientX - startX;
+      detail.scroll.scrollLeft = clamp(startLeft + dx * detail.dayW / DAY);
+    });
+    const endDrag = () => { dragging = false; };
+    windowEl.addEventListener('pointerup', endDrag);
+    windowEl.addEventListener('pointercancel', endDrag);
+    main.append(el('p', 'proto-note', '上方缩略图与视口框对应全档案；拖动或点击缩略图定位详情，滚动详情同步视口框。'));
+  };
+
+  if (variant === 'p7') renderIntegrated();
+  else if (variant === 'p6') renderOverview();
   else if (variant === 'p5') renderCardLanes();
   else if (variant === 'p5a') renderSpanRail();
   else if (variant === 'p3' || variant === 'p4') renderDateRail(variant === 'p4' ? 'progress' : 'base');

@@ -55,6 +55,7 @@ const html = `<!DOCTYPE html>
       <a data-variant-link="p5" href="?v=p5">P5 卡片泳道</a>
       <a data-variant-link="p5a" href="?v=p5a">P5A 分离泳道（对照）</a>
       <a data-variant-link="p6" href="?v=p6">P6 缩略图</a>
+      <a data-variant-link="p7" href="?v=p7">P7 整合</a>
     </nav>
   </header>
   <p class="proto-desc" data-proto-desc></p>

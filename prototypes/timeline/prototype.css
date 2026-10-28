@@ -652,6 +652,27 @@ a { color: inherit; }
   opacity: 0.92;
 }
 .ovw-bar:hover { filter: brightness(0.78); opacity: 1; }
+/* P7: overview + detail integration */
+.ix-overview {
+  margin-top: 4px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f2f4f7;
+}
+.ix-label {
+  margin-bottom: 6px;
+  color: #667085;
+  font-size: 11px;
+}
+.ix-chart { position: relative; margin: 0 auto; }
+.ix-window {
+  position: absolute;
+  z-index: 5;
+  border: 1.5px solid #111;
+  border-radius: 3px;
+  background: rgba(17, 17, 17, 0.06);
+  cursor: grab;
+}
+.ix-detail { margin-top: 18px; }
 .proto-note {
   margin: 12px 0 0;
   color: #667085;
