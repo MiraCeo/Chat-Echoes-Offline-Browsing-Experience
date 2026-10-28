@@ -11,7 +11,7 @@
     p1: 'P1 会话基础：横轴等距槽位，卡片上下交替；只表达先后，可左右拖动。',
     p2: 'P2 会话进度：会话卡片内加完整进度条；整条=该会话自身跨度，按天填充，填充=有消息的日子（例如 2/3）。',
     p3: 'P3 日期基础：只保留有会话的日期，日期等距；每个日期节点分支挂当天所有会话卡片（按开始时间），卡片标注持续天数。',
-    p5: 'P5 跨节点基础：月份分区、按天压缩的日期轴；每条会话一条纯色横条，从开始日跨到结束日；3 条泳道绝对不交叉。',
+    p5: 'P5 跨节点基础：保留 P3 的日期节点和分支卡片，日期节点宽缩到 155px；会话在下方 3 条泳道里从开始日接到结束日，纯色条、互不交叉。',
   };
   description.textContent = descriptions[variant];
   count.textContent = String(data.conversations.length);
@@ -302,41 +302,48 @@
     attachPan(scroll, latest);
   };
 
-  const renderCrossRail = () => {
-    const DAY = 28;
-    const LANE_H = 54;
-    const first = itemsAsc[0].first;
-    const last = itemsAsc[itemsAsc.length - 1].last;
-    const start = new Date(first * 1000);
-    const end = new Date(last * 1000);
-    const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
-    const months = [];
-    let offset = 0;
-    while (cursor <= end) {
-      const days = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
-      const key = `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}`;
-      months.push({ key, label: monthLabel(key), days, offset, width: days * DAY });
-      offset += days * DAY;
-      cursor.setMonth(cursor.getMonth() + 1);
+  const renderSpanRail = () => {
+    const NODE_W = 155;
+    const CARD_W = 131;
+    const CARD_H = 38;
+    const CARD_GAP = 4;
+    const HEADER = 26;
+    const TOP_GAP = 6;
+    const LANE_H = 22;
+    const LANES = 3;
+
+    const startDates = new Map();
+    const endDates = new Map();
+    const allDates = new Set();
+    for (const item of itemsAsc) {
+      const startKey = fmtDay(item.first);
+      const endKey = fmtDay(item.last);
+      allDates.add(startKey);
+      allDates.add(endKey);
+      if (!startDates.has(startKey)) startDates.set(startKey, []);
+      startDates.get(startKey).push(item);
+      if (endKey !== startKey) {
+        if (!endDates.has(endKey)) endDates.set(endKey, []);
+        endDates.get(endKey).push(item);
+      }
     }
-    const total = offset;
-    const monthByKey = new Map(months.map(month => [month.key, month]));
-    const xOf = seconds => {
-      const p = parts(seconds);
-      const month = monthByKey.get(`${p.year}-${pad(p.month)}`);
-      if (!month) return null;
-      const day = Math.min(p.day, month.days);
-      const fraction = Math.min(0.999, (Number(p.hours) * 60 + Number(p.minutes)) / 1440);
-      return month.offset + (day - 1 + fraction) * DAY;
-    };
+    const dates = [...allDates].sort();
+    const dateIndex = new Map(dates.map((date, index) => [date, index]));
+    const maxCards = Math.max(1, ...[...startDates.values()].map(list => list.length));
+    const stack = maxCards * CARD_H + (maxCards - 1) * CARD_GAP;
+    const RAIL = HEADER + TOP_GAP + stack + 10;
+    const SPAN_TOP = RAIL + 22;
+    const STRIP = SPAN_TOP + LANES * LANE_H + 8;
+    const width = dates.length * NODE_W;
+    const centerOf = key => dateIndex.get(key) * NODE_W + NODE_W / 2;
+    const numberOf = new Map(itemsAsc.map((item, index) => [item, index + 1]));
 
     const lanes = [[], [], []];
     for (const item of itemsAsc) {
-      const startX = xOf(item.first);
-      const endX = xOf(item.last);
-      if (startX == null || endX == null) continue;
-      const width = Math.max(6, endX - startX);
-      const effectiveEnd = startX + width;
+      const startX = centerOf(fmtDay(item.first));
+      const endX = centerOf(fmtDay(item.last));
+      const barWidth = Math.max(6, endX - startX);
+      const effectiveEnd = startX + barWidth;
       let lane = lanes.find(list => !list.length || list[list.length - 1].endX <= startX);
       if (!lane) {
         lane = [];
@@ -345,93 +352,141 @@
       lane.push({ item, startX, endX: effectiveEnd });
     }
 
-    const wrap = el('div', 'xrl-wrap');
+    const wrap = el('div', 'snd-wrap');
     const toolbar = el('div', 'htl-toolbar');
-    const current = el('span', 'hrl-current', monthLabel(months[months.length - 1].key));
+    const current = el('span', 'hrl-current', monthLabel(dates[dates.length - 1].slice(0, 7)));
     const hint = el('span', 'htl-hint');
-    hint.append(`跨节点基础 · ${itemsAsc.length} 条会话 · ${lanes.length} 条泳道 · `, current, ' · 左右拖动平移');
+    hint.append(`跨节点 · ${dates.length} 个日期 · ${itemsAsc.length} 条会话 · ${lanes.length} 条泳道 · `, current, ' · 左右拖动平移');
     toolbar.append(hint);
     const latest = el('button', 'htl-latest', '回到最新');
     latest.type = 'button';
     toolbar.append(latest);
 
-    const scroll = el('div', 'xrl-scroll');
-    const chart = el('div', 'xrl-chart');
-    chart.style.width = `${total}px`;
-    const head = el('div', 'xrl-head');
-    for (const month of months) {
-      const block = el('div', 'xrl-month');
-      block.style.width = `${month.width}px`;
-      block.append(el('span', 'xrl-month-name', month.label));
-      for (const day of [1, 5, 10, 15, 20, 25, 30]) {
-        if (day > month.days) continue;
-        const tick = el('span', 'xrl-day', String(day));
-        tick.style.left = `${(day - 1) * DAY}px`;
-        block.append(tick);
-      }
-      head.append(block);
+    const scroll = el('div', 'snd-scroll');
+    const strip = el('div', 'snd-strip');
+    strip.style.width = `${width}px`;
+    strip.style.height = `${STRIP}px`;
+
+    const months = el('div', 'snd-months');
+    let monthStart = 0;
+    while (monthStart < dates.length) {
+      const key = dates[monthStart].slice(0, 7);
+      let end = monthStart;
+      while (end < dates.length && dates[end].slice(0, 7) === key) end++;
+      const block = el('div', 'snd-month');
+      block.style.width = `${(end - monthStart) * NODE_W}px`;
+      block.append(el('span', 'snd-month-label', monthLabel(key)));
+      months.append(block);
+      monthStart = end;
     }
-    const body = el('div', 'xrl-body');
-    body.style.height = `${lanes.length * LANE_H}px`;
+    strip.append(months);
+
+    const body = el('div', 'snd-body');
+    body.style.height = `${STRIP - HEADER}px`;
+    const rail = el('div', 'snd-rail');
+    rail.style.top = `${RAIL - HEADER}px`;
+    body.append(rail);
+
+    let boundary = 0;
+    let monthCursor = 0;
+    while (monthCursor < dates.length) {
+      const key = dates[monthCursor].slice(0, 7);
+      let end = monthCursor;
+      while (end < dates.length && dates[end].slice(0, 7) === key) end++;
+      const line = el('div', 'snd-month-line');
+      line.style.left = `${boundary}px`;
+      body.append(line);
+      boundary += (end - monthCursor) * NODE_W;
+      monthCursor = end;
+    }
+
     for (let lane = 0; lane < lanes.length; lane += 1) {
-      const band = el('div', 'xrl-lane' + (lane % 2 ? ' alt' : ''));
-      band.style.top = `${lane * LANE_H}px`;
+      const band = el('div', 'snd-lane' + (lane % 2 ? ' alt' : ''));
+      band.style.top = `${SPAN_TOP - HEADER + lane * LANE_H}px`;
       band.style.height = `${LANE_H}px`;
       body.append(band);
     }
-    for (const month of months) {
-      const line = el('div', 'xrl-month-line');
-      line.style.left = `${month.offset}px`;
-      body.append(line);
-    }
-    const legend = el('div', 'xrl-legend');
-    itemsAsc.forEach((item, index) => {
-      const number = index + 1;
-      const startX = xOf(item.first);
-      const endX = xOf(item.last);
-      const laneIndex = lanes.findIndex(list => list.some(entry => entry.item === item));
-      const width = Math.max(6, endX - startX);
-      const bar = el('a', 'xrl-bar');
-      bar.draggable = false;
-      bar.href = hrefOf(item);
-      bar.target = '_blank';
-      bar.rel = 'noreferrer';
-      bar.style.left = `${startX}px`;
-      bar.style.width = `${width}px`;
-      bar.style.top = `${laneIndex * LANE_H + 16}px`;
-      bar.title = `#${number} ${item.title}\n${fmtRange(item.first, item.last)}\n${item.turns} 轮 · 泳道 ${laneIndex + 1}`;
-      if (width >= 70) bar.append(el('span', 'xrl-bar-label', item.title));
-      else if (width >= 24) bar.append(el('span', 'xrl-bar-label', `#${number}`));
-      body.append(bar);
 
-      const link = el('a', 'xrl-legend-item');
-      link.href = hrefOf(item);
-      link.target = '_blank';
-      link.rel = 'noreferrer';
-      link.append(el('span', 'xrl-legend-number', `#${number}`));
-      link.append(el('span', 'xrl-legend-title', item.title));
-      link.append(el('span', 'xrl-legend-meta', `${fmtCardRange(item.first, item.last)} · 泳道 ${laneIndex + 1}`));
-      legend.append(link);
-    });
-    chart.append(head, body);
-    scroll.append(chart);
-    wrap.append(toolbar, scroll, legend);
-    main.append(wrap, el('p', 'proto-note', '月份分区、按天压缩；每条会话一条纯色横条，从开始日跨到结束日；同泳道不重叠，3 条泳道互不交叉。'));
+    for (let index = 0; index < dates.length; index += 1) {
+      const date = dates[index];
+      const list = (startDates.get(date) || []).sort((a, b) => a.first - b.first);
+      const ends = (endDates.get(date) || []).length;
+      const nodeX = index * NODE_W + NODE_W / 2;
+      const slot = el('div', 'snd-slot');
+      slot.style.left = `${index * NODE_W}px`;
+      slot.style.width = `${NODE_W}px`;
+      list.forEach((item, cardIndex) => {
+        const top = RAIL - HEADER - 10 - (list.length - cardIndex) * CARD_H - (list.length - cardIndex - 1) * CARD_GAP;
+        const card = el('a', 'snd-card');
+        card.draggable = false;
+        card.href = hrefOf(item);
+        card.target = '_blank';
+        card.rel = 'noreferrer';
+        card.style.top = `${top}px`;
+        card.style.width = `${CARD_W}px`;
+        card.title = `#${numberOf.get(item)} ${item.title}\n${fmtRange(item.first, item.last)}\n${item.turns} 轮`;
+        card.append(el('span', 'snd-card-title', `#${numberOf.get(item)} ${item.title}`));
+        card.append(el('span', 'snd-card-meta', `${fmtTime(item.first)} · ${item.turns} 轮 · 持续 ${spanDays(item.first, item.last)} 天`));
+        slot.append(card);
+      });
+      const stem = el('div', 'snd-stem');
+      stem.style.left = `${NODE_W / 2}px`;
+      stem.style.top = `${Math.min(...list.map((item, cardIndex) => RAIL - HEADER - 10 - (list.length - cardIndex) * CARD_H - (list.length - cardIndex - 1) * CARD_GAP), RAIL - HEADER - 10)}px`;
+      stem.style.height = `${RAIL - HEADER - 10 - parseFloat(stem.style.top) + 10}px`;
+      slot.append(stem);
+      const dot = el('span', 'snd-dot');
+      dot.style.left = `${NODE_W / 2}px`;
+      dot.style.top = `${RAIL - HEADER}px`;
+      slot.append(dot);
+      const label = el('div', 'snd-date');
+      label.style.top = `${RAIL - HEADER + 6}px`;
+      label.append(el('span', 'snd-date-text', fmtCardDay(list[0]?.first || new Date(date + 'T00:00:00').getTime() / 1000)));
+      const counts = [];
+      if (list.length) counts.push(`${list.length} 开始`);
+      if (ends) counts.push(`${ends} 结束`);
+      label.append(el('span', 'snd-date-count', counts.join(' · ')));
+      slot.append(label);
+      body.append(slot);
+    }
+
+    for (const lane of lanes) {
+      for (const entry of lane) {
+        const widthX = Math.max(6, entry.endX - entry.startX);
+        const bar = el('a', 'snd-span');
+        bar.draggable = false;
+        bar.href = hrefOf(entry.item);
+        bar.target = '_blank';
+        bar.rel = 'noreferrer';
+        bar.style.left = `${entry.startX}px`;
+        bar.style.width = `${widthX}px`;
+        const laneIndex = lanes.indexOf(lane);
+        bar.style.top = `${SPAN_TOP - HEADER + laneIndex * LANE_H + 6}px`;
+        bar.title = `#${numberOf.get(entry.item)} ${entry.item.title}\n${fmtRange(entry.item.first, entry.item.last)}\n泳道 ${laneIndex + 1}`;
+        if (widthX >= 90) bar.append(el('span', 'snd-span-label', entry.item.title));
+        else if (widthX >= 26) bar.append(el('span', 'snd-span-label', `#${numberOf.get(entry.item)}`));
+        body.append(bar);
+      }
+    }
+
+    strip.append(body);
+    scroll.append(strip);
+    wrap.append(toolbar, scroll);
+    main.append(wrap, el('p', 'proto-note', '保留日期节点和分支卡片，节点宽度缩到 155px；同一天的会话卡片叠在节点上方，跨度条在下方的 3 条泳道里从开始日接到结束日，互不交叉。'));
     const updateCurrent = () => {
       const left = scroll.scrollLeft;
-      const right = Math.min(total, scroll.scrollLeft + scroll.clientWidth);
-      const startMonth = [...months].reverse().find(candidate => candidate.offset <= left) || months[0];
-      const endMonth = months.find(candidate => candidate.offset + candidate.width >= right) || months[months.length - 1];
-      current.textContent = startMonth.key === endMonth.key
-        ? startMonth.label
-        : `${startMonth.label} – ${endMonth.label}`;
+      const right = Math.min(width, scroll.scrollLeft + scroll.clientWidth);
+      const startDate = [...dates].reverse().find(date => dateIndex.get(date) * NODE_W <= left) || dates[0];
+      const endDate = dates.find(date => dateIndex.get(date) * NODE_W + NODE_W >= right) || dates[dates.length - 1];
+      const startMonth = startDate.slice(0, 7);
+      const endMonth = endDate.slice(0, 7);
+      current.textContent = startMonth === endMonth ? monthLabel(startMonth) : `${monthLabel(startMonth)} – ${monthLabel(endMonth)}`;
     };
     scroll.addEventListener('scroll', updateCurrent);
     requestAnimationFrame(updateCurrent);
     attachPan(scroll, latest);
   };
 
-  if (variant === 'p5') renderCrossRail();
+  if (variant === 'p5') renderSpanRail();
   else if (variant === 'p3' || variant === 'p4') renderDateRail(variant === 'p4' ? 'progress' : 'base');
   else renderHorizontalRail();
 })();
