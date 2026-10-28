@@ -42,7 +42,7 @@ XLSX 只读预览（大表截断 500×60、点选高亮行列、缩放、隐藏�
 README 四张脱敏截图（`scripts/make-readme-fixture.mjs` + `scripts/shoot-readme.mjs`）、
 远端仓库删库重建 + 本地旧对象清理（`pre-rewrite.bundle` 与 `refs/codex/*` 已删，`.git` 3.77 MiB）。
 
-基线：36 个分享会话 / 44 个快照 / 15054 条消息、41 页巡检 0 问题；
+基线：36 个分享会话 / 45 个快照 / 15237 条消息、41 页巡检 0 问题；
 `npm test`（含书签与表格两套浏览器测试）、`npm run check`、`npm run build` 全绿；
 数据没变时重建 13–15s、只重做 5/41 页、页面字节不变；换首页 5/41、约 19–22s。
 
