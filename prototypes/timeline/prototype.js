@@ -5,13 +5,13 @@
   const description = document.querySelector('[data-proto-desc]');
   const count = document.querySelector('[data-proto-count]');
   const params = new URLSearchParams(location.search);
-  const variant = ['p1', 'p2', 'p3', 'p4'].includes(params.get('v')) ? params.get('v') : 'p1';
+  const variant = ['p1', 'p2', 'p3', 'p4', 'p5'].includes(params.get('v')) ? params.get('v') : 'p1';
 
   const descriptions = {
     p1: 'P1 会话基础：横轴等距槽位，卡片上下交替；只表达先后，可左右拖动。',
     p2: 'P2 会话进度：会话卡片内加完整进度条；整条=该会话自身跨度，按天填充，填充=有消息的日子（例如 2/3）。',
     p3: 'P3 日期基础：只保留有会话的日期，日期等距；每个日期节点分支挂当天所有会话卡片（按开始时间），卡片标注持续天数。',
-    p4: 'P4 日期进度：日期节点 + 完整进度条；日期卡片内逐日填充，整条=该会话总跨度，填充=有消息的日子。',
+    p5: 'P5 跨节点基础：月份分区、按天压缩的日期轴；每条会话一条纯色横条，从开始日跨到结束日；3 条泳道绝对不交叉。',
   };
   description.textContent = descriptions[variant];
   count.textContent = String(data.conversations.length);
@@ -302,6 +302,136 @@
     attachPan(scroll, latest);
   };
 
-  if (variant === 'p3' || variant === 'p4') renderDateRail(variant === 'p4' ? 'progress' : 'base');
+  const renderCrossRail = () => {
+    const DAY = 28;
+    const LANE_H = 54;
+    const first = itemsAsc[0].first;
+    const last = itemsAsc[itemsAsc.length - 1].last;
+    const start = new Date(first * 1000);
+    const end = new Date(last * 1000);
+    const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+    const months = [];
+    let offset = 0;
+    while (cursor <= end) {
+      const days = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
+      const key = `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}`;
+      months.push({ key, label: monthLabel(key), days, offset, width: days * DAY });
+      offset += days * DAY;
+      cursor.setMonth(cursor.getMonth() + 1);
+    }
+    const total = offset;
+    const monthByKey = new Map(months.map(month => [month.key, month]));
+    const xOf = seconds => {
+      const p = parts(seconds);
+      const month = monthByKey.get(`${p.year}-${pad(p.month)}`);
+      if (!month) return null;
+      const day = Math.min(p.day, month.days);
+      const fraction = Math.min(0.999, (Number(p.hours) * 60 + Number(p.minutes)) / 1440);
+      return month.offset + (day - 1 + fraction) * DAY;
+    };
+
+    const lanes = [[], [], []];
+    for (const item of itemsAsc) {
+      const startX = xOf(item.first);
+      const endX = xOf(item.last);
+      if (startX == null || endX == null) continue;
+      const width = Math.max(6, endX - startX);
+      const effectiveEnd = startX + width;
+      let lane = lanes.find(list => !list.length || list[list.length - 1].endX <= startX);
+      if (!lane) {
+        lane = [];
+        lanes.push(lane);
+      }
+      lane.push({ item, startX, endX: effectiveEnd });
+    }
+
+    const wrap = el('div', 'xrl-wrap');
+    const toolbar = el('div', 'htl-toolbar');
+    const current = el('span', 'hrl-current', monthLabel(months[months.length - 1].key));
+    const hint = el('span', 'htl-hint');
+    hint.append(`跨节点基础 · ${itemsAsc.length} 条会话 · ${lanes.length} 条泳道 · `, current, ' · 左右拖动平移');
+    toolbar.append(hint);
+    const latest = el('button', 'htl-latest', '回到最新');
+    latest.type = 'button';
+    toolbar.append(latest);
+
+    const scroll = el('div', 'xrl-scroll');
+    const chart = el('div', 'xrl-chart');
+    chart.style.width = `${total}px`;
+    const head = el('div', 'xrl-head');
+    for (const month of months) {
+      const block = el('div', 'xrl-month');
+      block.style.width = `${month.width}px`;
+      block.append(el('span', 'xrl-month-name', month.label));
+      for (const day of [1, 5, 10, 15, 20, 25, 30]) {
+        if (day > month.days) continue;
+        const tick = el('span', 'xrl-day', String(day));
+        tick.style.left = `${(day - 1) * DAY}px`;
+        block.append(tick);
+      }
+      head.append(block);
+    }
+    const body = el('div', 'xrl-body');
+    body.style.height = `${lanes.length * LANE_H}px`;
+    for (let lane = 0; lane < lanes.length; lane += 1) {
+      const band = el('div', 'xrl-lane' + (lane % 2 ? ' alt' : ''));
+      band.style.top = `${lane * LANE_H}px`;
+      band.style.height = `${LANE_H}px`;
+      body.append(band);
+    }
+    for (const month of months) {
+      const line = el('div', 'xrl-month-line');
+      line.style.left = `${month.offset}px`;
+      body.append(line);
+    }
+    const legend = el('div', 'xrl-legend');
+    itemsAsc.forEach((item, index) => {
+      const number = index + 1;
+      const startX = xOf(item.first);
+      const endX = xOf(item.last);
+      const laneIndex = lanes.findIndex(list => list.some(entry => entry.item === item));
+      const width = Math.max(6, endX - startX);
+      const bar = el('a', 'xrl-bar');
+      bar.draggable = false;
+      bar.href = hrefOf(item);
+      bar.target = '_blank';
+      bar.rel = 'noreferrer';
+      bar.style.left = `${startX}px`;
+      bar.style.width = `${width}px`;
+      bar.style.top = `${laneIndex * LANE_H + 16}px`;
+      bar.title = `#${number} ${item.title}\n${fmtRange(item.first, item.last)}\n${item.turns} 轮 · 泳道 ${laneIndex + 1}`;
+      if (width >= 70) bar.append(el('span', 'xrl-bar-label', item.title));
+      else if (width >= 24) bar.append(el('span', 'xrl-bar-label', `#${number}`));
+      body.append(bar);
+
+      const link = el('a', 'xrl-legend-item');
+      link.href = hrefOf(item);
+      link.target = '_blank';
+      link.rel = 'noreferrer';
+      link.append(el('span', 'xrl-legend-number', `#${number}`));
+      link.append(el('span', 'xrl-legend-title', item.title));
+      link.append(el('span', 'xrl-legend-meta', `${fmtCardRange(item.first, item.last)} · 泳道 ${laneIndex + 1}`));
+      legend.append(link);
+    });
+    chart.append(head, body);
+    scroll.append(chart);
+    wrap.append(toolbar, scroll, legend);
+    main.append(wrap, el('p', 'proto-note', '月份分区、按天压缩；每条会话一条纯色横条，从开始日跨到结束日；同泳道不重叠，3 条泳道互不交叉。'));
+    const updateCurrent = () => {
+      const left = scroll.scrollLeft;
+      const right = Math.min(total, scroll.scrollLeft + scroll.clientWidth);
+      const startMonth = [...months].reverse().find(candidate => candidate.offset <= left) || months[0];
+      const endMonth = months.find(candidate => candidate.offset + candidate.width >= right) || months[months.length - 1];
+      current.textContent = startMonth.key === endMonth.key
+        ? startMonth.label
+        : `${startMonth.label} – ${endMonth.label}`;
+    };
+    scroll.addEventListener('scroll', updateCurrent);
+    requestAnimationFrame(updateCurrent);
+    attachPan(scroll, latest);
+  };
+
+  if (variant === 'p5') renderCrossRail();
+  else if (variant === 'p3' || variant === 'p4') renderDateRail(variant === 'p4' ? 'progress' : 'base');
   else renderHorizontalRail();
 })();
