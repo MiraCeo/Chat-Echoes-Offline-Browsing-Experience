@@ -7,6 +7,7 @@
   "scripts": {
     "archive:share": "node scripts/archive-share.mjs",
     "library": "node scripts/build-library.mjs",
+    "prototype:timeline": "node prototypes/timeline/build.mjs",
     "vendor:ui-assets": "node scripts/vendor-ui-assets.mjs",
     "extract:templates": "node scripts/extract-official-templates.mjs",
     "import": "node scripts/import-markdown.mjs",
