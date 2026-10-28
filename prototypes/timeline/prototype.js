@@ -626,6 +626,11 @@
     const HEADER = 20;
     const LANE_H = 20;
     const BAR_H = 10;
+    const PALETTE = [
+      '#3b6ea5', '#b46a3c', '#5b8c5a', '#8a5a9e',
+      '#b08a2e', '#4a8a8a', '#a34f5c', '#6b6f9e',
+      '#7a8f3a', '#9a5f8a', '#4f7f9a', '#a07040',
+    ];
     const firstDate = new Date(itemsAsc[0].first * 1000);
     const lastDate = new Date(itemsAsc[itemsAsc.length - 1].last * 1000);
     const cursor = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
@@ -686,7 +691,7 @@
     }
     itemsAsc.forEach((item, index) => {
       const left = xOf(item.first);
-      const widthX = xOf(item.last) + DAY_W - left;
+      const widthX = Math.max(2, xOf(item.last) + DAY_W - left - 1);
       const laneIndex = laneOf.get(item);
       const bar = el('a', 'ovw-bar');
       bar.draggable = false;
@@ -696,13 +701,14 @@
       bar.style.left = `${left}px`;
       bar.style.width = `${widthX}px`;
       bar.style.top = `${laneIndex * LANE_H + (LANE_H - BAR_H) / 2}px`;
+      bar.style.background = PALETTE[index % PALETTE.length];
       bar.title = `#${index + 1} ${item.title}\n${fmtRange(item.first, item.last)}\n${item.turns} 轮 · 泳道 ${laneIndex + 1}`;
       body.append(bar);
     });
     chart.append(head, body);
     scroll.append(chart);
     wrap.append(toolbar, scroll);
-    main.append(wrap, el('p', 'proto-note', '缩略图：按真实日历天数（7px/天），月份宽度=该月天数；空日期也占位，3 条泳道互不交叉。'));
+    main.append(wrap, el('p', 'proto-note', '缩略图：按真实日历天数（7px/天），月份宽度=该月天数；颜色仅用于区分会话，空日期也占位，3 条泳道互不交叉。'));
   };
 
   if (variant === 'p6') renderOverview();
