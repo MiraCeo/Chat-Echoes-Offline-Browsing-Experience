@@ -305,7 +305,7 @@ npm run verify:archive      # 只读检查档案结构
 **时间（时间线 / 时间轴，本轮完成）**
 
 - `timeline-index.mjs` 在 `npm run library` 时生成 `replay/public/timeline-index.json`：每个会话的
-  首/末条可见轮次时间、首末锚点消息 ID、可见轮数、按本地日期的轮数；标题仍取 `chats.json`；
+  首/末条可见轮次时间、首末锚点消息 ID、可见轮次 `turns`、用户轮 `rounds`、按本地日期的轮数；标题仍取 `chats.json`；
 - `build-timeline-page.mjs` 生成顶层 `replay/timeline.html`：页内「时间线」列表 +「时间轴」缩略/详情；
   `timeline.js` 负责列表和视图切换（`?view=axis` + `localStorage`），`timeline-axis.js` 负责真实日历
   缩略图、详情、视口框与双向同步；`build-timeline-nav.mjs` 的侧栏标签为「时间」；

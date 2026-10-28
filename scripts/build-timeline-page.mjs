@@ -31,7 +31,7 @@ export async function buildTimelinePage(projectRoot = resolve(import.meta.dirnam
     <div class="ceobe-timeline-inner">
       <header class="ceobe-timeline-header">
         <h1>时间</h1>
-        <p class="ceobe-timeline-lede">按时间浏览本地档案：时间线是列表，时间轴是缩略导航加详情。</p>
+        <p class="ceobe-timeline-lede">按时间浏览本地档案：时间线是列表/卡片，时间轴是缩略导航加详情。</p>
         <div class="ceobe-timeline-views" role="tablist" aria-label="时间视图">
           <button type="button" role="tab" id="ceobe-view-tab-timeline" aria-controls="ceobe-view-panel-timeline" aria-selected="true" tabindex="0" data-ceobe-view="timeline">时间线</button>
           <button type="button" role="tab" id="ceobe-view-tab-axis" aria-controls="ceobe-view-panel-axis" aria-selected="false" tabindex="-1" data-ceobe-view="axis">时间轴</button>

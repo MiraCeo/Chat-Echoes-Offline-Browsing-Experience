@@ -73,6 +73,9 @@
   };
   const count = value => Number(value).toLocaleString('zh-CN');
   const titleOf = item => titles.get(item.id) || '会话 ' + String(item.id).slice(0, 8);
+  const roundsOf = item => Number.isFinite(item.rounds)
+    ? item.rounds
+    : Math.ceil((Number.isFinite(item.turns) ? item.turns : 0) / 2);
   const spanOf = (first, last) => {
     const a = parts(first);
     const b = parts(last);
@@ -148,7 +151,7 @@
       }
       const turns = document.createElement('span');
       turns.className = 'ceobe-timeline-turns';
-      turns.textContent = Number.isFinite(item.turns) ? `${item.turns} 轮` : '';
+      turns.textContent = Number.isFinite(item.turns) ? `${roundsOf(item)} 轮对话` : '';
       meta.append(when, document.createTextNode(' · '), turns);
       link.append(title, meta);
 
@@ -178,10 +181,12 @@
       const meta = document.createElement('span');
       meta.className = 'ceobe-timeline-card-meta';
       const when = undated ? '时间未知' : rangeLabel(item.first, item.last);
-      const turns = Number.isFinite(item.turns) ? `${item.turns} 轮` : '';
+      const turns = Number.isFinite(item.turns) ? `${roundsOf(item)} 轮对话` : '';
       meta.textContent = [when, turns].filter(Boolean).join(' · ');
 
-      link.append(title, meta);
+      const footer = document.createElement('span');
+      footer.className = 'ceobe-timeline-card-footer';
+      link.append(title, meta, footer);
       let accessible = [titleOf(item), when, turns].filter(Boolean).join('，');
       if (!undated) {
         const span = spanOf(item.first, item.last);
@@ -200,13 +205,13 @@
           const label = document.createElement('span');
           label.className = 'ceobe-timeline-card-progress-label';
           label.textContent = `${active}/${span} 天有消息`;
-          link.append(progress, label);
+          footer.append(progress, label);
           accessible += `，跨度 ${span} 天，${active} 天有消息`;
         } else {
           const label = document.createElement('span');
-          label.className = 'ceobe-timeline-card-progress-label';
+          label.className = 'ceobe-timeline-card-progress-label is-single';
           label.textContent = '当天';
-          link.append(label);
+          footer.append(label);
         }
       }
       link.setAttribute('aria-label', accessible);
@@ -220,7 +225,7 @@
     if (!index) return;
     const dated = index.conversations.filter(item => Number.isFinite(item.first));
     const undated = index.conversations.filter(item => !Number.isFinite(item.first));
-    const totalTurns = index.conversations.reduce((sum, item) => sum + (Number.isFinite(item.turns) ? item.turns : 0), 0);
+    const totalRounds = index.conversations.reduce((sum, item) => sum + roundsOf(item), 0);
     const byMonth = new Map();
     for (const item of dated) {
       const key = monthKey(item.first);
@@ -231,7 +236,7 @@
     groups.replaceChildren();
     for (const key of months) {
       const items = byMonth.get(key).sort((a, b) => (order === 'oldest' ? a.first - b.first : b.first - a.first));
-      const turns = items.reduce((sum, item) => sum + (Number.isFinite(item.turns) ? item.turns : 0), 0);
+      const turns = items.reduce((sum, item) => sum + roundsOf(item), 0);
       const section = document.createElement('section');
       section.className = 'ceobe-timeline-month' + (layout === 'cards' ? ' ceobe-timeline-month-cards' : '');
       const head = document.createElement('div');
@@ -240,7 +245,7 @@
       heading.textContent = monthLabel(key);
       const tally = document.createElement('span');
       tally.className = 'ceobe-timeline-month-count';
-      tally.textContent = `${count(items.length)} 个会话 · ${count(turns)} 轮`;
+      tally.textContent = `${count(items.length)} 个会话 · ${count(turns)} 轮对话`;
       head.append(heading, tally);
       section.append(head, layout === 'cards' ? buildCards(items) : buildList(items));
       groups.append(section);
@@ -261,7 +266,7 @@
     }
     if (empty) empty.hidden = index.conversations.length > 0;
     status.textContent = index.conversations.length
-      ? `${count(index.conversations.length)} 个会话 · ${count(totalTurns)} 轮 · 本地时间`
+      ? `${count(index.conversations.length)} 个会话 · ${count(totalRounds)} 轮对话 · 本地时间`
       : '暂无会话';
   };
 

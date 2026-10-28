@@ -79,6 +79,9 @@
   };
   const linkTo = item => new URL('conversations/' + encodeURIComponent(item.id) + '.html'
     + (item.first_message_id ? '#bookmark=' + encodeURIComponent(item.first_message_id) : ''), root).href;
+  const roundsOf = item => Number.isFinite(item.rounds)
+    ? item.rounds
+    : Math.ceil((Number.isFinite(item.turns) ? item.turns : 0) / 2);
 
   const status = text => {
     let node = overviewHost.querySelector('[data-ceobe-axis-status]');
@@ -97,6 +100,7 @@
       status('本地档案里还没有会话。');
       return;
     }
+    const totalRounds = items.reduce((sum, item) => sum + roundsOf(item), 0);
     const firstParts = parts(items[0].first);
     const lastParts = parts(items[items.length - 1].last);
     const months = [];
@@ -190,7 +194,7 @@
       bar.style.width = `${Math.max(2, (end - start + 1) * DAY_OVERVIEW - 1)}px`;
       bar.style.top = `${overviewLaneOf.get(item.id) * OVERVIEW_LANE + (OVERVIEW_LANE - OVERVIEW_BAR) / 2}px`;
       bar.style.background = PALETTE[index % PALETTE.length];
-      bar.title = `#${index + 1} ${titles.get(item.id) || '会话 ' + item.id.slice(0, 8)}\n${fmtRange(item.first, item.last)}\n${item.turns} 轮`;
+      bar.title = `#${index + 1} ${titles.get(item.id) || '会话 ' + item.id.slice(0, 8)}\n${fmtRange(item.first, item.last)}\n${roundsOf(item)} 轮对话 · ${item.turns} 个可见轮次`;
       overviewBody.append(bar);
     });
     const windowEl = el('div', 'ceobe-axis-window');
@@ -254,13 +258,13 @@
       const end = dayIndex(item.last);
       const card = el('a', 'ceobe-axis-card');
       card.href = linkTo(item);
-      card.title = `#${index + 1} ${titles.get(item.id) || '会话 ' + item.id.slice(0, 8)}\n${fmtRange(item.first, item.last)}\n${item.turns} 轮`;
+      card.title = `#${index + 1} ${titles.get(item.id) || '会话 ' + item.id.slice(0, 8)}\n${fmtRange(item.first, item.last)}\n${roundsOf(item)} 轮对话 · ${item.turns} 个可见轮次`;
       card.style.left = `${start * DAY_DETAIL + DAY_DETAIL * 0.1}px`;
       card.style.width = `${(end - start + 0.8) * DAY_DETAIL}px`;
       card.style.top = `${laneOf.get(item) * DETAIL_LANE + (DETAIL_LANE - DETAIL_CARD) / 2}px`;
       card.append(el('span', 'ceobe-axis-card-title', `#${index + 1} ${titles.get(item.id) || '会话 ' + item.id.slice(0, 8)}`));
       if ((end - start + 0.8) * DAY_DETAIL >= 110) {
-        card.append(el('span', 'ceobe-axis-card-meta', `${fmtCardDay(item.first)} → ${fmtCardDay(item.last)} · ${item.turns} 轮`));
+        card.append(el('span', 'ceobe-axis-card-meta', `${fmtCardDay(item.first)} → ${fmtCardDay(item.last)} · ${roundsOf(item)} 轮对话`));
       }
       detailBody.append(card);
     });
@@ -339,7 +343,7 @@
     }
     detailScroll.scrollLeft = maxScroll();
     requestAnimationFrame(updateWindow);
-    status(`${items.length} 个会话 · ${totalDays} 天 · ${lanes.length} 条泳道 · 本地时间`);
+    status(`${items.length} 个会话 · ${totalDays} 天 · ${totalRounds} 轮对话 · ${lanes.length} 条泳道 · 本地时间`);
   };
 
   const init = async () => {

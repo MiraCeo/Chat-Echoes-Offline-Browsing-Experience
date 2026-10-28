@@ -61,15 +61,15 @@ try {
   assert.equal(state.overflowX, false, '页面不应横向溢出');
   assert.equal(state.entries, expected, '条目数应等于时间线索引里的会话数');
   assert.equal(state.allLinks, true, '每条都链到会话页');
-  assert.equal(state.twoLineRows, true, '每行是“标题 + 时间/轮数”两行');
+  assert.equal(state.twoLineRows, true, '每行是“标题 + 时间/对话轮次”两行');
   assert.equal(state.datedFormat, true, '时间用统一的「M 月 D 日 HH:mm」格式');
   assert.equal(state.stickyHead, 'sticky', '月份标题在滚动时吸顶');
   assert.match(state.status, new RegExp(`${expected} 个会话`));
   assert.match(state.status, /本地时间/);
   if (expected) {
     assert.ok(state.months.length >= 1, '至少有一个月份分组');
-    assert.equal(state.monthCounts.length, state.months.length, '每个月都有会话/轮数统计');
-    assert.ok(state.monthCounts.every(text => /^\d+ 个会话 · [\d,]+ 轮$/.test(text)), '月统计格式');
+    assert.equal(state.monthCounts.length, state.months.length, '每个月都有会话/对话轮次统计');
+    assert.ok(state.monthCounts.every(text => /^\d+ 个会话 · [\d,]+ 轮对话$/.test(text)), '月统计格式');
   }
 
   // 时间顺序：默认最新在前，可切到最早在前，并在刷新后保留。

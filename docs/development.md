@@ -303,7 +303,9 @@ XLSX 走“构建期解析 + 静态片段”的只读路线，分三段：
 - 时间轴：真实日历（完整 7–10 月、123 天），缩略 7px/天、详情 96px/天；3 条泳道、
   白卡前后各 40%；视口框 ↔ 详情双向同步，`ResizeObserver` 更新，窄屏自动滚到视口；
   视口框有 `role="slider"` 与方向键/Home/End；
-- 时间口径：只统计可见轮次；按消息 `created_at` 的本地日期分桶；`conversation.created_at` 是分享
+- 时间口径：索引同时存 `turns`（用户+助手的可见轮次）与 `rounds`（用户轮，界面“轮对话”）；
+  列表/卡片/时间轴显示 `rounds`，tooltip 保留 `turns`；按消息 `created_at` 的本地日期分桶；
+  `conversation.created_at` 是分享
   创建时间，不参与排序；索引不存标题，标题取自 `chats.json`；
 - 测试：`test-timeline-index.mjs`（纯函数 + 文件输出）、`test-timeline-browser.mjs`
   （入口位置/当前页、两行结构、统一日期、月统计、吸顶、排序持久化、视图切换、列表/卡片切换与持久化、

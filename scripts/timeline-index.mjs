@@ -23,7 +23,7 @@ const localDay = seconds => {
 export function conversationTimeline(conversation) {
   const days = {};
   let first = null, last = null, firstMessage = null, lastMessage = null;
-  let turns = 0, undated = 0;
+  let turns = 0, rounds = 0, undated = 0;
   conversationToHtmlView(conversation).forEach((turn, order) => {
     const target = turnTarget(turn, order);
     const primary = turn.entries.find(entry => entry.kind === 'document')
@@ -32,6 +32,7 @@ export function conversationTimeline(conversation) {
       || turn.entries[0];
     const seconds = Number(primary?.message?.created_at);
     turns += 1;
+    if (turn.entries.some(entry => entry.message?.role === 'user')) rounds += 1;
     if (!Number.isFinite(seconds) || seconds <= 0) { undated += 1; return; }
     if (first == null || seconds < first) { first = seconds; firstMessage = target.message_id; }
     if (last == null || seconds >= last) { last = seconds; lastMessage = target.message_id; }
@@ -44,6 +45,7 @@ export function conversationTimeline(conversation) {
     first_message_id: firstMessage,
     last_message_id: lastMessage,
     turns,
+    rounds,
     undated,
     days,
   };
