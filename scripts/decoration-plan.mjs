@@ -37,9 +37,9 @@ export async function decorationPlan(root, { renderer, library, homeId }) {
   const entries = new Map(library.conversations.map(entry => [entry.id, entry]));
   const idOf = page => {
     const name = page.split('/').pop().slice(0, -'.html'.length);
-    // 顶层页面里 import/assets/projects/project 都内嵌了首页会话那一行；index.html 本身就是首页会话。
+    // 顶层页面里 import/assets/projects/project/timeline 都内嵌了首页会话那一行；index.html 本身就是首页会话。
     if (page.startsWith('conversations/')) return name;
-    return ['index', 'import', 'assets', 'projects', 'project'].includes(name) ? homeId : null;
+    return ['index', 'import', 'assets', 'projects', 'project', 'timeline'].includes(name) ? homeId : null;
   };
   const pages = await decorationPageList(replay);
   const changed = [];

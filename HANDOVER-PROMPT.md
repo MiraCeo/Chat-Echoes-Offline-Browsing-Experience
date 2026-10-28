@@ -6,12 +6,12 @@
 先读这些文件，再动手：
 
 1. `HANDOVER.md` —— 当前状态、能力清单、已知问题、过程记录（**先读这个**）；
-2. `TODO.md` —— 还没做的事：第二节是已批准的**时间线 v1（1.2.0）**；第一/三/四节是待拍板、
+2. `TODO.md` —— 还没做的事：第二节当前为空（时间线 v1 已随 1.2.0 交付）；第一/三/四节是待拍板、
    已评估与明确不做的范围，别自己开工；
 3. `docs/ecosystem.md` —— 同类项目调研（36 个仓库）、可借的设计、四个方向的完整口径与验收方式
    （MCP 已改为“已评估、暂不做”）；
 4. `docs/direction.md` —— 2026-10-28 的方向讨论：两种记忆、两种时间线、数据契约、AI 模块的位置；
-   时间线 v1 已批准（1.2.0），其余（事件/观点时间线、长期记忆）仍未批准；
+   时间线 v1 已交付（1.2.0），其余（事件/观点时间线、长期记忆）仍未批准；
 5. `docs/development.md` —— 构建流程、每页产物与并发渲染的坑、装饰指纹的共享输入、端口、发布前检查、测试怎么选；
 6. `CHANGELOG.md` —— 已交付内容；`docs/usage.md` / `docs/architecture.md` 是面向使用与数据流的说明。
 
@@ -38,20 +38,21 @@ XLSX 只读预览（大表截断 500×60、点选高亮行列、缩放、隐藏�
 **实机修复**：采集包导入后先全量重建索引/页面再返回、失败返回 `archived` 标记、`build-library --only`
 落后索引时自动重建一次、ZIP 改在 popup 内生成；`test-local-import-package-api.mjs`、
 `test-only-index.mjs` 已进 `npm test`；popup/页内按钮仍需手动在浏览器验收）、
+**时间线 v1**（1.2.0：`timeline-index.json` 构建期索引、顶层 `timeline.html`、侧栏「项目」与「更多」
+之间的入口、按年/月浏览并跳到首条消息；`test-timeline-index.mjs` 与 `test-timeline-browser.mjs`
+已进 `npm test`）、
 **方向记录与 MCP 归档**（`docs/direction.md`；MCP 已评估、暂不做）、
 README 四张脱敏截图（`scripts/make-readme-fixture.mjs` + `scripts/shoot-readme.mjs`）、
 远端仓库删库重建 + 本地旧对象清理（`pre-rewrite.bundle` 与 `refs/codex/*` 已删，`.git` 3.77 MiB）。
 
-基线：36 个分享会话 / 45 个快照 / 15237 条消息、41 页巡检 0 问题；
+基线：36 个分享会话 / 45 个快照 / 15237 条消息、42 页巡检 0 问题；
 `npm test`（含书签与表格两套浏览器测试）、`npm run check`、`npm run build` 全绿；
-数据没变时重建 13–15s、只重做 5/41 页、页面字节不变；换首页 5/41、约 19–22s。
+数据没变时重建 13–17s、只重做 6/42 页、页面字节不变；换首页 6/42、约 20–24s。
 
-## 当前任务（口径见 `TODO.md` 第二节与 `docs/direction.md`）
+## 当前任务（口径见 `TODO.md` 与 `docs/direction.md`）
 
-**时间线 v1（1.2.0，已批准）**：不依赖 AI 的历史档案时间线——构建期生成 `timeline-index.json`
-（会话 → 首/末条消息时间、每日条数），新增顶层「时间线」页，按年/月浏览并跳到会话或首条消息；
-只用消息时间（本地时区）、只统计可见轮次、先做会话级入口。范围、三类时间的坑与验收见
-`docs/direction.md`；MCP 已评估、暂不做。
+**暂无已批准、待开工项。** 时间线 v1 已随 1.2.0 交付。后续候选（事件／观点时间线、长期记忆、数据
+契约收尾）仍未批准，见 `docs/direction.md`；MCP 已评估、暂不做。
 
 其余条目（已定案、已知限制）不要自行开工。
 

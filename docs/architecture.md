@@ -162,6 +162,12 @@ ChatGPT 分享页面及公开资源
 
 高亮按原文切片：折叠（NFKC + 小写）用逐码点映射，命中位置能映回原文偏移，因此全角字母、连字与大小写混用也能标在正确的字上；标题与正文片段都按此切片渲染，不解析 HTML。只有负向词时只筛标题列表，不会把整库正文都列成命中。
 
+## 时间线
+
+`timeline-index.mjs` 在 `npm run library` 时生成 `replay/public/timeline-index.json`：每个会话的首/末条可见轮次时间、首末锚点消息 ID、可见轮数，以及按本地日期的轮数；标题不写入索引，页面从 `chats.json` 取当前标题，重命名不用重建。只统计阅读页可见轮次（提问、最终回复、生成图片），隐藏记录、推理与工具往来不计；时间取消息 `created_at`（构建机本地时区），会话的 `created_at` 是分享创建时间，只作辅助。
+
+`build-timeline-page.mjs` 从导入页骨架生成顶层 `replay/timeline.html`，`timeline.js` 读取索引与 `chats.json` 渲染年/月分组，点击跳到 `conversations/<id>.html#bookmark=<首条消息>`。侧栏入口由 `build-timeline-nav.mjs` 克隆官方「项目」行插入到「项目」与「更多」之间（每趟先清后插），当前页带 `aria-current="page"`。
+
 ## 导出与备份的区别
 
 文本导出复用 JSON → Markdown 转换器。图片、附件与普通资源链接降为可读文字，代码示例中的链接语法不改写。

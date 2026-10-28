@@ -14,7 +14,7 @@ import { parseArgs } from 'node:util';
 const projectRoot = import.meta.dirname.replace(/[\\/]scripts$/, '');
 const { values } = parseArgs({ options: { base: { type: 'string' }, limit: { type: 'string' } } });
 const base = (values.base || 'http://127.0.0.1:5173').replace(/\/$/, '');
-const limit = Number(values.limit || 40);
+const limit = Number(values.limit || 60);
 
 const pages = [];
 for (const name of await readdir(join(projectRoot, 'replay'))) {

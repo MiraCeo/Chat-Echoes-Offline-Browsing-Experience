@@ -39,6 +39,7 @@ export default defineConfig({
         ...(existsSync(resolve(replayRoot,'import.html'))?{import:resolve(replayRoot,'import.html')}:{}),
         ...(existsSync(resolve(replayRoot, 'assets.html')) ? { assets: resolve(replayRoot, 'assets.html') } : {}),
         ...(existsSync(resolve(replayRoot, 'projects.html')) ? { projects: resolve(replayRoot, 'projects.html') } : {}),
+        ...(existsSync(resolve(replayRoot, 'timeline.html')) ? { timeline: resolve(replayRoot, 'timeline.html') } : {}),
         ...Object.fromEntries(conversationPages.map(name => [`conversations/${name.slice(0, -5)}`, resolve(conversationRoot, name)])),
       },
     },

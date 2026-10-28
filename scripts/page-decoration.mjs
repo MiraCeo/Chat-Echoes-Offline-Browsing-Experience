@@ -23,7 +23,9 @@ export const DECORATION_SELECTORS = [
   '#ceobe-project-inline-rename', 'link[href*="project-actions."]', 'link[href*="chat-organizer."]',
   // sidebar-controls
   '[data-ceobe-rail-recent]', '#ceobe-rail-recent-row', '[data-ceobe-search]', '#ceobe-search-row',
-  '#ceobe-search-body-row', '#ceobe-search-empty', 'script[src*="sidebar-controls."]', 'link[href*="sidebar-controls"]',
+  '[data-ceobe-search-body-row]', '#ceobe-search-empty', 'script[src*="sidebar-controls."]', 'link[href*="sidebar-controls"]',
+  // timeline nav
+  '[data-ceobe-timeline-row]', '[data-ceobe-timeline-link]',
   // reader-ui
   '[data-reader-menu]', '[data-reader-move]', '#ceobe-reader-project-row', '[data-reader-image-viewer]',
   '[data-project-settings-preview]', '[data-preview-picker]', 'script[src*="reader-ui."]', 'link[href*="reader-ui."]',

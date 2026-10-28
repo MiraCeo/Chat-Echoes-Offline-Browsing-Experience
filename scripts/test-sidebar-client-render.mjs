@@ -122,8 +122,8 @@ try {
   const rebuildDecoration = decorations(rebuildLog);
   assert.ok(rebuildDecoration.refreshed < rebuildDecoration.total,
     `没有变化的页面不应重新装饰：${rebuildDecoration.line}`);
-  assert.ok(rebuildDecoration.refreshed <= 5,
-    `只重建首页/导入/资料库/项目页时，需要重做的页面不应超过 5 个：${rebuildDecoration.line}`);
+  assert.ok(rebuildDecoration.refreshed <= 6,
+    `只重建首页/导入/资料库/项目/时间线等顶层页时，需要重做的页面不应超过 6 个：${rebuildDecoration.line}`);
   assert.equal(parseInt(rebuildLog.match(/Page cache: parsed (\d+)/)[1], 10), rebuildDecoration.refreshed,
     '页面缓存只应解析需要重做的页面');
 
