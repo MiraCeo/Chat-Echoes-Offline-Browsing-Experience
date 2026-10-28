@@ -280,24 +280,29 @@ XLSX 走“构建期解析 + 静态片段”的只读路线，分三段：
   `test-local-import-package-api.mjs`（重建顺序、归档标记、发布）、`test-only-index.mjs`（落后索引）；
   扩展 UI（popup、页内按钮）需要在 Edge/Chrome 里加载目录手动检查，仓库里的 Playwright 不加载扩展。
 
-## 时间线
+## 时间（时间线 / 时间轴）
 
 - 组块：`timeline-index.mjs`（纯投影，配 `test-timeline-index.mjs`）、`build-timeline-page.mjs`
-  （顶层页骨架 + 哈希后的 `timeline.js/css`）、`build-timeline-nav.mjs`（侧栏入口）、`timeline.js/css`
-  （浏览器渲染）；
+  （顶层页骨架 + 哈希后的 `timeline.js/css` 与 `timeline-axis.js/css`）、`build-timeline-nav.mjs`
+  （侧栏「时间」入口）、`timeline.js/css`（列表视图与视图切换）、`timeline-axis.js/css`（时间轴）；
 - 构建顺序：`build-library` 在项目页之后调用 `buildTimelinePage`（必须在 `decorationPlan` 之前，
   新页面才会进本轮装饰）；`timeline-nav` 放在 `sidebar-controls` 之后；`timeline-index` 与搜索索引
   同阶段写 `replay/public/`；
 - 顶层页指纹：`decoration-plan.mjs` 的 `idOf` 把 `timeline` 归到首页条目（它从 `import.html` 复制、
   内嵌首页会话那一行），所以换首页时它和另外 5 页一起重做；数据没变时每趟 `Decorations: 6 of M`；
-- 侧栏行：克隆 `[data-ceobe-projects-link]` 的锚点插到它后面（`更多` 之前），设置
-  `data-ceobe-timeline-row`/`-link`、`#clock` 图标与 `aria-current`；两个标记已加进
+- 侧栏行：克隆 `[data-ceobe-projects-link]` 的锚点插到它后面（`更多` 之前），标签为「时间」；
+  设置 `data-ceobe-timeline-row`/`-link`、`#clock` 图标与 `aria-current`；两个标记已加进
   `page-decoration.mjs` 的清场选择器，重复构建不会叠加；
+- 视图切换：`timeline.js` 用 `data-ceobe-view` tab 与 `data-ceobe-view-panel` 面板切换，
+  状态写入 `?view=axis` 与 `localStorage`；切到时间轴才首次加载 `timeline-axis.js` 的图表；
+- 时间轴：真实日历（完整 7–10 月、123 天），缩略 7px/天、详情 96px/天；3 条泳道、
+  白卡前后各 40%；视口框 ↔ 详情双向同步，`ResizeObserver` 更新，窄屏自动滚到视口；
+  视口框有 `role="slider"` 与方向键/Home/End；
 - 时间口径：只统计可见轮次；按消息 `created_at` 的本地日期分桶；`conversation.created_at` 是分享
   创建时间，不参与排序；索引不存标题，标题取自 `chats.json`；
 - 测试：`test-timeline-index.mjs`（纯函数 + 文件输出）、`test-timeline-browser.mjs`
-  （入口位置/当前页、两行结构、统一日期、月统计、吸顶、排序切换与持久化、窄屏无溢出、跳转高亮、返回；
-  需要本地服务）；
+  （入口位置/当前页、两行结构、统一日期、月统计、吸顶、排序持久化、视图切换、时间轴卡/条数量、
+  视口角色、缩略点击定位、窄屏视口可见、跳转高亮、返回；需要本地服务）；
   `test-sidebar-client-render` 的顶层页上限是 6。
 
 ## Markdown 导出
@@ -385,7 +390,7 @@ node scripts/test-copy-content.mjs
 | 连续调整宽度、离屏旁注与精确跳转 | `test-bookmark-resize-browser.mjs`（`npm run test:bookmarks:browser`）；在临时目录构建隔离副本（`bookmark-browser-fixture.mjs` + `fixtures/browser/bookmark-conversations.mjs`，100／500 条消息、20／100 条书签），不依赖本地 5173，不读写使用者归档；支持 `CEOBE_TEST_DIST=1` 与 `CEOBE_TEST_HEADED=1`，检查布局／样式重算次数、懒滚动、精确跳转与面板开关 |
 | 阅读边缘：书签面板停靠与上次阅读位置 | `test-reader-margin-browser.mjs`（`npm run test:reader-margins`）；在临时目录构建隔离副本（同一夹具，120／60 条消息、24／12 条书签），检查 1440→420 各宽度下展开或收起面板都不移动、不压缩正文，留白足够时停靠在正文左侧、不足时改为短浮层且点击别处即收起，空列表收缩为一行提示，以及按聊天恢复阅读位置的精确跳转、从头阅读、清除与只保存 ID＋偏移；全程只读 GET，不依赖本地 5173，不读写使用者归档；支持 `CEOBE_TEST_DIST=1` 与 `CEOBE_TEST_HEADED=1` |
 | 侧栏、搜索与整理 | `test-sidebar-controls.mjs`（标题与正文搜索、语法查询、片段高亮、页内精确跳转与跨页哈希跳转，新查询把结果列表送回顶部、后台刷新保留焦点与位置；正文索引和 `/api/chats` 均为只读夹具）、`test-search-query.mjs`（搜索语法：引号短语、排除、`A/B`、`title:`／`from:`／`has:`／`created:`／`messages:`、折叠与高亮切片）、`test-search-index.mjs`（索引只含可见提问／回复／代码，排除推理、隐藏上下文、引用与附件名；`kinds` 标签覆盖代码、表格、图片与附件）、`test-sidebar-polish.mjs`、`test-chat-organizer.mjs` |
-| 时间线 | `test-timeline-index.mjs`（可见轮次、首末锚点、本地日桶、缺时间、空会话、两次构建字节一致）、`test-timeline-browser.mjs`（入口在「项目」与「更多」之间、当前页标记、月份分组、条目数、跳转高亮、返回、无横向溢出；需要本地服务） |
+| 时间（时间线 / 时间轴） | `test-timeline-index.mjs`（可见轮次、首末锚点、本地日桶、缺时间、空会话、两次构建字节一致）、`test-timeline-browser.mjs`（「时间」入口、时间线/时间轴切换、月份分组、条目数、时间轴卡/条数量、视口 slider、缩略点击定位、窄屏视口可见、跳转高亮、无横向溢出；需要本地服务） |
 | 侧栏客户端渲染（删除不改页面） | `test-sidebar-client-render.mjs`：在临时目录真实复制运行时 + 三份夹具会话，跑真实构建与真实删除流程；断言“数据不变时重建逐字节一致”“删除一个会话后其余页面哈希不变、只有被删页面消失”“页面里没有 `#ceobe-chat-catalog`、保留一行静态回退与行模板”。不读写使用者归档；`test-decoration-plan.mjs` 锁住装饰指纹的精度（换首页只重做 5 个顶层页、项目数据变化才全量、单页改动只重做该页、指纹损坏回退全量） |
 | 导入与发布 | `test-local-import-api.mjs`（能力探测、同源/跨站拒绝、扩展 scheme 的 OPTIONS 预检与白名单、持久化重试与发布恢复）、`test-local-import-package-api.mjs`（采集包导入后重建索引/发布、`archived` 标记、重试不重复快照、临时包清理）、`test-share-package.mjs`（扩展 ZIP 写出与本地读取的往返、`format`/`version` 握手、旧包兼容、未来版本拒绝）、`test-only-index.mjs`（`--only` 落后索引只重建一次）、`test-production-import.mjs`、`test-link-import-browser.mjs` |
 | 离线资源 | `test-offline-resources.mjs` |

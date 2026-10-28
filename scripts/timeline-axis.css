@@ -1,0 +1,238 @@
+.ceobe-axis-overview {
+  margin-top: 4px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-light, #f2f4f7);
+}
+.ceobe-axis-overview-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ceobe-axis-overview-title {
+  color: var(--text-primary, #111);
+  font-size: 13px;
+  font-weight: 600;
+}
+.ceobe-axis-status {
+  color: var(--text-tertiary, #667085);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.ceobe-axis-overview-hint {
+  margin: 3px 0 8px;
+  color: var(--text-tertiary, #98a2b3);
+  font-size: 11px;
+}
+.ceobe-axis-overview-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--border-default, #e4e7ec);
+  border-radius: 8px;
+  background: var(--bg-primary, #fff);
+}
+.ceobe-axis-overview-chart {
+  position: relative;
+  margin: 0 auto;
+}
+.ceobe-axis-overview-months {
+  display: flex;
+  height: 20px;
+}
+.ceobe-axis-overview-month {
+  position: relative;
+  flex: none;
+  border-left: 1px solid var(--border-default, #e4e7ec);
+}
+.ceobe-axis-overview-month:first-child { border-left: 0; }
+.ceobe-axis-overview-month-label {
+  position: absolute;
+  top: 4px;
+  left: 5px;
+  color: var(--text-tertiary, #667085);
+  font-size: 8px;
+  font-weight: 600;
+}
+.ceobe-axis-overview-body { position: relative; }
+.ceobe-axis-overview-lane {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-bottom: 1px solid var(--border-light, #f2f4f7);
+}
+.ceobe-axis-overview-lane.alt { background: #fafbfc; }
+.ceobe-axis-overview-month-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 1px;
+  background: var(--border-default, #e4e7ec);
+}
+.ceobe-axis-overview-bar {
+  position: absolute;
+  z-index: 2;
+  height: 10px;
+  border-radius: 2px;
+  opacity: 0.92;
+}
+.ceobe-axis-window {
+  position: absolute;
+  z-index: 5;
+  border: 1.5px solid var(--text-primary, #111);
+  border-radius: 3px;
+  background: rgba(17, 17, 17, 0.06);
+  cursor: grab;
+}
+.ceobe-axis-window:focus-visible {
+  outline: 2px solid var(--text-primary, #111);
+  outline-offset: 2px;
+}
+.ceobe-axis-window:active { cursor: grabbing; }
+
+.ceobe-axis-detail { margin-top: 18px; }
+.ceobe-axis-detail-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.ceobe-axis-detail-title {
+  color: var(--text-primary, #111);
+  font-size: 13px;
+  font-weight: 600;
+}
+.ceobe-axis-latest {
+  padding: 4px 10px;
+  border: 1px solid var(--border-default, #e4e7ec);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--text-secondary, #475467);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  pointer-events: auto !important;
+}
+.ceobe-axis-latest:hover { border-color: #98a2b3; color: #111; }
+.ceobe-axis-detail-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--border-default, #e4e7ec);
+  border-radius: 8px;
+  background: var(--bg-primary, #fff);
+  cursor: grab;
+}
+.ceobe-axis-detail-scroll:active { cursor: grabbing; }
+.ceobe-axis-detail-scroll[data-scrolled="true"] {
+  mask-image: linear-gradient(to right, transparent 0, #000 64px);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 64px);
+}
+.ceobe-axis-detail-chart { position: relative; }
+.ceobe-axis-detail-months {
+  display: flex;
+  height: 26px;
+}
+.ceobe-axis-detail-month {
+  position: relative;
+  flex: none;
+  border-left: 1px solid var(--border-default, #e4e7ec);
+}
+.ceobe-axis-detail-month:first-child { border-left: 0; }
+.ceobe-axis-detail-month-label {
+  position: absolute;
+  top: 5px;
+  left: 8px;
+  color: var(--text-secondary, #475467);
+  font-size: 10px;
+  font-weight: 600;
+}
+.ceobe-axis-detail-axis {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+.ceobe-axis-detail-axis-line {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border-default, #e4e7ec);
+}
+.ceobe-axis-detail-dot {
+  position: absolute;
+  top: 12px;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border: 1.5px solid #98a2b3;
+  border-radius: 50%;
+  background: #fff;
+  z-index: 2;
+}
+.ceobe-axis-detail-date {
+  position: absolute;
+  top: 20px;
+  color: var(--text-tertiary, #98a2b3);
+  font-size: 8px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+.ceobe-axis-detail-body { position: absolute; left: 0; right: 0; }
+.ceobe-axis-detail-lane {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-bottom: 1px solid var(--border-light, #f2f4f7);
+}
+.ceobe-axis-detail-lane.alt { background: #fafbfc; }
+.ceobe-axis-detail-month-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  width: 1px;
+  background: var(--border-light, #f2f4f7);
+}
+.ceobe-axis-card {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  height: 40px;
+  padding: 4px 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-default, #e4e7ec);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text-primary, #111);
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+.ceobe-axis-card:hover { border-color: #98a2b3; background: #fafafa; }
+.ceobe-axis-card-title {
+  overflow: hidden;
+  color: var(--text-primary, #111);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ceobe-axis-card-meta {
+  overflow: hidden;
+  color: var(--text-tertiary, #667085);
+  font-size: 8px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 720px) {
+  .ceobe-axis-detail-date { display: none; }
+  .ceobe-axis-overview-hint { font-size: 10px; }
+}

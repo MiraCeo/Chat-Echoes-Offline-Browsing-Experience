@@ -21,7 +21,7 @@ export async function buildTimelinePage(projectRoot = resolve(import.meta.dirnam
   // 顶层页不应该带 reader 的会话 ID：chat-actions.js 见到它会把标签标题改成首页会话名。
   document.body.removeAttribute('data-reader-chat-id');
   document.body.dataset.ceobeTimelinePage = '';
-  document.title = '时间线';
+  document.title = '时间';
   prepareLocalSidebar(document, 'timeline');
 
   const main = document.createElement('main');
@@ -30,8 +30,14 @@ export async function buildTimelinePage(projectRoot = resolve(import.meta.dirnam
   main.innerHTML = `
     <div class="ceobe-timeline-inner">
       <header class="ceobe-timeline-header">
-        <h1>时间线</h1>
-        <p class="ceobe-timeline-lede">按消息时间（本地时间）浏览本地档案；点击条目跳到对应会话。</p>
+        <h1>时间</h1>
+        <p class="ceobe-timeline-lede">按时间浏览本地档案：时间线是列表，时间轴是缩略导航加详情。</p>
+        <div class="ceobe-timeline-views" role="tablist" aria-label="时间视图">
+          <button type="button" role="tab" id="ceobe-view-tab-timeline" aria-controls="ceobe-view-panel-timeline" aria-selected="true" tabindex="0" data-ceobe-view="timeline">时间线</button>
+          <button type="button" role="tab" id="ceobe-view-tab-axis" aria-controls="ceobe-view-panel-axis" aria-selected="false" tabindex="-1" data-ceobe-view="axis">时间轴</button>
+        </div>
+      </header>
+      <section class="ceobe-timeline-panel" id="ceobe-view-panel-timeline" role="tabpanel" aria-labelledby="ceobe-view-tab-timeline" data-ceobe-view-panel="timeline">
         <div class="ceobe-timeline-toolbar">
           <p class="ceobe-timeline-status" data-ceobe-timeline-status role="status">正在加载时间线…</p>
           <div class="ceobe-timeline-order" role="group" aria-label="时间顺序">
@@ -40,9 +46,13 @@ export async function buildTimelinePage(projectRoot = resolve(import.meta.dirnam
             <button type="button" data-ceobe-timeline-order="oldest" aria-pressed="false">最早在前</button>
           </div>
         </div>
-      </header>
-      <div class="ceobe-timeline-groups" data-ceobe-timeline-groups></div>
-      <p class="ceobe-timeline-empty" data-ceobe-timeline-empty hidden>本地档案里还没有会话。</p>
+        <div class="ceobe-timeline-groups" data-ceobe-timeline-groups></div>
+        <p class="ceobe-timeline-empty" data-ceobe-timeline-empty hidden>本地档案里还没有会话。</p>
+      </section>
+      <section class="ceobe-timeline-panel ceobe-axis-panel" id="ceobe-view-panel-axis" role="tabpanel" aria-labelledby="ceobe-view-tab-axis" data-ceobe-view-panel="axis" hidden>
+        <div data-ceobe-axis-overview></div>
+        <div data-ceobe-axis-detail></div>
+      </section>
     </div>`;
   document.querySelector('main')?.replaceWith(main);
 
@@ -52,11 +62,21 @@ export async function buildTimelinePage(projectRoot = resolve(import.meta.dirnam
   await writeFile(join(replay, scriptFile), script);
   placeScript(document, 'timeline.', './' + scriptFile);
 
+  const axisScript = await readFile(join(projectRoot, 'scripts', 'timeline-axis.js'), 'utf8');
+  const axisScriptFile = 'timeline-axis.' + hash(axisScript) + '.js';
+  await writeFile(join(replay, axisScriptFile), axisScript);
+  placeScript(document, 'timeline-axis.', './' + axisScriptFile);
+
   const css = await readFile(join(projectRoot, 'scripts', 'timeline.css'), 'utf8');
   const cssFile = 'timeline.' + hash(css) + '.css';
   await mkdir(replay, { recursive: true });
   await writeFile(join(replay, cssFile), css);
   placeStylesheet(document, 'timeline.', './' + cssFile);
+
+  const axisCss = await readFile(join(projectRoot, 'scripts', 'timeline-axis.css'), 'utf8');
+  const axisCssFile = 'timeline-axis.' + hash(axisCss) + '.css';
+  await writeFile(join(replay, axisCssFile), axisCss);
+  placeStylesheet(document, 'timeline-axis.', './' + axisCssFile);
 
   await writeIfChanged(join(replay, 'timeline.html'), '<!DOCTYPE html>\n' + htmlSafeSvg(document.documentElement.outerHTML));
   console.log('Built local timeline page: replay/timeline.html');

@@ -156,6 +156,51 @@
   }
   syncOrderButtons();
 
+  const viewButtons = [...document.querySelectorAll('[data-ceobe-view]')];
+  const viewPanels = [...document.querySelectorAll('[data-ceobe-view-panel]')];
+  const VIEW_KEY = 'ceobe.timeline.view';
+  const setView = (view, { persist = true, updateUrl = true } = {}) => {
+    const current = view === 'axis' ? 'axis' : 'timeline';
+    for (const button of viewButtons) {
+      const active = button.dataset.ceobeView === current;
+      button.setAttribute('aria-selected', active ? 'true' : 'false');
+      button.tabIndex = active ? 0 : -1;
+    }
+    for (const panel of viewPanels) {
+      panel.hidden = panel.dataset.ceobeViewPanel !== current;
+    }
+    if (persist) {
+      try { localStorage.setItem(VIEW_KEY, current); } catch { /* ignore */ }
+    }
+    if (updateUrl) {
+      const url = new URL(location.href);
+      if (current === 'axis') url.searchParams.set('view', 'axis');
+      else url.searchParams.delete('view');
+      history.replaceState(null, '', url);
+    }
+    document.dispatchEvent(new CustomEvent('ceobe:view', { detail: { view: current } }));
+  };
+  if (viewButtons.length) {
+    let stored = null;
+    try { stored = localStorage.getItem(VIEW_KEY); } catch { /* ignore */ }
+    const requested = new URLSearchParams(location.search).get('view') || stored;
+    setView(requested === 'axis' ? 'axis' : 'timeline', { persist: false, updateUrl: false });
+    for (const button of viewButtons) {
+      button.addEventListener('click', () => setView(button.dataset.ceobeView));
+      button.addEventListener('keydown', event => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        const index = viewButtons.indexOf(button);
+        const next = event.key === 'Home' ? 0
+          : event.key === 'End' ? viewButtons.length - 1
+            : event.key === 'ArrowLeft' ? (index - 1 + viewButtons.length) % viewButtons.length
+              : (index + 1) % viewButtons.length;
+        viewButtons[next].focus();
+        setView(viewButtons[next].dataset.ceobeView);
+      });
+    }
+  }
+
   Promise.all([
     fetch(new URL('timeline-index.json', root), { cache: 'no-cache' }).then(response => {
       if (!response.ok) throw new Error('HTTP ' + response.status);

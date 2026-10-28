@@ -29,11 +29,11 @@ export async function buildTimelineNav(root, pageCache = null, selected = null) 
       row.dataset.ceobeTimelineRow = '';
       row.dataset.ceobeTimelineLink = '';
       row.setAttribute('href', prefix + 'timeline.html');
-      row.setAttribute('aria-label', '时间线');
-      row.setAttribute('title', '时间线');
+      row.setAttribute('aria-label', '时间');
+      row.setAttribute('title', '时间');
       row.style.setProperty('pointer-events', 'auto', 'important');
       const label = row.querySelector('.truncate');
-      if (label) label.textContent = '时间线';
+      if (label) label.textContent = '时间';
       for (const use of row.querySelectorAll('use')) use.setAttribute('href', prefix + 'cdn/assets/sprites-shell-097001e7.svg#clock');
       if (page === 'timeline.html') {
         row.dataset.active = '';

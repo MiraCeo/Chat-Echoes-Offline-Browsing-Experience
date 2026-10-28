@@ -38,9 +38,9 @@ XLSX 只读预览（大表截断 500×60、点选高亮行列、缩放、隐藏�
 **实机修复**：采集包导入后先全量重建索引/页面再返回、失败返回 `archived` 标记、`build-library --only`
 落后索引时自动重建一次、ZIP 改在 popup 内生成；`test-local-import-package-api.mjs`、
 `test-only-index.mjs` 已进 `npm test`；popup/页内按钮仍需手动在浏览器验收）、
-**时间线 v1**（1.2.0：`timeline-index.json` 构建期索引、顶层 `timeline.html`、侧栏「项目」与「更多」
-之间的入口、按年/月浏览并跳到首条消息；`test-timeline-index.mjs` 与 `test-timeline-browser.mjs`
-已进 `npm test`）、
+**时间线 / 时间轴**（1.3.0：`timeline-index.json` 构建期索引；侧栏「时间」；页内「时间线」列表 +
+「时间轴」真实日历缩略/详情，视图状态 `?view=axis` + `localStorage`；`test-timeline-index.mjs` 与
+`test-timeline-browser.mjs` 已进 `npm test`）、
 **方向记录与 MCP 归档**（`docs/direction.md`；MCP 已评估、暂不做）、
 README 四张脱敏截图（`scripts/make-readme-fixture.mjs` + `scripts/shoot-readme.mjs`）、
 远端仓库删库重建 + 本地旧对象清理（`pre-rewrite.bundle` 与 `refs/codex/*` 已删，`.git` 3.77 MiB）。
@@ -51,8 +51,8 @@ README 四张脱敏截图（`scripts/make-readme-fixture.mjs` + `scripts/shoot-r
 
 ## 当前任务（口径见 `TODO.md` 与 `docs/direction.md`）
 
-**暂无已批准、待开工项。** 时间线 v1 已随 1.2.0 交付。后续候选（事件／观点时间线、长期记忆、数据
-契约收尾）仍未批准，见 `docs/direction.md`；MCP 已评估、暂不做。
+**暂无已批准、待开工项。** 时间线/时间轴已作为 1.3.0 接入正式页面（列表 + 缩略/详情）。后续候选
+（事件／观点时间线、长期记忆、数据契约收尾）仍未批准，见 `docs/direction.md`；MCP 已评估、暂不做。
 
 其余条目（已定案、已知限制）不要自行开工。
 

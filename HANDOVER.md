@@ -28,8 +28,8 @@ HEAD        （见 git log -1；包含“侧栏客户端渲染”“后处理幂
 删除        重建部分约 15s＋档案复制约 1s（原为 52.5s）；会话页逐字节不变
 导出        官方 JSON 65.3 MB（36 会话；可选附件 323 个文件／254.3 MB）；Markdown 走 export:md
 扩展        MV3 0.5.1：直连发送、页内按钮、ZIP 兜底、端口探测、采集包 format/version 握手
-时间线      replay/timeline.html + replay/public/timeline-index.json（36 会话 / 3142 可见轮次）；
-             侧栏入口在「项目」与「更多」之间，按年/月浏览并跳到首条消息
+时间        replay/timeline.html + replay/public/timeline-index.json（36 会话 / 3142 可见轮次）；
+             侧栏入口「时间」在「项目」与「更多」之间；页内「时间线」列表 +「时间轴」缩略/详情
 侧栏        浏览器按 replay/chats.json 渲染；每页只剩“当前会话一行 + 行模板”，不再内嵌全部会话
 历史        2026-10-26 做过一次脱敏重写：旧夹具与「测试消息/」「图表/」「文件/」「新界面/」从全部
              历史移除、本机用户名替换为占位；提交时间保持不变，但**旧 SHA 全部失效**
@@ -75,9 +75,10 @@ npm run verify:archive      # 只读检查档案结构
   `content.raw` 原样透传、缺 `nodes` 时降级为线性 mapping；附件默认复制（`--no-assets` 关闭）；
 - 采集扩展 0.5.1：popup 直接发送 + 端口探测、分享页内「发送到 CEOBE」按钮、无服务时导出 ZIP；
   采集包带 `format`/`version` 握手（旧包按 legacy 接受）；书签小工具打开导入页预填链接；
-- 时间线：侧栏「项目」与「更多」之间的入口，顶层 `timeline.html` 按年/月列出会话（首→末条可见消息
-  时间、轮数），点击跳到首条消息；索引是构建期 `replay/public/timeline-index.json`，只含可见轮次，
-  标题仍取 `chats.json`；
+- 时间：侧栏「项目」与「更多」之间的入口「时间」；`timeline.html` 内含「时间线」（年/月列表，
+  首→末条可见消息时间、轮数，点击跳到首条消息）与「时间轴」（真实日历缩略 7px/天 + 详情 96px/天，
+  3 条泳道、视口框双向同步）两个视图；视图状态写入 `?view=axis` 和 `localStorage`；索引仍是构建期
+  `replay/public/timeline-index.json`，标题取 `chats.json`；
 - 资料库可以自建文件夹（当标签用，一条资源可属多个）并上传自己的文件；
   上传字节在 `data/private/library-files/`，不进 `archive/`，任何路径都不删原文件；
 - 附件随页拷贝：并行渲染的每一页都写自己会话的附件字节，`replay/archive-resources` 与 `dist` 都是 321 个文件，
@@ -185,7 +186,7 @@ npm run verify:archive      # 只读检查档案结构
 
 **还没做**
 
-- 顶层 6 页（首页/导入/资料库/项目/项目详情/时间线）每趟都要重建、因此每趟都要重新装饰（约 1.3s）；
+- 顶层 6 页（首页/导入/资料库/项目/项目详情/时间）每趟都要重建、因此每趟都要重新装饰（约 1.3s）；
   评估后认为收益小于风险，暂不处理。
 
 **只读回放的操作裁剪**
@@ -301,21 +302,20 @@ npm run verify:archive      # 只读检查档案结构
   该会话已补进索引与页面。**扩展 UI（popup、页内按钮）本轮没有在真实浏览器里加载验收**，
   只做了语法检查与契约测试；发布前需在 Edge/Chrome 手动加载 `extension/` 走一遍。
 
-**时间线 v1（本轮完成）**
+**时间（时间线 / 时间轴，本轮完成）**
 
 - `timeline-index.mjs` 在 `npm run library` 时生成 `replay/public/timeline-index.json`：每个会话的
   首/末条可见轮次时间、首末锚点消息 ID、可见轮数、按本地日期的轮数；标题仍取 `chats.json`；
-- `build-timeline-page.mjs` 从导入页骨架生成顶层 `replay/timeline.html`，`timeline.js` 按年/月渲染；
-  `build-timeline-nav.mjs` 克隆官方「项目」行，插到「项目」与「更多」之间（先清后插），
-  当前页带 `aria-current="page"`；
+- `build-timeline-page.mjs` 生成顶层 `replay/timeline.html`：页内「时间线」列表 +「时间轴」缩略/详情；
+  `timeline.js` 负责列表和视图切换（`?view=axis` + `localStorage`），`timeline-axis.js` 负责真实日历
+  缩略图、详情、视口框与双向同步；`build-timeline-nav.mjs` 的侧栏标签为「时间」；
 - 只统计阅读页可见轮次（提问/最终回复/生成图片）；隐藏记录、推理、工具往来不计；时间用消息
   `created_at`（构建机本地时区），会话 `created_at` 是分享创建时间，只作辅助；
-- 呈现：两行式行（标题 + 时间/轮数）、月份标题吸顶并带当月计数、统一 `M月D日 HH:mm`、次级文字
-  对比度提升、正文宽度 800px；顶部可按首条消息切换最新/最早（`localStorage` 记住）；浏览器测试覆盖
-  结构、日期、月统计、吸顶、排序持久化与窄屏；
-- 证据：36 会话 / 3142 可见轮次、4 个月（2026-07～10）；浏览器测试通过（入口位置、当前页、
-  分组、条目数、跳转并高亮首条消息、返回、无横向溢出）；同数据重建 `Decorations: 6 of 42`；
-  `test-sidebar-client-render` 顶层页上限改为 6；`npm run check` 巡检上限 60 页。
+- 时间线呈现：两行式行、月份标题吸顶并带计数、统一 `M月D日 HH:mm`、排序切换；时间轴：完整
+  7–10 月真实日历（123 天）、缩略 7px/天、详情 96px/天、3 条泳道、视口同步；
+- 证据：36 会话 / 3142 可见轮次；浏览器测试覆盖视图切换、时间轴 36 卡/36 条、视口 slider、
+  点击缩略定位、窄屏视口可见、宽/窄屏无溢出；同数据重建 `Decorations: 6 of 42`；
+  `npm run check` 巡检 42 页 0 问题。
 
 ## 5. 已知问题
 

@@ -24,6 +24,10 @@ try {
     return {
       title: document.title,
       heading: document.querySelector('.ceobe-timeline h1')?.textContent,
+      view: document.querySelector('[data-ceobe-view][aria-selected="true"]')?.dataset.ceobeView,
+      tabs: [...document.querySelectorAll('[data-ceobe-view]')].map(node => node.textContent.trim()),
+      timelineHidden: document.querySelector('[data-ceobe-view-panel="timeline"]')?.hidden,
+      axisHidden: document.querySelector('[data-ceobe-view-panel="axis"]')?.hidden,
       active: row?.getAttribute('aria-current'),
       href: row?.getAttribute('href'),
       previousIsProjects: Boolean(previous?.matches('[data-ceobe-projects-link]')),
@@ -44,9 +48,13 @@ try {
       status: document.querySelector('[data-ceobe-timeline-status]')?.textContent,
     };
   });
-  assert.equal(state.title, '时间线');
-  assert.equal(state.heading, '时间线');
-  assert.equal(state.active, 'page', '时间线页上的入口应标记当前页');
+  assert.equal(state.title, '时间');
+  assert.equal(state.heading, '时间');
+  assert.equal(state.view, 'timeline');
+  assert.deepEqual(state.tabs, ['时间线', '时间轴']);
+  assert.equal(state.timelineHidden, false);
+  assert.equal(state.axisHidden, true);
+  assert.equal(state.active, 'page', '时间页上的入口应标记当前页');
   assert.equal(state.href, './timeline.html');
   assert.equal(state.previousIsProjects, true, '入口在「项目」之后');
   assert.equal(state.nextHasMore, true, '入口在「更多」之前');
@@ -81,6 +89,41 @@ try {
     assert.ok((await firstHref()).includes(newest.id), '切回最新在前');
   }
 
+  // 时间轴：缩略图、详情卡片、视口框，以及点击缩略图定位详情。
+  await page.locator('[data-ceobe-view="axis"]').click();
+  await page.waitForFunction(() => document.querySelectorAll('.ceobe-axis-card').length > 0);
+  const axis = await page.evaluate(() => {
+    const detail = document.querySelector('.ceobe-axis-detail-scroll');
+    return {
+      view: document.querySelector('[data-ceobe-view][aria-selected="true"]')?.dataset.ceobeView,
+      cards: document.querySelectorAll('.ceobe-axis-card').length,
+      bars: document.querySelectorAll('.ceobe-axis-overview-bar').length,
+      windowRole: document.querySelector('.ceobe-axis-window')?.getAttribute('role'),
+      windowWidth: document.querySelector('.ceobe-axis-window')?.style.width,
+      detailLeft: Math.round(detail.scrollLeft),
+      detailMax: detail.scrollWidth - detail.clientWidth,
+      viewParam: new URLSearchParams(location.search).get('view'),
+      overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    };
+  });
+  assert.equal(axis.view, 'axis');
+  assert.equal(axis.cards, expected, '时间轴详情应有全部会话卡片');
+  assert.equal(axis.bars, expected, '缩略图应有全部会话条');
+  assert.equal(axis.windowRole, 'slider', '视口框应可聚焦/键盘操作');
+  assert.ok(Number.parseFloat(axis.windowWidth) > 0, '视口框应有宽度');
+  assert.equal(axis.detailLeft, axis.detailMax, '时间轴默认停在最新');
+  assert.equal(axis.viewParam, 'axis');
+  assert.equal(axis.overflowX, false);
+  if (expected) {
+    const chart = await page.locator('.ceobe-axis-overview-chart').boundingBox();
+    const before = axis.detailLeft;
+    await page.mouse.click(chart.x + chart.width * 0.2, chart.y + 50);
+    await page.waitForTimeout(200);
+    const after = await page.evaluate(() => Math.round(document.querySelector('.ceobe-axis-detail-scroll').scrollLeft));
+    assert.ok(after < before, '点击缩略图左侧应把详情向前移动');
+  }
+  await page.locator('[data-ceobe-view="timeline"]').click();
+
   // 窄屏：排序控件仍在、页面不横向溢出。
   await page.setViewportSize({ width: 480, height: 800 });
   await page.reload({ waitUntil: 'networkidle' });
@@ -92,6 +135,21 @@ try {
   assert.equal(mobile.overflowX, false, '窄屏不应横向溢出');
   assert.equal(mobile.controls, true, '窄屏仍能看到排序控件');
   assert.equal(mobile.entries, expected, '窄屏条目数不变');
+  await page.locator('[data-ceobe-view="axis"]').click();
+  await page.waitForFunction(() => document.querySelectorAll('.ceobe-axis-card').length > 0);
+  const mobileAxis = await page.evaluate(() => {
+    const win = document.querySelector('.ceobe-axis-window').getBoundingClientRect();
+    const ovw = document.querySelector('.ceobe-axis-overview-scroll').getBoundingClientRect();
+    return {
+      windowVisible: win.right > ovw.left && win.left < ovw.right,
+      overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      cards: document.querySelectorAll('.ceobe-axis-card').length,
+    };
+  });
+  assert.equal(mobileAxis.overflowX, false, '窄屏时间轴不应横向溢出');
+  assert.equal(mobileAxis.windowVisible, true, '窄屏视口框应在缩略图可视范围内');
+  assert.equal(mobileAxis.cards, expected);
+  await page.locator('[data-ceobe-view="timeline"]').click();
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.reload({ waitUntil: 'networkidle' });
 
@@ -109,15 +167,15 @@ try {
       const link = document.querySelector('[data-ceobe-timeline-row]');
       return { href: link?.getAttribute('href'), active: link?.getAttribute('aria-current') };
     });
-    assert.equal(back.href, '../timeline.html', '会话页上的入口应指回时间线');
+    assert.equal(back.href, '../timeline.html', '会话页上的入口应指回时间');
     assert.equal(back.active, null, '会话页上入口不应标记当前页');
     await page.locator('[data-ceobe-timeline-row]').click();
     await page.waitForLoadState('networkidle');
-    assert.equal(await page.title(), '时间线', '从会话页可以回到时间线');
+    assert.equal(await page.title(), '时间', '从会话页可以回到时间');
   }
 
   assert.deepEqual(errors, [], '没有页面错误');
-  console.log('PASS timeline browser: nav slot (projects → timeline → more), active state, month groups, entry count, conversation jump with anchor highlight, return link, no overflow/errors');
+  console.log('PASS timeline browser: 时间 nav slot, 时间线/时间轴 views, list ordering, month groups, axis overview/detail sync, mobile viewport, conversation jump, no overflow/errors');
 } finally {
   await browser.close();
 }
