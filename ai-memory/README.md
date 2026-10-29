@@ -33,12 +33,22 @@ ai-memory/
 ## 工作流
 
 ```text
-1. 把 CEOBE 导出的 manifest + conversation Markdown 放进 input/
+1. 在 CEOBE 根目录运行：
+   npm run memory:export
+   结果写到 ai-memory/input/；迁移时把生成的 input/ 一起复制走。
 2. 让 AI 按 PROMPT.md 读取 input/，逐会话写入 output/<id>.json
 3. 运行：
    node validate-output.mjs --input input --output output
 4. 把 output/ 交回 CEOBE，由 CEOBE 导入为 timeline-summaries.json
 ```
+
+CEOBE 导出器：
+
+- 读取 `replay/library.ceobe.json`、`replay/public/timeline-index.json`、`replay/chats.json`；
+- 生成 `input/manifest.json` 和 `input/conversations/<id>.md`；
+- 只导出阅读页可见的用户/助手正文，附件只留文件名/MIME，不导出附件正文；
+- `source_hash` 基于导出消息内容计算，供 AI 回显和 CEOBE 校验；
+- 清掉上一次的 `.md` 和 `manifest.json`，不会动 `output/`。
 
 ## 输入约定
 
@@ -65,9 +75,23 @@ ai-memory/
    ```powershell
    node validate-output.mjs --input examples/input --output examples/output
    ```
-2. 用真实 `input/` 替换示例；
+2. 在 CEOBE 根目录（迁移前）运行 `npm run memory:export`，把真实输入写进 `input/`；
 3. 让接手模型读 `PROMPT.md`，按目录约定执行；
 4. 把 `output/` 和校验结果一起带回来。
+
+`input/` 和 `output/` 默认被 `.gitignore` 排除；迁移时按需复制，不要提交私有会话。
+
+## 本次导出
+
+已从当前 CEOBE 档案导出：
+
+- 36 个会话；
+- 1,571 轮对话；
+- 3,142 个可见轮次；
+- 36 个 `conversations/<id>.md`，约 7.2 MB；
+- `input/manifest.json` 与 36 个 Markdown 文件已生成，`input/` 不进 Git。
+
+真实输入包含私有聊天正文，只应复制到受控工作区；`output/` 的摘要也一样。
 
 ## 版本
 
