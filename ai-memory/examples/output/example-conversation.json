@@ -1,0 +1,17 @@
+{
+  "id": "example-conversation",
+  "summary": "围绕交互设计基础资料过多的问题，按认知基础、交互模式、可用性评估和实践复盘排出阅读顺序，并给出每天半小时、每周一个主题的执行安排。",
+  "tags": ["交互设计", "阅读顺序", "学习计划"],
+  "status": "fresh",
+  "source": {
+    "last_message_id": "example-last-message",
+    "source_hash": "sha256:example-source-hash"
+  },
+  "generator": {
+    "model": "example-model",
+    "prompt_version": "ceobe-memory-0.1.0",
+    "run_id": "example-run-001"
+  },
+  "generated_at": "2026-10-28T00:00:00Z",
+  "error": null
+}

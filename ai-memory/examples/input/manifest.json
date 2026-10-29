@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0.0",
+  "kind": "ceobe.memory-input",
+  "generated_at": "2026-10-28T00:00:00Z",
+  "timezone": "Asia/Shanghai",
+  "conversations": [
+    {
+      "id": "example-conversation",
+      "title": "示例：整理阅读清单",
+      "first": 1791985853.579,
+      "last": 1791989453.579,
+      "rounds": 2,
+      "turns": 4,
+      "last_message_id": "example-last-message",
+      "source_hash": "sha256:example-source-hash",
+      "file": "conversations/example-conversation.md"
+    }
+  ]
+}

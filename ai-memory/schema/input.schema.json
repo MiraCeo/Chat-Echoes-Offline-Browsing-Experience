@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ceobe.local/schema/ceobe.memory-input/1.0.0",
+  "title": "CEOBE AI memory input manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "generated_at", "timezone", "conversations"],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "kind": { "const": "ceobe.memory-input" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "timezone": { "type": "string", "minLength": 1 },
+    "conversations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id", "title", "first", "last", "rounds", "turns",
+          "last_message_id", "source_hash", "file"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "title": { "type": "string" },
+          "first": { "type": "number" },
+          "last": { "type": "number" },
+          "rounds": { "type": "integer", "minimum": 0 },
+          "turns": { "type": "integer", "minimum": 0 },
+          "last_message_id": { "type": "string", "minLength": 1 },
+          "source_hash": { "type": "string", "minLength": 1 },
+          "file": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}
