@@ -9,6 +9,23 @@ export const TIMELINE_INDEX_VERSION = '1.0.0';
 export const TIMELINE_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
 const pad = value => String(value).padStart(2, '0');
+const MODEL_LABELS = {
+  'gpt-6-thinking': 'GPT-6 Thinking',
+  'gpt-5-6-thinking': 'GPT-5.6 Thinking',
+  'gpt-5-6': 'GPT-5.6',
+  'gpt-5-5': 'GPT-5.5',
+  'gpt-5-4-auto-thinking': 'GPT-5.4 Auto Thinking',
+  'gpt-6.1-sol-wm': 'GPT-6.1 Sol',
+  'gpt-6': 'GPT-6',
+};
+const modelLabel = slug => MODEL_LABELS[slug] || String(slug).replace(/^gpt-/i, 'GPT-').replace(/-/g, ' ');
+const visibleText = entry => (Array.isArray(entry?.message?.content?.blocks)
+  ? entry.message.content.blocks
+    .filter(block => block.type === 'text' && typeof block.text === 'string')
+    .map(block => block.text)
+    .join('')
+  : '');
+const charCount = text => [...text.replace(/\s+/g, '')].length;
 // 时间线按构建机本地时区分组；把 IANA 时区写进索引，页面用同一时区格式化，
 // 这样把静态产物拿到别的时区浏览也不会出现“日期天数与 days 桶不一致”。
 const localDay = seconds => {
@@ -22,8 +39,10 @@ const localDay = seconds => {
  */
 export function conversationTimeline(conversation) {
   const days = {};
+  const modelCounts = new Map();
   let first = null, last = null, firstMessage = null, lastMessage = null;
   let turns = 0, rounds = 0, undated = 0;
+  let userChars = 0, assistantChars = 0;
   conversationToHtmlView(conversation).forEach((turn, order) => {
     const target = turnTarget(turn, order);
     const primary = turn.entries.find(entry => entry.kind === 'document')
@@ -33,12 +52,28 @@ export function conversationTimeline(conversation) {
     const seconds = Number(primary?.message?.created_at);
     turns += 1;
     if (turn.entries.some(entry => entry.message?.role === 'user')) rounds += 1;
+    for (const entry of turn.entries) {
+      if (entry.kind === 'user') {
+        userChars += charCount(visibleText(entry));
+      } else if (entry.kind === 'document' || entry.kind === 'media') {
+        assistantChars += charCount(visibleText(entry));
+        const metadata = entry.message?.metadata || {};
+        const model = metadata.resolved_model_slug || metadata.model_slug || metadata.default_model_slug;
+        if (model) {
+          const label = modelLabel(model);
+          modelCounts.set(label, (modelCounts.get(label) || 0) + 1);
+        }
+      }
+    }
     if (!Number.isFinite(seconds) || seconds <= 0) { undated += 1; return; }
     if (first == null || seconds < first) { first = seconds; firstMessage = target.message_id; }
     if (last == null || seconds >= last) { last = seconds; lastMessage = target.message_id; }
     const day = localDay(seconds);
     days[day] = (days[day] || 0) + 1;
   });
+  const models = [...modelCounts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([model]) => model);
   return {
     first,
     last,
@@ -48,6 +83,10 @@ export function conversationTimeline(conversation) {
     rounds,
     undated,
     days,
+    models,
+    primary_model: models[0] || '',
+    user_chars: userChars,
+    assistant_chars: assistantChars,
   };
 }
 

@@ -27,6 +27,10 @@ const conversation = {
 const timeline = conversationTimeline(conversation);
 assert.equal(timeline.turns, 5, 'system/tool/hidden records are not timeline turns');
 assert.equal(timeline.rounds, 3, 'user turns are the dialogue rounds');
+assert.equal(timeline.user_chars, 3, 'visible user text characters, whitespace excluded');
+assert.equal(timeline.assistant_chars, 2, 'visible assistant document text characters');
+assert.deepEqual(timeline.models, [], 'fixture messages have no model metadata');
+assert.equal(timeline.primary_model, '');
 assert.equal(timeline.undated, 1, 'a visible turn without created_at is counted as undated');
 assert.equal(timeline.first, 1_700_000_000);
 assert.equal(timeline.last, 1_700_086_500);
@@ -46,7 +50,7 @@ assert.equal('title' in index.conversations[0], false, 'titles stay in chats.jso
 
 // 空会话也要有确定结构。
 const empty = buildTimelineIndex([{ id: 'empty', conversation: { ...conversation, messages: {}, linear_message_ids: [] } }]);
-assert.deepEqual(empty.conversations[0], { id: 'empty', first: null, last: null, first_message_id: null, last_message_id: null, turns: 0, rounds: 0, undated: 0, days: {} });
+assert.deepEqual(empty.conversations[0], { id: 'empty', first: null, last: null, first_message_id: null, last_message_id: null, turns: 0, rounds: 0, undated: 0, days: {}, models: [], primary_model: '', user_chars: 0, assistant_chars: 0 });
 
 const root = await mkdtemp(join('data/private', 'timeline-index-'));
 try {

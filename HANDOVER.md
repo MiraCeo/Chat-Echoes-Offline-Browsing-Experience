@@ -76,11 +76,12 @@ npm run verify:archive      # 只读检查档案结构
 - 采集扩展 0.5.1：popup 直接发送 + 端口探测、分享页内「发送到 CEOBE」按钮、无服务时导出 ZIP；
   采集包带 `format`/`version` 握手（旧包按 legacy 接受）；书签小工具打开导入页预填链接；
 - 时间：侧栏「项目」与「更多」之间的入口「时间」；`timeline.html` 内含「时间线」（年/月列表，
-  可切列表/卡片；卡片两列、标题旁轮数、右上角活动条，底部不再放进度条）与「时间轴」（真实日历缩略 7px/天 +
-  详情 96px/天，3 条泳道、视口框双向同步）两个视图；视图状态写入 `?view=axis` 和 `localStorage`，
-  布局状态写入 `localStorage`；卡片可选读取 `timeline-summaries.json`（摘要 + tag，同一份 AI 记录；
-  1.2 只搭骨架，不生成），契约见 `docs/summary-contract.md`；索引仍是构建期
-  `replay/public/timeline-index.json`，标题取 `chats.json`；
+  可切列表/卡片；卡片固定 200px、标题/时间 + 右上 tag、摘要、底栏模型/字符/活跃三列）与
+  「时间轴」（真实日历缩略 7px/天 + 详情 96px/天，3 条泳道、视口框双向同步）两个视图；
+  视图状态写入 `?view=axis` 和 `localStorage`；布局状态写入 `localStorage`；
+  卡片可选读取 `timeline-summaries.json`（摘要 + tag，同一份 AI 记录；1.2 只搭骨架，不生成），
+  契约见 `docs/summary-contract.md`；索引仍是构建期 `replay/public/timeline-index.json`，
+  含 `turns` / `rounds` / `models` / `primary_model` / `user_chars` / `assistant_chars`，标题取 `chats.json`；
 - 资料库可以自建文件夹（当标签用，一条资源可属多个）并上传自己的文件；
   上传字节在 `data/private/library-files/`，不进 `archive/`，任何路径都不删原文件；
 - 附件随页拷贝：并行渲染的每一页都写自己会话的附件字节，`replay/archive-resources` 与 `dist` 都是 321 个文件，
@@ -307,12 +308,13 @@ npm run verify:archive      # 只读检查档案结构
 **时间（时间线 / 时间轴，本轮完成）**
 
 - `timeline-index.mjs` 在 `npm run library` 时生成 `replay/public/timeline-index.json`：每个会话的
-  首/末条可见轮次时间、首末锚点消息 ID、可见轮次 `turns`、用户轮 `rounds`、按本地日期的轮数；标题仍取 `chats.json`；
+  首/末条可见轮次时间、首末锚点消息 ID、可见轮次 `turns`、用户轮 `rounds`、模型 `models` /
+  `primary_model`、字符 `user_chars` / `assistant_chars`、按本地日期的轮数；标题仍取 `chats.json`；
 - `build-timeline-page.mjs` 生成顶层 `replay/timeline.html`：页内「时间线」列表 +「时间轴」缩略/详情；
   `timeline.js` 负责列表和视图切换（`?view=axis` + `localStorage`），`timeline-axis.js` 负责真实日历
   缩略图、详情、视口框与双向同步；`build-timeline-nav.mjs` 的侧栏标签为「时间」；
 - 只统计阅读页可见轮次（提问/最终回复/生成图片）；隐藏记录、推理、工具往来不计；时间用消息
-  `created_at`（构建机本地时区），会话 `created_at` 是分享创建时间，只作辅助；
+  `created_at`（构建机 IANA 时区，写入索引），会话 `created_at` 是分享创建时间，只作辅助；
 - 时间线呈现：两行式行、月份标题吸顶并带计数、统一 `M月D日 HH:mm`、排序切换；时间轴：完整
   7–10 月真实日历（123 天）、缩略 7px/天、详情 96px/天、3 条泳道、视口同步；
 - 证据：36 会话 / 3142 可见轮次；浏览器测试覆盖视图切换、时间轴 36 卡/36 条、视口 slider、

@@ -77,6 +77,11 @@
   const roundsOf = item => Number.isFinite(item.rounds)
     ? item.rounds
     : Math.ceil((Number.isFinite(item.turns) ? item.turns : 0) / 2);
+  const compactChars = value => {
+    if (!Number.isFinite(value)) return '—';
+    if (value < 1000) return String(value);
+    return (value / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  };
   const normalizeSummaries = payload => {
     if (!payload || payload.kind !== 'ceobe.timeline-summaries'
       || !payload.conversations || typeof payload.conversations !== 'object') return new Map();
@@ -194,6 +199,8 @@
 
       const head = document.createElement('span');
       head.className = 'ceobe-timeline-card-head';
+      const identity = document.createElement('span');
+      identity.className = 'ceobe-timeline-card-identity';
       const titleLine = document.createElement('span');
       titleLine.className = 'ceobe-timeline-card-title-line';
       const title = document.createElement('span');
@@ -206,58 +213,14 @@
         rounds.textContent = `${roundsOf(item)} 轮`;
         titleLine.append(rounds);
       }
-      head.append(titleLine);
-
-      let accessible = [titleOf(item), undated ? '时间未知' : rangeLabel(item.first, item.last), `${roundsOf(item)} 轮对话`].filter(Boolean).join('，');
       const when = undated ? '时间未知' : rangeLabel(item.first, item.last);
-      let span = 0;
-      let active = 0;
-      if (!undated) {
-        span = spanOf(item.first, item.last);
-        for (let offset = 0; offset < span; offset += 1) {
-          if ((item.days || {})[dayKeyAt(item.first, offset)]) active += 1;
-        }
-        const activity = document.createElement('span');
-        activity.className = 'ceobe-timeline-card-activity';
-        activity.title = `会话活跃时间：${active}/${span} 天有消息`;
-        activity.setAttribute('aria-label', `会话活跃时间：${active}/${span} 天有消息`);
-        const bar = document.createElement('span');
-        bar.className = 'ceobe-timeline-card-activity-bar';
-        bar.setAttribute('aria-hidden', 'true');
-        for (let offset = 0; offset < span; offset += 1) {
-          const segment = document.createElement('span');
-          segment.className = 'ceobe-timeline-card-activity-segment'
-            + ((item.days || {})[dayKeyAt(item.first, offset)] ? ' is-filled' : '');
-          bar.append(segment);
-        }
-        const label = document.createElement('span');
-        label.className = 'ceobe-timeline-card-activity-label';
-        label.textContent = '会话活跃时间';
-        activity.append(bar, label);
-        head.append(activity);
-        accessible += `，会话活跃时间 ${active}/${span} 天有消息`;
-      }
-      link.append(head);
-
       const time = document.createElement('span');
       time.className = 'ceobe-timeline-card-time';
       time.textContent = when;
-      link.append(time);
+      identity.append(titleLine, time);
+      head.append(identity);
 
       const ai = aiOf(item);
-      if (ai.summary || ai.tags.length) {
-        const divider = document.createElement('span');
-        divider.className = 'ceobe-timeline-card-divider';
-        link.append(divider);
-      }
-      if (ai.summary) {
-        const summary = document.createElement('span');
-        summary.className = 'ceobe-timeline-card-summary';
-        summary.dataset.aiSummary = '';
-        summary.textContent = ai.summary;
-        link.append(summary);
-        accessible += `，AI 摘要：${ai.summary}`;
-      }
       if (ai.tags.length) {
         const tags = document.createElement('span');
         tags.className = 'ceobe-timeline-card-tags';
@@ -266,11 +229,100 @@
           const tag = document.createElement('span');
           tag.className = 'ceobe-timeline-card-tag';
           tag.textContent = text;
+          tag.title = text;
           tags.append(tag);
         }
-        link.append(tags);
-        accessible += `，AI 标签：${ai.tags.join('、')}`;
+        head.append(tags);
       }
+      link.append(head);
+
+      if (ai.summary) {
+        const summary = document.createElement('span');
+        summary.className = 'ceobe-timeline-card-summary';
+        summary.dataset.aiSummary = '';
+        summary.textContent = ai.summary;
+        link.append(summary);
+      }
+
+      let span = 0;
+      let active = 0;
+      if (!undated) {
+        span = spanOf(item.first, item.last);
+        for (let offset = 0; offset < span; offset += 1) {
+          if ((item.days || {})[dayKeyAt(item.first, offset)]) active += 1;
+        }
+      }
+      const models = Array.isArray(item.models) ? item.models.filter(Boolean) : [];
+      const primaryModel = item.primary_model || models[0] || '';
+      const modelText = primaryModel
+        ? primaryModel + (models.length > 1 ? `（共${models.length}个）` : '')
+        : '—';
+      const modelTitle = models.length ? `模型：${models.join('、')}` : '模型：未知';
+      const userChars = Number.isFinite(item.user_chars) ? item.user_chars : null;
+      const assistantChars = Number.isFinite(item.assistant_chars) ? item.assistant_chars : null;
+      const charsTitle = userChars == null || assistantChars == null
+        ? '字符：未知'
+        : `字符（不含空白）：用户 ${userChars.toLocaleString('zh-CN')} · 助手 ${assistantChars.toLocaleString('zh-CN')}`;
+      const activeText = undated ? '—' : `${active}/${span} 天`;
+
+      const stats = document.createElement('span');
+      stats.className = 'ceobe-timeline-card-stats';
+      const modelStat = document.createElement('span');
+      modelStat.className = 'ceobe-timeline-card-stat ceobe-timeline-card-stat-model';
+      const modelLabel = document.createElement('span');
+      modelLabel.className = 'ceobe-timeline-card-stat-label';
+      modelLabel.textContent = '模型';
+      const modelValue = document.createElement('span');
+      modelValue.className = 'ceobe-timeline-card-stat-value';
+      modelValue.textContent = modelText;
+      modelValue.title = modelTitle;
+      modelStat.append(modelLabel, modelValue);
+
+      const charStat = document.createElement('span');
+      charStat.className = 'ceobe-timeline-card-stat ceobe-timeline-card-stat-chars';
+      const charLabel = document.createElement('span');
+      charLabel.className = 'ceobe-timeline-card-stat-label';
+      charLabel.textContent = '字符';
+      const charValues = document.createElement('span');
+      charValues.className = 'ceobe-timeline-card-char-values';
+      for (const [kind, value] of [['用户', userChars], ['助手', assistantChars]]) {
+        const pair = document.createElement('span');
+        pair.className = 'ceobe-timeline-card-char-pair';
+        const pairLabel = document.createElement('span');
+        pairLabel.className = 'ceobe-timeline-card-char-kind';
+        pairLabel.textContent = kind;
+        const pairValue = document.createElement('span');
+        pairValue.className = 'ceobe-timeline-card-char-value';
+        pairValue.textContent = compactChars(value);
+        pair.append(pairLabel, pairValue);
+        charValues.append(pair);
+      }
+      charStat.title = charsTitle;
+      charStat.append(charLabel, charValues);
+
+      const activeStat = document.createElement('span');
+      activeStat.className = 'ceobe-timeline-card-stat ceobe-timeline-card-stat-active';
+      const activeLabel = document.createElement('span');
+      activeLabel.className = 'ceobe-timeline-card-stat-label';
+      activeLabel.textContent = '活跃';
+      const activeValue = document.createElement('span');
+      activeValue.className = 'ceobe-timeline-card-stat-value';
+      activeValue.textContent = activeText;
+      activeStat.append(activeLabel, activeValue);
+
+      stats.append(modelStat, charStat, activeStat);
+      link.append(stats);
+
+      const accessible = [
+        titleOf(item),
+        when,
+        `${roundsOf(item)} 轮对话`,
+        modelTitle,
+        charsTitle,
+        `活跃 ${activeText}`,
+        ai.summary ? `AI 摘要：${ai.summary}` : '',
+        ai.tags.length ? `AI 标签：${ai.tags.join('、')}` : '',
+      ].filter(Boolean).join('，');
       link.setAttribute('aria-label', accessible);
       row.append(link);
       list.append(row);

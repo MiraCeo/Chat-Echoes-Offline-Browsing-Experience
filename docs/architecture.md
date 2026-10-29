@@ -164,16 +164,17 @@ ChatGPT 分享页面及公开资源
 
 ## 时间（时间线 / 时间轴）
 
-`timeline-index.mjs` 在 `npm run library` 时生成 `replay/public/timeline-index.json`：每个会话的首/末条可见轮次时间、首末锚点消息 ID、可见轮次 `turns`、用户轮 `rounds`，以及按本地日期的轮数；标题不写入索引，页面从 `chats.json` 取当前标题，重命名不用重建。只统计阅读页可见轮次（提问、最终回复、生成图片），隐藏记录、推理与工具往来不计；时间取消息 `created_at`（构建机 IANA 时区，写入索引 `timezone`，页面统一按它显示），会话的 `created_at` 是分享创建时间，只作辅助。
+`timeline-index.mjs` 在 `npm run library` 时生成 `replay/public/timeline-index.json`：每个会话的首/末条可见轮次时间、首末锚点消息 ID、可见轮次 `turns`、用户轮 `rounds`、可见助手模型 `models` / `primary_model`、用户与助手字符数 `user_chars` / `assistant_chars`，以及按本地日期的轮数；标题不写入索引，页面从 `chats.json` 取当前标题，重命名不用重建。只统计阅读页可见轮次（提问、最终回复、生成图片），隐藏记录、推理与工具往来不计；时间取消息 `created_at`（构建机 IANA 时区，写入索引 `timezone`，页面统一按它显示），会话的 `created_at` 是分享创建时间，只作辅助。
 
 `build-timeline-page.mjs` 从导入页骨架生成顶层 `replay/timeline.html`，页内分「时间线」（列表）和「时间轴」（缩略 + 详情）两个 tab；视图状态写入 `?view=axis` 与 `localStorage`，由 `timeline.js` 切换。侧栏入口由 `build-timeline-nav.mjs` 克隆官方「项目」行插入到「项目」与「更多」之间（每趟先清后插），标签为「时间」，当前页带 `aria-current="page"`。
 
 时间线视图由 `timeline.js` 渲染年/月分组、两行式行、吸顶月标题和首条消息排序；同一面板内可切
-「列表 / 卡片」：卡片是两列网格（窄屏单列），标题旁显示轮数，右上角是按 `days` 生成的活动条
-（一天一段），底部不再放进度条，布局选择写 `localStorage`。页面可选读取
-`replay/public/timeline-summaries.json`，只在卡片视图、`status=fresh` 且
-`source.last_message_id` 匹配时显示 1–2 行摘要和最多 4 个 AI tag；文件缺失/过期/源不匹配时不占位。
-契约见 `docs/summary-contract.md`，1.2 不生成摘要/tag。
+「列表 / 卡片」：卡片是两列等高网格（200px），标题旁显示轮数，时间在标题下，右上角是 AI tag；
+中间是 2 行摘要；底栏固定为模型 / 字符（用户、助手两个子列）/ 活跃三列。多模型只显示主模型
+加 `（共N个）`，完整模型在 tooltip；字符是非空白字符数。摘要短时空白留在正文区，footer 始终贴底。
+布局选择写 `localStorage`。页面可选读取 `replay/public/timeline-summaries.json`，只在卡片视图、
+`status=fresh` 且 `source.last_message_id` 匹配时显示 1–2 行摘要和最多 4 个 AI tag；
+文件缺失/过期/源不匹配时不占位。契约见 `docs/summary-contract.md`，1.2 不生成摘要/tag。
 
 时间轴视图由 `timeline-axis.js` 独立渲染：完整 7–10 月的真实日历（缩略 7px/天、详情 96px/天），
 3 条泳道、会话跨度卡片、缩略视口框；滚动详情同步视口，点击/拖动缩略图定位详情，视口框有 slider

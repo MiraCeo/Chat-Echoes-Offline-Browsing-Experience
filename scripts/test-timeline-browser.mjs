@@ -89,21 +89,26 @@ try {
     assert.ok((await firstHref()).includes(newest.id), '切回最新在前');
   }
 
-  // 卡片视图：与列表同一批会话，2 列网格、右上角活动条、布局选择持久化。
+  // 卡片视图：固定高度、两列、三列统计底栏，布局选择持久化。
   await page.locator('[data-ceobe-timeline-layout="cards"]').click();
   await page.waitForTimeout(120);
   const cardsState = await page.evaluate(() => {
     const grid = document.querySelector('.ceobe-timeline-cards');
+    const cards = [...document.querySelectorAll('.ceobe-timeline-card')];
     return {
-      cards: document.querySelectorAll('.ceobe-timeline-card').length,
+      cards: cards.length,
       rows: document.querySelectorAll('.ceobe-timeline-row').length,
       columns: grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').length : 0,
-      segments: document.querySelectorAll('.ceobe-timeline-card-activity-segment').length,
-      filled: document.querySelectorAll('.ceobe-timeline-card-activity-segment.is-filled').length,
-      activities: document.querySelectorAll('.ceobe-timeline-card-activity').length,
-      singleActivity: [...document.querySelectorAll('.ceobe-timeline-card-activity')]
-        .filter(node => node.querySelectorAll('.ceobe-timeline-card-activity-segment').length === 1).length,
+      stats: document.querySelectorAll('.ceobe-timeline-card-stats').length,
+      statCells: document.querySelectorAll('.ceobe-timeline-card-stat').length,
+      charPairs: document.querySelectorAll('.ceobe-timeline-card-char-pair').length,
+      models: [...document.querySelectorAll('.ceobe-timeline-card-stat-model .ceobe-timeline-card-stat-value')].map(node => node.textContent),
+      multiModels: [...document.querySelectorAll('.ceobe-timeline-card-stat-model .ceobe-timeline-card-stat-value')]
+        .filter(node => node.textContent.includes('（共')).length,
+      charKinds: [...document.querySelectorAll('.ceobe-timeline-card-char-kind')].map(node => node.textContent),
+      active: [...document.querySelectorAll('.ceobe-timeline-card-stat-active .ceobe-timeline-card-stat-value')].map(node => node.textContent),
       rounds: document.querySelectorAll('.ceobe-timeline-card-rounds').length,
+      heights: cards.map(card => Math.round(card.getBoundingClientRect().height)),
       pressed: document.querySelector('[data-ceobe-timeline-layout="cards"]')?.getAttribute('aria-pressed'),
       overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth,
     };
@@ -111,11 +116,17 @@ try {
   assert.equal(cardsState.cards, expected, '卡片视图应有全部会话卡片');
   assert.equal(cardsState.rows, 0, '卡片视图不渲染列表行');
   assert.equal(cardsState.columns, 2, '桌面卡片为两列');
-  assert.ok(cardsState.segments > 0, '卡片应有活动条分段');
-  assert.ok(cardsState.filled > 0, '活动条应有已填充段');
-  assert.equal(cardsState.activities, expected, '每张卡片都应有一个活动条');
-  assert.ok(cardsState.singleActivity > 0, '单日会话应只有一个活动段');
+  assert.equal(cardsState.stats, expected, '每张卡片都应有统计底栏');
+  assert.equal(cardsState.statCells, expected * 3, '每张卡片三列统计');
+  assert.equal(cardsState.charPairs, expected * 2, '字符列拆成用户/助手两个子列');
+  assert.equal(cardsState.charKinds.length, expected * 2);
+  assert.deepEqual(cardsState.charKinds.slice(0, 2), ['用户', '助手'], '字符子列有独立标签');
+  assert.equal(cardsState.multiModels, index.conversations.filter(item => Array.isArray(item.models) && item.models.length > 1).length, '多模型显示主模型 + 共N个');
+  assert.ok(cardsState.models.every(Boolean), '每张卡片都有模型');
+  assert.ok(cardsState.active.every(text => /^\d+\/\d+ 天$/.test(text)), '活跃列显示 N/M 天');
   assert.equal(cardsState.rounds, expected, '每张卡片都显示轮数');
+  assert.equal(new Set(cardsState.heights).size, 1, '固定卡片应等高');
+  assert.equal(cardsState.heights[0], 200, '固定卡片高度为 200px');
   assert.equal(cardsState.pressed, 'true');
   assert.equal(cardsState.overflowX, false);
   await page.reload({ waitUntil: 'networkidle' });
@@ -250,13 +261,14 @@ try {
     await utcPage.locator('[data-ceobe-timeline-layout="cards"]').click();
     const utcCards = await utcPage.evaluate(() => ({
       cards: document.querySelectorAll('.ceobe-timeline-card').length,
-      activities: document.querySelectorAll('.ceobe-timeline-card-activity').length,
-      invalid: [...document.querySelectorAll('.ceobe-timeline-card-activity-bar')]
-        .filter(bar => bar.querySelectorAll('.is-filled').length > bar.children.length).length,
+      stats: document.querySelectorAll('.ceobe-timeline-card-stats').length,
+      models: [...document.querySelectorAll('.ceobe-timeline-card-stat-model .ceobe-timeline-card-stat-value')].every(node => node.textContent.length > 0),
+      active: [...document.querySelectorAll('.ceobe-timeline-card-stat-active .ceobe-timeline-card-stat-value')].every(node => /^\d+\/\d+ 天$/.test(node.textContent)),
     }));
     assert.equal(utcCards.cards, expected);
-    assert.equal(utcCards.activities, expected);
-    assert.equal(utcCards.invalid, 0, '活动条填充段不能超过总段数');
+    assert.equal(utcCards.stats, expected);
+    assert.equal(utcCards.models, true, 'UTC 浏览器仍显示模型');
+    assert.equal(utcCards.active, true, 'UTC 浏览器仍显示活跃天数');
     await utcPage.locator('[data-ceobe-view="axis"]').click();
     await utcPage.waitForFunction(() => document.querySelectorAll('.ceobe-axis-card').length > 0);
     assert.equal(await utcPage.locator('.ceobe-axis-card').count(), expected, 'UTC 浏览器时间轴仍有全部会话');
