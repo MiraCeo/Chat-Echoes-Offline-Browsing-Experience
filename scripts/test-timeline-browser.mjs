@@ -101,12 +101,15 @@ try {
       columns: grid ? getComputedStyle(grid).gridTemplateColumns.split(' ').length : 0,
       stats: document.querySelectorAll('.ceobe-timeline-card-stats').length,
       statCells: document.querySelectorAll('.ceobe-timeline-card-stat').length,
-      charPairs: document.querySelectorAll('.ceobe-timeline-card-char-pair').length,
-      models: [...document.querySelectorAll('.ceobe-timeline-card-stat-model .ceobe-timeline-card-stat-value')].map(node => node.textContent),
-      multiModels: [...document.querySelectorAll('.ceobe-timeline-card-stat-model .ceobe-timeline-card-stat-value')]
-        .filter(node => node.textContent.includes('（共')).length,
-      charKinds: [...document.querySelectorAll('.ceobe-timeline-card-char-kind')].map(node => node.textContent),
+      labels: [...document.querySelectorAll('.ceobe-timeline-card-stat-label')].map(node => node.textContent),
+      models: [...document.querySelectorAll('.ceobe-timeline-card-model-value')].map(node => node.textContent),
+      multiMarkers: [...document.querySelectorAll('.ceobe-timeline-card-model-value')]
+        .filter(node => node.textContent.includes('共')).length,
       active: [...document.querySelectorAll('.ceobe-timeline-card-stat-active .ceobe-timeline-card-stat-value')].map(node => node.textContent),
+      activityTones: [...document.querySelectorAll('.ceobe-timeline-card-activity-bar span')]
+        .map(node => node.className).filter(Boolean),
+      summaries: document.querySelectorAll('.ceobe-timeline-card-summary').length,
+      tags: document.querySelectorAll('.ceobe-timeline-card-tag').length,
       rounds: document.querySelectorAll('.ceobe-timeline-card-rounds').length,
       heights: cards.map(card => Math.round(card.getBoundingClientRect().height)),
       pressed: document.querySelector('[data-ceobe-timeline-layout="cards"]')?.getAttribute('aria-pressed'),
@@ -117,16 +120,15 @@ try {
   assert.equal(cardsState.rows, 0, '卡片视图不渲染列表行');
   assert.equal(cardsState.columns, 2, '桌面卡片为两列');
   assert.equal(cardsState.stats, expected, '每张卡片都应有统计底栏');
-  assert.equal(cardsState.statCells, expected * 3, '每张卡片三列统计');
-  assert.equal(cardsState.charPairs, expected * 2, '字符列拆成用户/助手两个子列');
-  assert.equal(cardsState.charKinds.length, expected * 2);
-  assert.deepEqual(cardsState.charKinds.slice(0, 2), ['用户', '助手'], '字符子列有独立标签');
-  assert.equal(cardsState.multiModels, index.conversations.filter(item => Array.isArray(item.models) && item.models.length > 1).length, '多模型显示主模型 + 共N个');
-  assert.ok(cardsState.models.every(Boolean), '每张卡片都有模型');
-  assert.ok(cardsState.active.every(text => /^\d+\/\d+ 天$/.test(text)), '活跃列显示 N/M 天');
+  assert.equal(cardsState.statCells, expected * 3, '每张卡片三组统计');
+  assert.deepEqual(cardsState.labels.slice(0, 3), ['用户输入：', '模型输出：', '活跃天数：']);
+  assert.ok(cardsState.models.every(Boolean), '每张卡片右上都有模型');
+  assert.equal(cardsState.multiMarkers, 0, '多模型只显示主模型，不加共N个');
+  assert.ok(cardsState.active.every(text => /^\d+\/\d+$/.test(text)), '活跃列显示 N/M');
+  assert.ok(cardsState.activityTones.every(value => ['is-low', 'is-mid', 'is-high'].includes(value)), '活跃段只有三档颜色');
   assert.equal(cardsState.rounds, expected, '每张卡片都显示轮数');
   assert.equal(new Set(cardsState.heights).size, 1, '固定卡片应等高');
-  assert.equal(cardsState.heights[0], 200, '固定卡片高度为 200px');
+  assert.equal(cardsState.heights[0], 224, '固定卡片高度为 224px');
   assert.equal(cardsState.pressed, 'true');
   assert.equal(cardsState.overflowX, false);
   await page.reload({ waitUntil: 'networkidle' });
@@ -262,8 +264,8 @@ try {
     const utcCards = await utcPage.evaluate(() => ({
       cards: document.querySelectorAll('.ceobe-timeline-card').length,
       stats: document.querySelectorAll('.ceobe-timeline-card-stats').length,
-      models: [...document.querySelectorAll('.ceobe-timeline-card-stat-model .ceobe-timeline-card-stat-value')].every(node => node.textContent.length > 0),
-      active: [...document.querySelectorAll('.ceobe-timeline-card-stat-active .ceobe-timeline-card-stat-value')].every(node => /^\d+\/\d+ 天$/.test(node.textContent)),
+      models: [...document.querySelectorAll('.ceobe-timeline-card-model-value')].every(node => node.textContent.length > 0),
+      active: [...document.querySelectorAll('.ceobe-timeline-card-stat-active .ceobe-timeline-card-stat-value')].every(node => /^\d+\/\d+$/.test(node.textContent)),
     }));
     assert.equal(utcCards.cards, expected);
     assert.equal(utcCards.stats, expected);
@@ -291,7 +293,7 @@ try {
         conversations: {
           [fresh.id]: {
             summary: '骨架摘要：这是一条用于验证卡片布局的测试摘要。',
-            tags: ['骨架标签', '测试'],
+            tags: ['骨架标签', '测试', '标签三', '标签四', '标签五', '标签六', '标签七', '标签八'],
             status: 'fresh',
             source: { last_message_id: fresh.last_message_id },
           },
@@ -332,8 +334,8 @@ try {
     assert.equal(summaryState.stale, false);
     assert.equal(summaryState.mismatch, false);
     assert.equal(summaryState.aiLabel, true, '摘要节点应带 data-ai-summary 标记');
-    assert.equal(summaryState.tagCount, 2, '摘要和 tag 来自同一条 fresh 记录');
-    assert.equal(summaryState.tagsText, '骨架标签、测试');
+    assert.equal(summaryState.tagCount, 7, '最多展示 6 个 tag，超出用 +N');
+    assert.match(summaryState.tagsText, /^骨架标签、测试、标签三、标签四、标签五、标签六、\+2$/);
     assert.equal(summaryState.tagsAi, true, 'tag 容器应带 data-ai-tags 标记');
     assert.equal(summaryState.staleTags, false, '过期/不匹配记录的 tag 不应显示');
     assert.deepEqual(summaryErrors, [], '摘要夹具没有页面错误');

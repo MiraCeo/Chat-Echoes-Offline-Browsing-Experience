@@ -169,11 +169,12 @@ ChatGPT 分享页面及公开资源
 `build-timeline-page.mjs` 从导入页骨架生成顶层 `replay/timeline.html`，页内分「时间线」（列表）和「时间轴」（缩略 + 详情）两个 tab；视图状态写入 `?view=axis` 与 `localStorage`，由 `timeline.js` 切换。侧栏入口由 `build-timeline-nav.mjs` 克隆官方「项目」行插入到「项目」与「更多」之间（每趟先清后插），标签为「时间」，当前页带 `aria-current="page"`。
 
 时间线视图由 `timeline.js` 渲染年/月分组、两行式行、吸顶月标题和首条消息排序；同一面板内可切
-「列表 / 卡片」：卡片是两列等高网格（200px），标题旁显示轮数，时间在标题下，右上角是 AI tag；
-中间是 2 行摘要；底栏固定为模型 / 字符（用户、助手两个子列）/ 活跃三列。多模型只显示主模型
-加 `（共N个）`，完整模型在 tooltip；字符是非空白字符数。摘要短时空白留在正文区，footer 始终贴底。
+「列表 / 卡片」：卡片是两列等高网格（224px）；标题/轮数在左，模型在右上；中间是 4 行摘要，
+tag 在摘要之后占整行；底栏一行是用户输入、模型输出、活跃天数。多模型只显示主模型，
+完整模型在 tooltip；字符是非空白字符数。摘要短时空白留在正文区，footer 始终贴底。
+活跃条按日轮次分三档绿色（1–10 / 11–50 / 51+），无消息留白。
 布局选择写 `localStorage`。页面可选读取 `replay/public/timeline-summaries.json`，只在卡片视图、
-`status=fresh` 且 `source.last_message_id` 匹配时显示 1–2 行摘要和最多 4 个 AI tag；
+`status=fresh` 且 `source.last_message_id` 匹配时显示 4 行摘要和最多 6 个 AI tag（超出显示 `+N`）；
 文件缺失/过期/源不匹配时不占位。契约见 `docs/summary-contract.md`，1.2 不生成摘要/tag。
 
 时间轴视图由 `timeline-axis.js` 独立渲染：完整 7–10 月的真实日历（缩略 7px/天、详情 96px/天），

@@ -233,8 +233,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  height: 200px;
-  padding: 13px 14px 12px;
+  height: 224px;
+  padding: 14px 16px 12px;
   overflow: hidden;
   border: 1px solid var(--border-default, #e4e7ec);
   border-radius: 10px;
@@ -256,13 +256,13 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
-  min-height: 62px;
+  min-height: 48px;
 }
 .ceobe-timeline-card-identity {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
   min-width: 0;
+  flex-direction: column;
+  gap: 3px;
 }
 .ceobe-timeline-card-title-line {
   display: flex;
@@ -271,119 +271,133 @@
   min-width: 0;
 }
 .ceobe-timeline-card-title {
-  display: -webkit-box;
   min-width: 0;
   overflow: hidden;
   color: var(--text-primary, #111);
   font-size: 15px;
   font-weight: 500;
   line-height: 1.4;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ceobe-timeline-card-rounds {
   flex: none;
   color: #667085;
-  font-size: 11px;
+  font-size: 11.5px;
   font-variant-numeric: tabular-nums;
   line-height: 1.5;
   white-space: nowrap;
 }
 .ceobe-timeline-card-time {
   color: #667085;
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 12.5px;
+  line-height: 1.35;
   font-variant-numeric: tabular-nums;
 }
-.ceobe-timeline-card-tags {
-  display: flex;
-  flex: none;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 4px;
-  width: 148px;
-  max-height: 32px;
-  overflow: hidden;
+.ceobe-timeline-card-model {
+  flex: 0 0 152px;
+  width: 152px;
+  min-width: 0;
+  text-align: right;
 }
-.ceobe-timeline-card-tag {
-  max-width: 68px;
+.ceobe-timeline-card-model-value {
+  display: block;
   overflow: hidden;
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: #f2f4f7;
-  color: #667085;
-  font-size: 9px;
-  line-height: 1.5;
+  color: #344054;
+  font-size: 12px;
+  line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .ceobe-timeline-card-summary {
   display: -webkit-box;
   flex: none;
-  height: 39px;
+  height: 76px;
   overflow: hidden;
   color: #475467;
   font-size: 12px;
-  line-height: 1.6;
+  line-height: 1.55;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 4;
 }
+.ceobe-timeline-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-height: 34px;
+  overflow: hidden;
+}
+.ceobe-timeline-card-tag {
+  max-width: 96px;
+  overflow: hidden;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f2f4f7;
+  color: #667085;
+  font-size: 10px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ceobe-timeline-card-tag.tone-0 { background: #eef4fb; color: #3f5f7f; }
+.ceobe-timeline-card-tag.tone-1 { background: #fbeeee; color: #8a4b55; }
+.ceobe-timeline-card-tag.tone-2 { background: #fbf4e9; color: #7a5b32; }
+.ceobe-timeline-card-tag.tone-3 { background: #f5effa; color: #66507a; }
+.ceobe-timeline-card-tag-more { background: #eef1f4; color: #475467; }
 .ceobe-timeline-card-stats {
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.5fr) auto;
-  align-items: end;
-  gap: 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 28px;
   margin-top: auto;
-  padding-top: 7px;
+  padding-top: 6px;
   border-top: 1px solid #f2f4f7;
 }
 .ceobe-timeline-card-stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
   min-width: 0;
+  white-space: nowrap;
 }
 .ceobe-timeline-card-stat-label {
-  display: block;
-  margin-bottom: 1px;
-  color: #98a2b3;
-  font-size: 8px;
+  color: #475467;
+  font-size: 10px;
   line-height: 1.2;
   white-space: nowrap;
 }
 .ceobe-timeline-card-stat-value {
-  display: block;
   overflow: hidden;
   color: #475467;
-  font-size: 10px;
+  font-size: 11.5px;
   font-variant-numeric: tabular-nums;
-  line-height: 1.4;
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ceobe-timeline-card-char-values {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+.ceobe-timeline-card-stat-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  text-align: right;
 }
-.ceobe-timeline-card-char-pair {
+.ceobe-timeline-card-stat-active .ceobe-timeline-card-stat-value { font-size: 11px; }
+.ceobe-timeline-card-activity-bar {
   display: flex;
-  flex-direction: column;
-  min-width: 0;
+  gap: 1px;
+  width: 54px;
+  height: 5px;
 }
-.ceobe-timeline-card-char-kind {
-  color: #98a2b3;
-  font-size: 8px;
-  line-height: 1.2;
-  white-space: nowrap;
+.ceobe-timeline-card-activity-bar span {
+  flex: 1;
+  min-width: 1px;
+  border-radius: 1px;
+  background: transparent;
 }
-.ceobe-timeline-card-char-value {
-  overflow: hidden;
-  color: #475467;
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.4;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ceobe-timeline-card-stat-active { text-align: right; }
+.ceobe-timeline-card-activity-bar span.is-low { background: #d8ead9; }
+.ceobe-timeline-card-activity-bar span.is-mid { background: #9cc7a2; }
+.ceobe-timeline-card-activity-bar span.is-high { background: #5b9367; }
 .ceobe-timeline-empty {
   margin: 40px 8px;
   color: #667085;

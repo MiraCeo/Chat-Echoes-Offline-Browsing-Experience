@@ -69,7 +69,7 @@
   const fmtDay = seconds => { const p = parts(seconds); return `${p.year}-${pad(p.month)}-${pad(p.day)}`; };
   const fmtShortDay = seconds => { const p = parts(seconds); return `${p.month}/${p.day}`; };
   const fmtCardDay = seconds => { const p = parts(seconds); return `${p.month}月${p.day}日`; };
-  const fmtRange = (first, last) => `${fmtDay(first)} → ${fmtDay(last)}`;
+  const fmtRange = (first, last) => `${fmtDay(first)} - ${fmtDay(last)}`;
   const monthLabel = key => { const [year, month] = key.split('-'); return `${year} 年 ${Number(month)} 月`; };
   const el = (tag, cls, text) => {
     const node = document.createElement(tag);

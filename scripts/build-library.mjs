@@ -262,6 +262,13 @@ async function buildReader(library, selectedId, onlyIds = null) {
   await decoratePages(library, plan.changed);
   await step('search-index', async () => writeSearchIndex(projectRoot, library));
   await step('timeline-index', async () => writeTimelineIndex(projectRoot, library));
+  await step('timeline-summaries', async () => {
+    const source = join(projectRoot, 'data/private/timeline-summaries.json');
+    try { await stat(source); } catch { return; }
+    const target = join(projectRoot, 'replay/public/timeline-summaries.json');
+    await mkdir(dirname(target), { recursive: true });
+    await cp(source, target);
+  });
   await step('fonts', async () => localizeGeneratedFonts(join(projectRoot,'replay')));
   await finalizeDecorationPlan(projectRoot, plan, plan.changed);
   console.log(`Decorations: ${plan.changed.length} of ${plan.total} page(s) refreshed (${plan.total - plan.changed.length} unchanged).`);

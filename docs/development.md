@@ -296,11 +296,12 @@ XLSX 走“构建期解析 + 静态片段”的只读路线，分三段：
 - 视图切换：`timeline.js` 用 `data-ceobe-view` tab 与 `data-ceobe-view-panel` 面板切换，
   状态写入 `?view=axis` 与 `localStorage`；切到时间轴才首次加载 `timeline-axis.js` 的图表；
   时间线面板内再用 `data-ceobe-timeline-layout` 切「列表 / 卡片」，布局写 `localStorage`；
-  卡片复用同一批数据、排序与月份分组，固定 200px 高；头部是标题/时间 + 右上 tag，中间摘要，
-  底栏固定为模型 / 字符（用户、助手两个子列）/ 活跃；多模型只显示主模型 `（共N个）`；
+  卡片复用同一批数据、排序与月份分组，固定 224px 高；标题/轮数在左、模型在右上；中间 4 行摘要，
+  tag 在摘要后占整行；底栏一行是用户输入 / 模型输出 / 活跃天数；多模型只显示主模型；
 - 摘要 + tag 骨架：`timeline.js` 可选读取 `replay/public/timeline-summaries.json`，只在卡片视图、
-  `fresh` 且 `source.last_message_id` 匹配时渲染 1–2 行摘要和最多 4 个 tag；缺失/过期/不匹配不占位；
-  契约见 `docs/summary-contract.md`，1.2 不生成摘要/tag、不写假数据；
+  `fresh` 且 `source.last_message_id` 匹配时渲染 4 行摘要和最多 6 个 tag（超出 `+N`）；缺失/过期/不匹配不占位；
+  源文件是 `data/private/timeline-summaries.json`，`build-library.mjs` 的 `timeline-summaries` 步骤在
+  重建 replay 后复制过去；契约见 `docs/summary-contract.md`，1.2 不生成摘要/tag、不写假数据；
 - 时区：`timeline-index.mjs` 把构建机 IANA 时区写入索引 `timezone`；`timeline.js` 与
   `timeline-axis.js` 用 `Intl.DateTimeFormat` 按该时区格式化（不跟随浏览器时区）；
 - 卡片统计：索引存 `models` / `primary_model` / `user_chars` / `assistant_chars`；
@@ -402,7 +403,7 @@ node scripts/test-copy-content.mjs
 | 连续调整宽度、离屏旁注与精确跳转 | `test-bookmark-resize-browser.mjs`（`npm run test:bookmarks:browser`）；在临时目录构建隔离副本（`bookmark-browser-fixture.mjs` + `fixtures/browser/bookmark-conversations.mjs`，100／500 条消息、20／100 条书签），不依赖本地 5173，不读写使用者归档；支持 `CEOBE_TEST_DIST=1` 与 `CEOBE_TEST_HEADED=1`，检查布局／样式重算次数、懒滚动、精确跳转与面板开关 |
 | 阅读边缘：书签面板停靠与上次阅读位置 | `test-reader-margin-browser.mjs`（`npm run test:reader-margins`）；在临时目录构建隔离副本（同一夹具，120／60 条消息、24／12 条书签），检查 1440→420 各宽度下展开或收起面板都不移动、不压缩正文，留白足够时停靠在正文左侧、不足时改为短浮层且点击别处即收起，空列表收缩为一行提示，以及按聊天恢复阅读位置的精确跳转、从头阅读、清除与只保存 ID＋偏移；全程只读 GET，不依赖本地 5173，不读写使用者归档；支持 `CEOBE_TEST_DIST=1` 与 `CEOBE_TEST_HEADED=1` |
 | 侧栏、搜索与整理 | `test-sidebar-controls.mjs`（标题与正文搜索、语法查询、片段高亮、页内精确跳转与跨页哈希跳转，新查询把结果列表送回顶部、后台刷新保留焦点与位置；正文索引和 `/api/chats` 均为只读夹具）、`test-search-query.mjs`（搜索语法：引号短语、排除、`A/B`、`title:`／`from:`／`has:`／`created:`／`messages:`、折叠与高亮切片）、`test-search-index.mjs`（索引只含可见提问／回复／代码，排除推理、隐藏上下文、引用与附件名；`kinds` 标签覆盖代码、表格、图片与附件）、`test-sidebar-polish.mjs`、`test-chat-organizer.mjs` |
-| 时间（时间线 / 时间轴） | `test-timeline-index.mjs`（可见轮次、用户轮 rounds、模型/主模型、用户与助手字符、首末锚点、本地日桶、缺时间、空会话、两次构建字节一致）、`test-timeline-browser.mjs`（「时间」入口、时间线/时间轴切换、列表/卡片切换与持久化、固定 200px 高度、三列统计、字符用户/助手子列、主模型 `（共N个）`、月份分组、条目数、时间轴卡/条数量、视口 slider、缩略点击定位、UTC 时区、摘要 + tag 骨架 fresh/stale/源不匹配、窄屏视口可见、跳转高亮、无横向溢出；需要本地服务） |
+| 时间（时间线 / 时间轴） | `test-timeline-index.mjs`（可见轮次、用户轮 rounds、模型/主模型、用户与助手字符、首末锚点、本地日桶、缺时间、空会话、两次构建字节一致）、`test-timeline-browser.mjs`（「时间」入口、时间线/时间轴切换、列表/卡片切换与持久化、固定 224px 高度、三组统计、模型右上、最多 6 个 tag、单行底栏、三档活跃颜色、月份分组、条目数、时间轴卡/条数量、视口 slider、缩略点击定位、UTC 时区、摘要 + tag 骨架 fresh/stale/源不匹配、窄屏视口可见、跳转高亮、无横向溢出；需要本地服务） |
 | 侧栏客户端渲染（删除不改页面） | `test-sidebar-client-render.mjs`：在临时目录真实复制运行时 + 三份夹具会话，跑真实构建与真实删除流程；断言“数据不变时重建逐字节一致”“删除一个会话后其余页面哈希不变、只有被删页面消失”“页面里没有 `#ceobe-chat-catalog`、保留一行静态回退与行模板”。不读写使用者归档；`test-decoration-plan.mjs` 锁住装饰指纹的精度（换首页只重做 5 个顶层页、项目数据变化才全量、单页改动只重做该页、指纹损坏回退全量） |
 | 导入与发布 | `test-local-import-api.mjs`（能力探测、同源/跨站拒绝、扩展 scheme 的 OPTIONS 预检与白名单、持久化重试与发布恢复）、`test-local-import-package-api.mjs`（采集包导入后重建索引/发布、`archived` 标记、重试不重复快照、临时包清理）、`test-share-package.mjs`（扩展 ZIP 写出与本地读取的往返、`format`/`version` 握手、旧包兼容、未来版本拒绝）、`test-only-index.mjs`（`--only` 落后索引只重建一次）、`test-production-import.mjs`、`test-link-import-browser.mjs` |
 | 离线资源 | `test-offline-resources.mjs` |

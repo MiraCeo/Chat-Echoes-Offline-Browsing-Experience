@@ -76,10 +76,13 @@ npm run verify:archive      # 只读检查档案结构
 - 采集扩展 0.5.1：popup 直接发送 + 端口探测、分享页内「发送到 CEOBE」按钮、无服务时导出 ZIP；
   采集包带 `format`/`version` 握手（旧包按 legacy 接受）；书签小工具打开导入页预填链接；
 - 时间：侧栏「项目」与「更多」之间的入口「时间」；`timeline.html` 内含「时间线」（年/月列表，
-  可切列表/卡片；卡片固定 200px、标题/时间 + 右上 tag、摘要、底栏模型/字符/活跃三列）与
+  可切列表/卡片；卡片固定 224px、标题/轮数在左、模型在右上、4 行摘要、tag 在摘要后占整行、
+  单行底栏为用户输入/模型输出/活跃天数）与
   「时间轴」（真实日历缩略 7px/天 + 详情 96px/天，3 条泳道、视口框双向同步）两个视图；
   视图状态写入 `?view=axis` 和 `localStorage`；布局状态写入 `localStorage`；
-  卡片可选读取 `timeline-summaries.json`（摘要 + tag，同一份 AI 记录；1.2 只搭骨架，不生成），
+  卡片读取 `timeline-summaries.json`（摘要 + tag，同一份 AI 记录；1.2 只搭骨架，不生成），
+  源文件 `data/private/timeline-summaries.json` 在 `npm run library` 时复制到 `replay/public`；
+  tag 最多显示 6 个、超出 `+N`；活跃条按日轮次三档绿色，无消息留白；
   契约见 `docs/summary-contract.md`；索引仍是构建期 `replay/public/timeline-index.json`，
   含 `turns` / `rounds` / `models` / `primary_model` / `user_chars` / `assistant_chars`，标题取 `chats.json`；
 - 资料库可以自建文件夹（当标签用，一条资源可属多个）并上传自己的文件；

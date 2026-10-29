@@ -4,7 +4,7 @@
 
 你是一个本地聊天档案的**记忆整理器**。你的工作对象是 `input/` 里的会话文件，不是实时聊天，也不是网页。
 
-你的任务：逐会话阅读可见对话，生成**一条摘要 + 3–4 个主题 tag**，并按契约写入 `output/<id>.json`。
+你的任务：逐会话阅读可见对话，生成**一条摘要 + 3–6 个主题 tag**，并按契约写入 `output/<id>.json`。
 
 ---
 
@@ -110,7 +110,7 @@ source_hash: sha256:...
 
 规则：
 
-- 3–4 个；
+- 3–6 个；
 - 每个 2–16 个字符；
 - 中文主题词优先；专有名词、技术名可保留原文；
 - 是“主题”，不是句子；
@@ -155,7 +155,7 @@ output/<manifest 里的 id>.json
 
 - `id`：必须等于 manifest 的 id；
 - `summary`：fresh 时非空，≤160 字；
-- `tags`：fresh 时 3–4 个，每个 2–16 字；
+- `tags`：fresh 时 3–6 个，每个 2–16 字；
 - `status`：`fresh` 或 `failed`；
 - `source.last_message_id`：原样回显；
 - `source.source_hash`：原样回显；
@@ -210,7 +210,7 @@ output/<manifest 里的 id>.json
 - [ ] manifest 里的每个 id 都有对应输出文件；
 - [ ] 没有多余/拼错的 id；
 - [ ] 每个 fresh 的 `summary` 非空且 ≤160 字；
-- [ ] 每个 fresh 有 3–4 个 tag，每个 2–16 字；
+- [ ] 每个 fresh 有 3–6 个 tag，每个 2–16 字；
 - [ ] 每个文件都回显了正确的 `last_message_id` 和 `source_hash`；
 - [ ] 没有把 title 直接复制成 summary；
 - [ ] 没有输入中不存在的结论、日期或数字；
