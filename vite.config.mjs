@@ -40,6 +40,7 @@ export default defineConfig({
         ...(existsSync(resolve(replayRoot, 'assets.html')) ? { assets: resolve(replayRoot, 'assets.html') } : {}),
         ...(existsSync(resolve(replayRoot, 'projects.html')) ? { projects: resolve(replayRoot, 'projects.html') } : {}),
         ...(existsSync(resolve(replayRoot, 'timeline.html')) ? { timeline: resolve(replayRoot, 'timeline.html') } : {}),
+        ...(existsSync(resolve(replayRoot, 'memory.html')) ? { memory: resolve(replayRoot, 'memory.html') } : {}),
         ...Object.fromEntries(conversationPages.map(name => [`conversations/${name.slice(0, -5)}`, resolve(conversationRoot, name)])),
       },
     },

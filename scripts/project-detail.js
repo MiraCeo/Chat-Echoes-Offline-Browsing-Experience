@@ -1,12 +1,13 @@
 (() => {
 const id=new URLSearchParams(location.search).get('id'),list=document.querySelector('[data-project-conversations]'),status=document.querySelector('[data-project-detail-status]'),title=document.querySelector('[name=project-title]'),input=document.querySelector('[data-ceobe-import-input]');
+const memoryGroups={User:'g1','国庆':'gq'};
 const initial=JSON.parse(document.getElementById('ceobe-projects-data').textContent),previews=JSON.parse(document.getElementById('ceobe-project-previews').textContent);
 let projects=initial,chats=[],generation=0,editing=false;
 const date=c=>{const v=c.updated_at||c.created_at||c.captured_at;const d=new Date(typeof v==='number'?v*1000:v);return Number.isNaN(d.getTime())?'':d.toLocaleDateString('zh-CN',{month:'long',day:'numeric'})};
 function render(){if(editing)return;const project=projects.find(p=>p.id===id);list.replaceChildren();document.body.dataset.projectImportId=project?.id||'';document.body.dataset.projectImportName=project?.name||'';
  const more=document.querySelector('[data-project-more-current]');if(more)more.dataset.projectPinned=String(!!project?.pinned_at);
  title.textContent=project?.name||'项目不存在';document.title=(project?.name||'项目不存在')+' · CEOBE';input.setAttribute('aria-label',project?'导入会话到“'+project.name+'”':'项目不存在，无法导入');
- if(!project){status.textContent='未找到此本地项目，请返回项目列表。';return}
+ if(!project){status.textContent='未找到此本地项目，请返回项目列表。';return}let memoryLink=document.querySelector('[data-project-memory]');if(!memoryLink){const exportButton=document.querySelector('[data-project-export]');if(exportButton){memoryLink=document.createElement('a');memoryLink.dataset.projectMemory='';memoryLink.className=exportButton.className;memoryLink.innerHTML='<div class="flex w-full items-center justify-center gap-1.5"><span>项目记忆</span></div>';memoryLink.setAttribute('aria-label','打开项目记忆');exportButton.after(memoryLink)}}if(memoryLink){const group=memoryGroups[project.name];if(group){memoryLink.href='./memory.html?group='+encodeURIComponent(group);memoryLink.hidden=false;memoryLink.setAttribute('aria-label','打开'+project.name+'项目记忆')}else{memoryLink.hidden=true}}
  const box=document.querySelector('main [data-testid=project-folder-icon]'),bank=document.querySelector(`[data-project-picker] input[name=projectIcon][value="${project.icon}"]`);if(bank){const use=bank.closest('label').querySelector('use');box.querySelector('use')?.setAttribute('href',use.getAttribute('href'))}box.style.color=project.color==='default'?'var(--icon-primary)':project.color;
  // 页头图标现在是非交互容器（role=img），不再是 button：用触发器标记定位，并对图标缺失做保护。
  const shell=box.closest('[data-testid=project-modal-trigger]'),iconName=document.getElementById('ceobe-project-icons')?.textContent;

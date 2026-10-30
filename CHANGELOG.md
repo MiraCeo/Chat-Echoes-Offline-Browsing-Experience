@@ -4,6 +4,15 @@
 
 ## 未发布
 
+### 记忆（L3.1）
+
+- 新增顶层「记忆」页：读取 `ceobe-banks.json`，按已确认账号组渲染
+  「我是谁 / 在手的事 / 等着的事 / 近期变化」四块只读卡片；支持 `?group=gq|g1`。
+- 侧栏新增「记忆」入口；项目详情的「项目记忆」按钮按项目名跳转：
+  `国庆 → gq`、`User → g1`，其他项目不显示。
+- 内核导出的 `input/manifest.json` 与 Markdown frontmatter 增加 `group_id`；
+  CEOBE 导出时从项目成员生成 gq/g1，未分组写 `null`。
+
 ### 导出修复
 
 - 项目“另存为 ZIP”不再使用 File System Access 保存选择器：先取完整 Blob，再走普通浏览器下载。

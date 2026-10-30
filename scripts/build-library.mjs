@@ -17,6 +17,8 @@ import { buildProjectDetail } from './build-project-detail.mjs';
 import { buildProjectsPage } from './build-projects-page.mjs';
 import { buildTimelinePage } from './build-timeline-page.mjs';
 import { buildTimelineNav } from './build-timeline-nav.mjs';
+import { buildMemoryPage } from './build-memory-page.mjs';
+import { buildMemoryNav } from './build-memory-nav.mjs';
 import { writeTimelineIndex } from './timeline-index.mjs';
 import { buildChatMenu } from './build-chat-menu.mjs';
 import { createPageCache } from './page-cache.mjs';
@@ -152,6 +154,7 @@ async function decoratePages(library, pages) {
   await step('chat-organizer', async () => buildChatOrganizer(projectRoot, pageCache, pages));
   await step('sidebar-controls', async () => buildSidebarControls(projectRoot, pageCache, pages));
   await step('timeline-nav', async () => buildTimelineNav(projectRoot, pageCache, pages));
+  await step('memory-nav', async () => buildMemoryNav(projectRoot, pageCache, pages));
   await step('reader-ui', async () => buildReaderUI(projectRoot, library, pageCache, pages));
   if (pageCache) { const written = await pageCache.flush(); console.log(`Page cache: parsed ${pageCache.parsedPages}, wrote ${written.length} page(s).`); }
   await step('bookmarks', async () => buildBookmarks(projectRoot, library, pages));
@@ -256,6 +259,7 @@ async function buildReader(library, selectedId, onlyIds = null) {
   await step('projects-page', async () => buildProjectsPage(projectRoot));
   await step('project-detail', async () => buildProjectDetail(projectRoot, library));
   await step('timeline-page', async () => buildTimelinePage(projectRoot));
+  await step('memory-page', async () => buildMemoryPage(projectRoot));
   // 页面装饰指纹：渲染器 + 项目清单 + 这一页自己的会话条目 + 页面字节。
   // 删除/重命名/置顶一个会话时，其余页面指纹不变，于是不解析、不写盘——这正是删除的主要开销。
   const plan = await decorationPlan(projectRoot, { renderer, library, homeId: selected?.id || 'empty' });

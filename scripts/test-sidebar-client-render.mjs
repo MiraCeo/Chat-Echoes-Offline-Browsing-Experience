@@ -122,8 +122,8 @@ try {
   const rebuildDecoration = decorations(rebuildLog);
   assert.ok(rebuildDecoration.refreshed < rebuildDecoration.total,
     `没有变化的页面不应重新装饰：${rebuildDecoration.line}`);
-  assert.ok(rebuildDecoration.refreshed <= 6,
-    `只重建首页/导入/资料库/项目/时间线等顶层页时，需要重做的页面不应超过 6 个：${rebuildDecoration.line}`);
+  assert.ok(rebuildDecoration.refreshed <= 7,
+    `只重建首页/导入/资料库/项目/时间线/记忆等顶层页时，需要重做的页面不应超过 7 个：${rebuildDecoration.line}`);
   assert.equal(parseInt(rebuildLog.match(/Page cache: parsed (\d+)/)[1], 10), rebuildDecoration.refreshed,
     '页面缓存只应解析需要重做的页面');
 
@@ -146,7 +146,7 @@ try {
   const renameMs = Date.now() - started;
   const baseline = await pageHashes();
   const renameDecoration = decorations(renameLog);
-  // 顶层 5 页每次都要重建、因此每次都要重做；重命名只应让被改名的那一页额外重做。
+  // 顶层 7 页每次都要重建、因此每次都要重做；重命名只应让被改名的那一页额外重做。
   assert.equal(renameDecoration.refreshed, rebuildDecoration.refreshed + 1,
     `重命名只应重做被改名的那一页：${rebuildDecoration.line} → ${renameDecoration.line}`);
   // assets.html 内嵌资料库索引，来源会话标题变了它就该变（缓存里的资源列表仍然有效）。

@@ -26,6 +26,8 @@ export const DECORATION_SELECTORS = [
   '[data-ceobe-search-body-row]', '#ceobe-search-empty', 'script[src*="sidebar-controls."]', 'link[href*="sidebar-controls"]',
   // timeline nav
   '[data-ceobe-timeline-row]', '[data-ceobe-timeline-link]',
+  // memory nav
+  '[data-ceobe-memory-row]',
   // reader-ui
   '[data-reader-menu]', '[data-reader-move]', '#ceobe-reader-project-row', '[data-reader-image-viewer]',
   '[data-project-settings-preview]', '[data-preview-picker]', 'script[src*="reader-ui."]', 'link[href*="reader-ui."]',
