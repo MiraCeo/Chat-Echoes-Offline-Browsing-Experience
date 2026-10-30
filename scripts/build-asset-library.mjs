@@ -147,7 +147,11 @@ export async function buildAssetLibrary(root, library) {
             else e.removeAttribute(attr);
           }
         }
-        for (const [from, to] of media) { keep.media.add(basename(to)); await cp(from, to); }
+        for (const [from, to] of media) {
+          keep.media.add(basename(to));
+          try { await stat(to); }
+          catch { await cp(from, to); }
+        }
         keep.previews.add(`${id}.html`);
         await writeIfChanged(join(pub, 'library-previews', `${id}.html`), htmlSafeSvg(preview.body.innerHTML));
         item.preview = { kind: 'fragment', url: `./library-previews/${id}.html` };

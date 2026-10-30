@@ -89,9 +89,10 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 没有变化的页面不该被重新装饰——这是删除/重命名一个会话仍然要几十秒的主要原因。
 
-删除事务现在把 `archive/` 和 `replay/archive-resources` 硬链接进 stage，只复制可写页面；
-装回时按文件差异只备份/替换变化项，而不是复制整个 replay。当前真实 35 会话档案实测删除
-30.7s（stage 准备 5.2s、构建 23.4s），剩余主成本是整库构建。
+删除事务现在把 `archive/`、`replay/archive-resources`、`public/library-assets` 和
+`public/library-media` 硬链接进 stage，只复制可写页面/预览；装回时按文件差异逐文件 rename
+（被占用时回退 copy），并静默备份变化/删除的文件。当前真实 35 会话档案删除约 42.8s
+（stage 准备 5.0s、构建 35.2s、提交 2.5s），剩余主成本是整库构建。
 
 - `scripts/decoration-plan.mjs` 给每个页面算指纹：`装饰口径版本号 + 渲染器与模板指纹 +
   项目数据文件（data/private/projects.ceobe.json）+ 这一页的会话条目（id/标题/page；顶层页面用首页会话）+

@@ -35,9 +35,10 @@
 
 ### 删除性能
 
-- 删除事务改为硬链接 + 增量提交：stage 不再复制整个 `archive/`；`replay` 只复制可写页面，
-  `archive-resources` 使用硬链接，提交时只备份/替换变化文件。实测 35 会话档案删除 30.7s，
-  其中 stage 准备 5.2s、构建 23.4s。
+- 删除事务改为硬链接 + 逐文件增量提交：stage 不再复制整个 `archive/`；`replay` 的
+  `archive-resources`、`library-assets`、`library-media` 使用硬链接；提交时只对变化文件
+  rename（占用时回退 copy）并静默备份。第二次真实删除实测 42.8s，其中 stage 准备 5.0s、
+  构建 35.2s、提交 2.5s。
 
 ### 时间线可读性
 

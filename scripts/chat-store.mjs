@@ -60,7 +60,7 @@ export async function rebuildDeletionStage(stage,sourceRoot){
  // 复用现有产物与构建指纹：只删掉那个会话的页面，其余页面按指纹跳过渲染，
  // 装饰指纹也一并带过去，没有变化的页面连解析、写盘都省掉。没有这步时暂存目录是空的，等于全量重建。
  if(await exists(join(sourceRoot,'replay'))) {
-   await cloneTree(join(sourceRoot,'replay'),join(stage,'replay'),{hardlinkRoots:['archive-resources','public/archive-resources']});
+   await cloneTree(join(sourceRoot,'replay'),join(stage,'replay'),{hardlinkRoots:['archive-resources','public/archive-resources','public/library-assets','public/library-media']});
  }
  // library.ceobe.json is written by build-library; break its hardlink before the
  // stage build so a failed deletion cannot mutate the live index through the link.
@@ -135,6 +135,16 @@ const listFiles = async (root, relative = '') => {
   return files;
 };
 
+const moveOrCopy = async (from, to) => {
+  await mkdir(dirname(to), { recursive: true });
+  try { await rename(from, to); return 'rename'; }
+  catch (error) {
+    if (!['EPERM', 'EBUSY', 'EACCES', 'ENOTEMPTY', 'EXDEV'].includes(error.code)) throw error;
+    await cp(from, to, { force: true });
+    return 'copy';
+  }
+};
+
 const installReplayDelta = async (live, old, fresh) => {
   const [liveFiles, freshFiles] = await Promise.all([listFiles(live), listFiles(fresh)]);
   const changed = [], added = [], removed = [], backups = [];
@@ -151,23 +161,26 @@ const installReplayDelta = async (live, old, fresh) => {
   for (const item of [...changed, ...removed]) {
     const backupPath = join(old, item.relative);
     await mkdir(dirname(backupPath), { recursive: true });
-    await cp(item.livePath, backupPath, { force: true });
+    item.backupPath = backupPath;
+    item.backupMode = await moveOrCopy(item.livePath, backupPath);
     backups.push({ backupPath, livePath: item.livePath });
   }
-  const write = async ({ freshPath, livePath }) => {
-    await mkdir(dirname(livePath), { recursive: true });
-    await cp(freshPath, livePath, { force: true });
+  const writeChanged = async item => {
+    if (item.backupMode === 'rename') return moveOrCopy(item.freshPath, item.livePath);
+    await cp(item.freshPath, item.livePath, { force: true });
+    return 'copy';
   };
   const rollback = async () => {
     for (const { backupPath, livePath } of backups) {
-      await mkdir(dirname(livePath), { recursive: true });
-      await cp(backupPath, livePath, { force: true });
+      await rm(livePath, { force: true });
+      await moveOrCopy(backupPath, livePath);
     }
     for (const { livePath } of added) await rm(livePath, { force: true });
   };
   try {
-    for (const item of [...changed, ...added]) await write(item);
-    for (const item of removed) await rm(item.livePath, { force: true });
+    for (const item of changed) await writeChanged(item);
+    for (const item of added) await moveOrCopy(item.freshPath, item.livePath);
+    for (const item of removed) if (item.backupMode === 'copy') await rm(item.livePath, { force: true });
   } catch (error) {
     await rollback();
     throw error;
