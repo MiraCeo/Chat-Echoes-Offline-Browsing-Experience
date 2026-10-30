@@ -267,7 +267,10 @@ async function buildReader(library, selectedId, onlyIds = null) {
     try { await stat(source); } catch { return; }
     const target = join(projectRoot, 'replay/public/timeline-summaries.json');
     await mkdir(dirname(target), { recursive: true });
-    await cp(source, target);
+    const doc = JSON.parse(await readFile(source, 'utf8'));
+    const ids = new Set(library.conversations.map(entry => entry.id));
+    const conversations = Object.fromEntries(Object.entries(doc.conversations || {}).filter(([id]) => ids.has(id)));
+    await writeFile(target, JSON.stringify({ ...doc, conversations }), 'utf8');
   });
   await step('fonts', async () => localizeGeneratedFonts(join(projectRoot,'replay')));
   await finalizeDecorationPlan(projectRoot, plan, plan.changed);

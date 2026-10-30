@@ -5,6 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "timeline:summaries:prune": "node scripts/prune-timeline-summaries.mjs",
     "archive:backup": "node scripts/backup-archive.mjs",
     "archive:share": "node scripts/archive-share.mjs",
     "library": "node scripts/build-library.mjs",

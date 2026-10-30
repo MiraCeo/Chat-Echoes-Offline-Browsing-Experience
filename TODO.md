@@ -6,7 +6,8 @@
 [HANDOVER](HANDOVER.md) 与 [CHANGELOG](CHANGELOG.md)，不在这里重复。
 
 **版本口径**：**1.2 = 时间模块基础**（时间线 + 时间轴）；**1.3 = AI 整理与事件线**。
-当前 package 版本是 `1.2.0`，但还没有 tag / push / 正式发布。
+当前 package 版本是 `1.2.0`，CHANGELOG 已归并为单一的 `1.2.0（2026-10-30）`；
+还差 tag / push / 正式发布。
 
 ## 一、1.2 收尾状态
 
@@ -15,7 +16,7 @@
 - `npm test`：全量通过（含 Turbo 会话切换回归）；
 - `npm run check`：40 页巡检通过；
 - `npm run build`：生产构建通过；
-- 当前档案：34 个会话；时间线索引、卡片、时间轴、删除和本地备份均可用；
+- 当前档案：34 个会话；stale 摘要已清理到 34 条，源文件与 `replay/public` 一致；
 - 最新提交以 `git log -1` 为准。
 
 已完成但不需要再列进待办：
@@ -25,30 +26,21 @@
 - 真实 `timeline-summaries.json` 接入；
 - 删除硬链接 stage + replay 逐文件增量提交；
 - 每次删除前的 archive 硬链接快照 + `npm run archive:backup`；
-- 会话→会话 Turbo 持久侧栏。
+- 会话→会话 Turbo 持久侧栏；
+- 单一 `1.2.0` CHANGELOG 与 stale 摘要清理：`npm run timeline:summaries:prune`。
 
 ## 二、1.2 发布前需要你确认
 
-1. **版本号与 CHANGELOG 归并**
-   - `package.json` 是 `1.2.0`；
-   - `CHANGELOG.md` 顶部仍是「未发布」，下面已有旧的 `1.2.0（2026-10-28）` 段；
-   - 需要决定：把顶部并回 1.2.0，还是 bump 到 1.2.1 后发布。
-
-2. **是否 tag / push**
+1. **tag / push**
    - 本地 `main` 领先 `origin/main`，提交尚未推送；
    - 发布收尾需要决定是否打 tag、是否 push。
 
-3. **stale 摘要清理**
-   - `data/private/timeline-summaries.json` 目前 36 条，但当前只有 34 个会话；
-   - 2 条已删除会话的摘要仍在：`6aa95c5b...`、`6ad8c7bf...`；
-   - UI 会忽略，但应清理，并考虑在删除/导入后自动 prune。
-
-4. **archive 备份的运维边界**
+2. **archive 备份的运维边界**
    - 当前每次删除生成一份完整硬链接快照，不自动清理；
    - 目前只有 1 份基线快照；没有列表/恢复 CLI、没有保留策略；
    - 硬链接只防误删，不防磁盘损坏；需要把 `archive-backups` 复制到异盘/外部介质。
 
-5. **Turbo 的已知边界**
+3. **Turbo 的已知边界**
    - 首次打开页面仍会先显示静态一行，再加载完整目录；
    - 从时间线等顶层页第一次进入会话仍是整页加载；
    - 当前只接管会话页之间的链接；
