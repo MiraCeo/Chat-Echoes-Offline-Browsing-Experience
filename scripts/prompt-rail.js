@@ -1,5 +1,7 @@
+function initPromptRail() {
 const rail = document.querySelector('[data-ceobe-prompt-rail]');
-if (rail) {
+if (rail && !rail.dataset.ceobePromptRailReady && !rail.querySelector('.ceobe-prompt-menu')) {
+  rail.dataset.ceobePromptRailReady = '';
   const markers = [...rail.querySelectorAll('[data-ceobe-jump]')];
   const turns = new Map([...document.querySelectorAll('section[data-testid]')].map(n => [n.dataset.testid, n]));
   const entries = markers.map(button => ({ button, target: turns.get(button.dataset.ceobeJump) })).filter(e => e.target);
@@ -166,4 +168,10 @@ async function scrollMessageTop(target){
   new ResizeObserver(requestUpdate).observe(document.querySelector('main') || document.body);
   new MutationObserver(() => { if (rail.hidden) { hovered = false; hide(); } else requestUpdate(); }).observe(rail, {attributes:true, attributeFilter:['hidden']});
   update();
+  // Turbo can emit more than one load for the initial document while turns are
+  // still arriving. Keep only the newest menu if that happened.
+  for (const duplicate of [...rail.querySelectorAll('.ceobe-prompt-menu')].slice(0, -1)) duplicate.remove();
 }
+
+}
+document.addEventListener('turbo:load', initPromptRail);

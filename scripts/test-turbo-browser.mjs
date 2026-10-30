@@ -37,6 +37,10 @@ try {
   assert.equal(after.rows, initial.rows, '导航后侧栏仍显示全部会话');
   assert.match(after.activeHref || '', new RegExp(second.id + '\\.html'), '活动项应更新为新会话');
 
+  await page.locator('[data-ceobe-prompt-rail]').hover();
+  await page.waitForSelector('.ceobe-prompt-menu');
+  assert.equal(await page.locator('.ceobe-prompt-menu').count(), 1, 'Turbo 导航后右侧总览应重新初始化');
+
   await page.goBack();
   await page.waitForFunction(id => location.pathname.endsWith(id + '.html'), first.id);
   await page.waitForTimeout(250);
