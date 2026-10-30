@@ -26,6 +26,7 @@
           "last": { "type": "number" },
           "rounds": { "type": "integer", "minimum": 0 },
           "turns": { "type": "integer", "minimum": 0 },
+          "group_id": { "type": ["string", "null"] },
           "last_message_id": { "type": "string", "minLength": 1 },
           "source_hash": { "type": "string", "minLength": 1 },
           "file": { "type": "string", "minLength": 1 }

@@ -33,7 +33,7 @@ output/
 
 1. 读取 `input/manifest.json`；
 2. 校验 `kind === "ceobe.memory-input"`，记录 `schema_version`；
-3. 按 `conversations` 数组顺序逐条处理；
+3. 按 `conversations` 数组顺序逐条处理；每条记录的 `group_id` 是已确认账号组（`g1` / `gq`）或 `null`，只用于后续 L3/L3.1，不要自行推断或改写；
 4. 对每条：
    - 读取对应 `file`；
    - 按 frontmatter 核对 `id`、`last_message_id`、`source_hash`；

@@ -85,10 +85,11 @@ const clearOutput = async () => {
   }
 };
 
-const [library, timelineIndex, catalog] = await Promise.all([
+const [library, timelineIndex, catalog, projectsDoc] = await Promise.all([
   readFile(join(projectRoot, 'replay', 'library.ceobe.json'), 'utf8').then(JSON.parse),
   readFile(join(projectRoot, 'replay', 'public', 'timeline-index.json'), 'utf8').then(JSON.parse),
   readFile(join(projectRoot, 'replay', 'chats.json'), 'utf8').then(JSON.parse),
+  readFile(join(projectRoot, 'data/private/projects.ceobe.json'), 'utf8').then(JSON.parse).catch(() => ({ projects: [] })),
 ]);
 if (library?.kind !== 'ceobe.library' || !Array.isArray(library.conversations)) {
   throw new Error('replay/library.ceobe.json 不是 ceobe.library');
@@ -99,6 +100,15 @@ if (timelineIndex?.kind !== 'ceobe.timeline-index' || !Array.isArray(timelineInd
 
 const titles = new Map((catalog?.chats || []).map(chat => [chat.id, chat.title]));
 const timeline = new Map(timelineIndex.conversations.map(item => [item.id, item]));
+// The kernel's confirmed account groups map onto existing local projects:
+// User -> g1 (01–05 sequence), 国庆 -> gq (National Day group).
+const groupNames = new Map([['User', 'g1'], ['国庆', 'gq']]);
+const groupByConversation = new Map();
+for (const project of projectsDoc.projects || []) {
+  const groupId = groupNames.get(project.name);
+  if (!groupId) continue;
+  for (const id of project.conversation_ids || []) groupByConversation.set(id, groupId);
+}
 const entries = [];
 const skipped = [];
 const failures = [];
@@ -158,6 +168,7 @@ for (const conversation of library.conversations) {
     last: item.last,
     rounds: item.rounds,
     turns: item.turns,
+    group_id: groupByConversation.get(conversation.id) || null,
     last_message_id: item.last_message_id || records.at(-1).message_id,
     source_hash: hash,
     file: `conversations/${conversation.id}.md`,
@@ -170,6 +181,7 @@ for (const conversation of library.conversations) {
     `last: ${source.last}`,
     `rounds: ${source.rounds}`,
     `turns: ${source.turns}`,
+    `group_id: ${JSON.stringify(source.group_id)}`,
     `last_message_id: ${JSON.stringify(source.last_message_id)}`,
     `source_hash: ${JSON.stringify(source.source_hash)}`,
     '---',
@@ -192,6 +204,7 @@ const manifest = {
 await writeFile(join(outDir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf8');
 
 console.log(`AI memory export: ${entries.length} conversation(s) -> ${outDir}`);
+console.log(`Groups: gq ${entries.filter(item => item.group_id === 'gq').length}, g1 ${entries.filter(item => item.group_id === 'g1').length}, ungrouped ${entries.filter(item => !item.group_id).length}.`);
 console.log(`Messages: ${manifest.conversations.reduce((sum, item) => sum + item.turns, 0)} visible turns represented.`);
 if (skipped.length) {
   console.log(`Skipped: ${skipped.length}`);

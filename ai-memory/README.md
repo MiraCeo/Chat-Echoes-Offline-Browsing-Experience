@@ -52,8 +52,9 @@ CEOBE 导出器：
 
 ## 输入约定
 
-- `input/manifest.json`：会话列表、标题、首末时间、轮次、`last_message_id`、`source_hash`、文件名。
-- `input/conversations/<id>.md`：一个会话一个 Markdown 文件，YAML frontmatter + 用户/助手可见消息。
+- `input/manifest.json`：会话列表、标题、首末时间、轮次、`group_id`、`last_message_id`、`source_hash`、文件名。
+  `group_id` 目前来自 CEOBE 项目：`User` 项目为 `g1`，国庆项目为 `gq`；未分组为 `null`。
+- `input/conversations/<id>.md`：一个会话一个 Markdown 文件，YAML frontmatter + 用户/助手可见消息；frontmatter 同步带 `group_id`。
 - 不包含隐藏记录、推理、工具往来；附件正文默认不导出。
 
 ## 输出约定
@@ -85,11 +86,12 @@ CEOBE 导出器：
 
 已从当前 CEOBE 档案导出：
 
-- 36 个会话；
-- 1,571 轮对话；
-- 3,142 个可见轮次；
-- 36 个 `conversations/<id>.md`，约 7.2 MB；
-- `input/manifest.json` 与 36 个 Markdown 文件已生成，`input/` 不进 Git。
+- 34 个会话；
+- 1,565 轮对话；
+- 3,130 个可见轮次；
+- 34 个 `conversations/<id>.md`；
+- 分组：`gq` 10 个、`g1` 5 个、未分组 19 个；
+- `input/manifest.json` 与 34 个 Markdown 文件已生成，`input/` 不进 Git。
 
 真实输入包含私有聊天正文，只应复制到受控工作区；`output/` 的摘要也一样。
 
