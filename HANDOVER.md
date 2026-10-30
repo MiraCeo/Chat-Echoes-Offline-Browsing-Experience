@@ -116,6 +116,8 @@ npm run verify:archive      # 只读检查档案结构
 | 真实档案 39 页 | 改造前后对比浏览器渲染出的侧栏：行数/顺序/标题/置顶/项目标签完全一致；仅新增当前页 `aria-current="page"`、`data-testid` 改为按行号确定 |
 | 生产产物 | `npm run build` + `vite preview`：侧栏可用；拦掉 `/api/chats` 后仅靠 `chats.json` 也能渲染出 34 行 |
 | 删除耗时（隔离副本，3 会话） | 2.3s（其中重建 2.2s） |
+| 删除耗时（真实 35 会话，硬链接 + 增量提交） | 30.7s；stage 准备 5.2s、构建 23.4s、提交/响应约 2.2s |
+| 删除后校验 | 测试会话 archive/page/index 全部消失，其余 35 会话保留；`delete-jobs` 清空 |
 
 **页面装饰指纹（删除不再重做未变化的页面）**
 

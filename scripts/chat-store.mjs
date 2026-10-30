@@ -1,5 +1,5 @@
 import { markDistStale } from './dist-stale.mjs';
-import {readFile,writeFile,mkdir,rename,rm,cp,lstat,readdir} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,rename,rm,cp,lstat,readdir,link} from 'node:fs/promises';
 import {join,resolve,relative,dirname} from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {spawn} from 'node:child_process';
@@ -14,7 +14,44 @@ async function atomic(file,data){await mkdir(dirname(file),{recursive:true});con
 async function exists(path){try{await lstat(path);return true}catch(e){if(e.code==='ENOENT')return false;throw e}}
 export async function assertSafeTree(path){const s=await lstat(path);if(s.isSymbolicLink())throw failure('检测到符号链接或目录联接，已拒绝删除',409);if(s.isDirectory())for(const name of await readdir(path))await assertSafeTree(join(path,name))}
 const run=(root,args)=>new Promise((yes,no)=>{const child=spawn(process.execPath,args,{cwd:root,windowsHide:true,stdio:['ignore','pipe','pipe']});let text='';for(const s of [child.stdout,child.stderr])s.on('data',b=>text=(text+b).slice(-10000));child.on('error',no);child.on('exit',code=>code===0?yes():no(new Error('生成页面失败：'+text)))});
+// Deletion needs a writable replay stage, but almost all large trees are immutable
+// inputs. Hardlink those instead of copying gigabytes on every delete. Files that
+// the build can rewrite (pages, indexes, previews, library assets) stay real copies.
+const cloneTree = async (source, target, { hardlink = false, hardlinkRoots = [], skip = [] } = {}) => {
+  const normalizedRoots = hardlinkRoots.map(value => value.replaceAll('\\', '/'));
+  const skipped = path => skip.some(prefix => path === prefix || path.startsWith(prefix + requireSeparator()));
+  const walk = async (from, to, relativePath = '') => {
+    await mkdir(to, { recursive: true });
+    for (const entry of await readdir(from, { withFileTypes: true })) {
+      const sourcePath = join(from, entry.name);
+      if (skipped(sourcePath)) continue;
+      const targetPath = join(to, entry.name);
+      const nextRelative = relativePath ? `${relativePath}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        await walk(sourcePath, targetPath, nextRelative);
+        continue;
+      }
+      if (!entry.isFile()) {
+        await cp(sourcePath, targetPath, { recursive: true });
+        continue;
+      }
+      const posixRelative = nextRelative.replaceAll('\\', '/');
+      const shouldLink = hardlink || normalizedRoots.some(root => posixRelative === root || posixRelative.startsWith(root + '/'));
+      if (!shouldLink) {
+        await cp(sourcePath, targetPath, { force: true });
+        continue;
+      }
+      try { await link(sourcePath, targetPath); }
+      catch (error) {
+        if (error.code === 'EEXIST') continue;
+        await cp(sourcePath, targetPath, { force: true });
+      }
+    }
+  };
+  await walk(source, target);
+};
 export async function rebuildDeletionStage(stage,sourceRoot){
+ const stageStarted=Date.now();
  for(const name of ['scripts','src','official-templates','samples'])await cp(join(sourceRoot,name),join(stage,name),{recursive:true});
  for(const name of ['package.json','vite.config.mjs'])await cp(join(sourceRoot,name),join(stage,name));
  await cp(join(sourceRoot,'node_modules/katex'),join(stage,'node_modules/katex'),{recursive:true});
@@ -22,12 +59,26 @@ export async function rebuildDeletionStage(stage,sourceRoot){
  for(const file of ['sprites-core-26c3f2d4.svg','sprites-shell-097001e7.svg','OpenAISans-Semibold.woff2'])await cp(join(sourceRoot,'official-assets/cdn/assets',file),join(stage,'official-assets/cdn/assets',file));
  // 复用现有产物与构建指纹：只删掉那个会话的页面，其余页面按指纹跳过渲染，
  // 装饰指纹也一并带过去，没有变化的页面连解析、写盘都省掉。没有这步时暂存目录是空的，等于全量重建。
- if(await exists(join(sourceRoot,'replay')))await cp(join(sourceRoot,'replay'),join(stage,'replay'),{recursive:true});
- for(const name of ['library-stamps.json','decoration-stamps.json','asset-library-cache.json']){
+ if(await exists(join(sourceRoot,'replay'))) {
+   await cloneTree(join(sourceRoot,'replay'),join(stage,'replay'),{hardlinkRoots:['archive-resources','public/archive-resources']});
+ }
+ // library.ceobe.json is written by build-library; break its hardlink before the
+ // stage build so a failed deletion cannot mutate the live index through the link.
+ const stagedArchiveIndex=join(stage,'archive/library.ceobe.json');
+ if(await exists(stagedArchiveIndex)){
+   const copy=stagedArchiveIndex+'.copy';
+   await cp(stagedArchiveIndex,copy,{force:true});
+   await rm(stagedArchiveIndex,{force:true});
+   await rename(copy,stagedArchiveIndex);
+ }
+ const prepareMs=Date.now()-stageStarted;
+ for(const name of ['library-stamps.json','decoration-stamps.json','asset-library-cache.json','timeline-summaries.json']){
   const source=join(sourceRoot,'data/private',name);
   if(await exists(source)){await mkdir(join(stage,'data/private'),{recursive:true});await cp(source,join(stage,'data/private',name))}
  }
+ const buildStarted=Date.now();
  await run(stage,['scripts/build-library.mjs']);
+ console.log(`Deletion stage: prepare ${(prepareMs/1000).toFixed(1)}s, build ${((Date.now()-buildStarted)/1000).toFixed(1)}s`);
  // 生产构建产物只在实际存在时才需要跟着更新；只用 dev 服务的用户不必为删除付这笔时间。
  // dist 不在这里重建：写操作只标记过期，npm run build 时再补。
 }
@@ -63,6 +114,69 @@ const pruneToMatch = async (live, fresh) => {
 const replaceTree = async (live, backupPath) => {
   const fresh = live; // 调用方传入的是"暂存目录中的同一路径"
   return { live, backupPath, fresh };
+};
+
+// replay is mostly a directory of generated files plus large content-addressed
+// resources. Replacing the whole tree copies gigabytes even when only a page and
+// two indexes changed. Diff it against the built stage, back up only changed or
+// removed files, and leave unchanged resources alone.
+const listFiles = async (root, relative = '') => {
+  const files = new Map();
+  if (!await exists(root)) return files;
+  for (const entry of await readdir(root, { withFileTypes: true })) {
+    const source = join(root, entry.name);
+    const nextRelative = relative ? `${relative}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      for (const [name, path] of await listFiles(source, nextRelative)) files.set(name, path);
+    } else if (entry.isFile()) {
+      files.set(nextRelative, source);
+    }
+  }
+  return files;
+};
+
+const installReplayDelta = async (live, old, fresh) => {
+  const [liveFiles, freshFiles] = await Promise.all([listFiles(live), listFiles(fresh)]);
+  const changed = [], added = [], removed = [], backups = [];
+  for (const [relative, freshPath] of freshFiles) {
+    const livePath = liveFiles.get(relative);
+    if (!livePath) { added.push({ relative, freshPath, livePath: join(live, relative) }); continue; }
+    const [a, b] = await Promise.all([lstat(livePath), lstat(freshPath)]);
+    if (a.ino && b.ino && a.ino === b.ino && a.dev === b.dev) continue;
+    if (a.size !== b.size || a.mtimeMs !== b.mtimeMs) changed.push({ relative, freshPath, livePath });
+  }
+  for (const [relative, livePath] of liveFiles) {
+    if (!freshFiles.has(relative)) removed.push({ relative, livePath, backupPath: join(old, relative) });
+  }
+  for (const item of [...changed, ...removed]) {
+    const backupPath = join(old, item.relative);
+    await mkdir(dirname(backupPath), { recursive: true });
+    await cp(item.livePath, backupPath, { force: true });
+    backups.push({ backupPath, livePath: item.livePath });
+  }
+  const write = async ({ freshPath, livePath }) => {
+    await mkdir(dirname(livePath), { recursive: true });
+    await cp(freshPath, livePath, { force: true });
+  };
+  const rollback = async () => {
+    for (const { backupPath, livePath } of backups) {
+      await mkdir(dirname(livePath), { recursive: true });
+      await cp(backupPath, livePath, { force: true });
+    }
+    for (const { livePath } of added) await rm(livePath, { force: true });
+  };
+  try {
+    for (const item of [...changed, ...added]) await write(item);
+    for (const item of removed) await rm(item.livePath, { force: true });
+  } catch (error) {
+    await rollback();
+    throw error;
+  }
+  return {
+    hadOld: backups.length > 0,
+    installed: changed.length + added.length + removed.length > 0,
+    rollback,
+  };
 };
 
 const installPath = async (live, old, fresh) => {
@@ -130,8 +244,7 @@ export function createChatStore(root,{rebuild=rebuildDeletionStage}={}){
    const job=join(root,'data/private/delete-jobs',randomUUID()),stage=join(job,'stage'),backup=join(job,'backup');await mkdir(stage,{recursive:true});await mkdir(backup);
    let committed=false,rollbackFailed=false;const moved=[];
    try{
-    const excluded=targets.flatMap(dir=>[dir,dir+requireSeparator()]);
-    await cp(join(root,'archive'),join(stage,'archive'),{recursive:true,filter:path=>!excluded.some(prefix=>path===prefix||path.startsWith(prefix))});
+    await cloneTree(join(root,'archive'),join(stage,'archive'),{hardlink:true,skip:targets});
     delete meta.items[body.id];await atomic(join(stage,'data/private/chats.ceobe.json'),meta);
     const projectFile=join(root,'data/private/projects.ceobe.json');
     if(await exists(projectFile)){const projects=JSON.parse(await readFile(projectFile,'utf8'));if(projects.kind!=='ceobe.projects'||!Array.isArray(projects.projects))throw new Error('项目文件格式错误');for(const p of projects.projects)p.conversation_ids=(p.conversation_ids||[]).filter(id=>id!==body.id);await atomic(join(stage,'data/private/projects.ceobe.json'),projects)}
@@ -141,14 +254,26 @@ export function createChatStore(root,{rebuild=rebuildDeletionStage}={}){
     // Durable journal allows fail-closed manual recovery after a process/OS crash.
     await atomic(join(job,'journal.json'),{id:body.id,state:'prepared',paths:[]});
     const paths=[...(await exists(bookmarkFile)?['data/private/bookmarks.ceobe.json']:[]),...targets.map(dir=>relative(root,dir).replaceAll('\\','/')),'archive/library.ceobe.json',CHAT_INDEX_FILE,'data/private/chats.ceobe.json',...(await exists(join(stage,'data/private/decoration-stamps.json'))?['data/private/decoration-stamps.json']:[]),...(await exists(join(stage,'data/private/asset-library-cache.json'))?['data/private/asset-library-cache.json']:[]),...(await exists(projectFile)?['data/private/projects.ceobe.json']:[]),'replay'];
-    for(const path of paths){const live=join(root,path),old=join(backup,path),fresh=join(stage,path);const item={path,hadOld:false,installed:false};moved.push(item);const result=await installPath(live,old,fresh);item.hadOld=result.hadOld;item.installed=result.installed;await atomic(join(job,'journal.json'),{id:body.id,state:'committing',paths:moved})}
+    for(const path of paths){
+      const live=join(root,path),old=join(backup,path),fresh=join(stage,path);
+      const item={path,hadOld:false,installed:false};
+      if(path==='replay'){
+        const result=await installReplayDelta(live,old,fresh);
+        item.hadOld=result.hadOld;item.installed=result.installed;item.rollback=result.rollback;
+      }else{
+        const result=await installPath(live,old,fresh);
+        item.hadOld=result.hadOld;item.installed=result.installed;
+      }
+      moved.push(item);
+      await atomic(join(job,'journal.json'),{id:body.id,state:'committing',paths:moved.map(({path,hadOld,installed})=>({path,hadOld,installed}))});
+    }
     committed=true;
     // Success is not returned while raw archives or old generated copies remain.
     await rm(job,{recursive:true});await markDistStale(root,'delete');
     console.log(`Chat delete: ${body.id} took ${((Date.now()-startedAt)/1000).toFixed(1)}s (rebuild ${(rebuildMs/1000).toFixed(1)}s)`);
     return {deleted:body.id,redirect:'./index.html'};
    }catch(e){
-    if(!committed){try{for(const item of moved.reverse()){const live=join(root,item.path);if(item.installed)await rm(live,{recursive:true,force:true});if(item.hadOld){await mkdir(dirname(live),{recursive:true});try{await renameWithRetry(join(backup,item.path),live)}catch(error){if(error.status!==409)throw error;await cp(join(backup,item.path),live,{recursive:true})}}}}catch{rollbackFailed=true}}
+    if(!committed){try{for(const item of moved.reverse()){if(item.rollback){await item.rollback();continue}const live=join(root,item.path);if(item.installed)await rm(live,{recursive:true,force:true});if(item.hadOld){await mkdir(dirname(live),{recursive:true});try{await renameWithRetry(join(backup,item.path),live)}catch(error){if(error.status!==409)throw error;await cp(join(backup,item.path),live,{recursive:true})}}}}catch{rollbackFailed=true}}
     if(committed||rollbackFailed){e.message='操作未完全结束，已保留恢复记录；请检查 data/private/delete-jobs，勿重复操作。';e.status=500;throw e}
     await rm(job,{recursive:true,force:true});throw e;
    }

@@ -226,6 +226,7 @@ try {
     const href = await first.getAttribute('href');
     await first.click();
     await page.waitForLoadState('networkidle');
+    await page.waitForSelector('.ceobe-bookmark-highlight', { timeout: 5000 });
     const landed = await page.evaluate(() => ({ path: location.pathname, hash: location.hash, hasHighlight: Boolean(document.querySelector('.ceobe-bookmark-highlight')) }));
     assert.match(landed.path, /\/conversations\/[^/]+\.html$/);
     if (href.includes('#bookmark=')) assert.ok(landed.hash.startsWith('#bookmark='), '跳到首条消息锚点');
