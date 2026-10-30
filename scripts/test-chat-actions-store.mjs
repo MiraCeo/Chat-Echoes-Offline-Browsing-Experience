@@ -15,7 +15,7 @@ try{
  await store.mutate({id:'chat-two',action:'rename',title:'新标题'});await store.mutate({id:'chat-two',action:'pin',pinned:true});assert.equal((await store.list()).find(c=>c.id==='chat-two').title,'新标题');assert.ok((await createChatStore(root).list()).find(c=>c.id==='chat-two').pinned_at);
  await mkdir(join(root,'outside'));await writeFile(join(root,'outside/keep.txt'),'keep');await symlink(join(root,'outside'),join(root,'archive/chatgpt-share/chat-one/linked'),'junction');await assert.rejects(()=>store.mutate({id:'chat-one',action:'delete',confirm:'chat-one'}));assert.equal(await readFile(join(root,'outside/keep.txt'),'utf8'),'keep');await rm(join(root,'archive/chatgpt-share/chat-one/linked'));
  const failed=createChatStore(root,{rebuild:async()=>{throw new Error('injected build failure')}});await assert.rejects(()=>failed.mutate({id:'chat-one',action:'delete',confirm:'chat-one'}));assert.equal(await readFile(join(root,'replay/old-secret.html'),'utf8'),'RAW-SECRET-chat-one');assert.deepEqual(await readFile(join(root,'data/private/bookmarks.ceobe.json')),bookmarkBefore);
- await store.mutate({id:'chat-one',action:'delete',confirm:'chat-one'});
+ await store.mutate({id:'chat-one',action:'delete',confirm:'chat-one'});const backups=await readdir(join(root,'data/private/archive-backups'));assert.ok(backups.length>=1,'删除应留下 archive 快照');const firstBackup=join(root,'data/private/archive-backups',backups[0]);const firstManifest=JSON.parse(await readFile(join(firstBackup,'manifest.json'),'utf8'));assert.equal(firstManifest.deleted_conversation.id,'chat-one');assert.equal(await readFile(join(firstBackup,'archive/chatgpt-share/chat-one/2026-01-01/assets/53bc8e6bd2720512dfebe2cab3c763e4503f55a41809b68bcc148637850bf871.txt'),'utf8'),'shared-safe');
  await assert.rejects(()=>readFile(join(root,'archive/chatgpt-share/chat-one/2026-01-01/raw/share.html')));
  assert.equal(await readFile(join(root,'archive/chatgpt-share/chat-two/2026-01-01/assets/53bc8e6bd2720512dfebe2cab3c763e4503f55a41809b68bcc148637850bf871.txt'),'utf8'),'shared-safe');
  assert.ok(!(await ps.list())[0].conversation_ids.includes('chat-one'));
@@ -26,6 +26,6 @@ try{
  assert.equal(await readFile(join(root,'dist/old-secret.html'),'utf8'),'RAW-SECRET-chat-one');
  assert.equal(JSON.parse(await readFile(join(root,'data/private/dist-stale.json'),'utf8')).reason,'delete');
  assert.equal((await readdir(join(root,'data/private/delete-jobs'))).length,0);
- await store.mutate({id:'chat-two',action:'delete',confirm:'chat-two'});assert.equal((await store.list()).length,0);assert.equal((await bookmarks.list()).length,0);assert.ok((await readFile(join(root,'replay/index.html'),'utf8')).includes('本地聊天'));
+ await store.mutate({id:'chat-two',action:'delete',confirm:'chat-two'});assert.ok((await readdir(join(root,'data/private/archive-backups'))).length>=2,'多次删除应保留多代快照');assert.equal((await store.list()).length,0);assert.equal((await bookmarks.list()).length,0);assert.ok((await readFile(join(root,'replay/index.html'),'utf8')).includes('本地聊天'));
  console.log('PASS: rename/pin persistence, path/confirmation validation, failed-build preservation, all archive versions removed, survivor shared attachment preserved, project unlink, clean replay with dist marked stale, last-chat empty rebuild. Isolated data only.');
 }finally{await rm(root,{recursive:true,force:true})}

@@ -50,6 +50,36 @@ const cloneTree = async (source, target, { hardlink = false, hardlinkRoots = [],
   };
   await walk(source, target);
 };
+
+// Keep a durable hardlink snapshot of the whole archive before a delete. The
+// snapshot lives outside delete-jobs and is never removed by the transaction;
+// one snapshot is added per deletion so older deleted conversations remain
+// recoverable even after later deletes.
+export const snapshotArchive = async (root, entry) => {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const folder = join(root, 'data/private/archive-backups', `${stamp}-${entry.id.slice(0, 8)}-${randomUUID().slice(0, 6)}`);
+  await mkdir(folder, { recursive: true });
+  await cloneTree(join(root, 'archive'), join(folder, 'archive'), { hardlink: true });
+  // The library index is rewritten by later builds; keep a real copy so the
+  // snapshot does not change through the hardlink.
+  const index = join(folder, 'archive/library.ceobe.json');
+  if (await exists(index)) {
+    const copy = index + '.copy';
+    await cp(index, copy, { force: true });
+    await rm(index, { force: true });
+    await rename(copy, index);
+  }
+  await writeFile(join(folder, 'manifest.json'), JSON.stringify({
+    schema_version: '1.0.0',
+    kind: 'ceobe.archive-backup',
+    created_at: new Date().toISOString(),
+    deleted_conversation: { id: entry.id, title: entry.title },
+    archive: 'archive',
+    mode: 'hardlink-snapshot',
+  }, null, 2), 'utf8');
+  return folder;
+};
+
 export async function rebuildDeletionStage(stage,sourceRoot){
  const stageStarted=Date.now();
  for(const name of ['scripts','src','official-templates','samples'])await cp(join(sourceRoot,name),join(stage,name),{recursive:true});
@@ -253,6 +283,7 @@ export function createChatStore(root,{rebuild=rebuildDeletionStage}={}){
    if(!targets.length)throw failure('原始归档目录不存在',409);
    const checkResources=async(dir)=>{for(const n of await readdir(dir,{withFileTypes:true})){const path=join(dir,n.name);if(n.isDirectory())await checkResources(path);else if(n.name==='conversation.ceobe.json'){const c=JSON.parse(await readFile(path,'utf8'));for(const r of c.resources||[]){if(!r.local_path)continue;const resolved=resolve(dirname(path),r.local_path);if(!resolved.startsWith(dirname(path)+requireSeparator()))throw failure('存在跨归档附件路径，需先检查共享资源，已取消删除',409)}}}};
    await checkResources(join(root,'archive/chatgpt-share'));
+   const archiveBackup=await snapshotArchive(root,entry);
    const startedAt=Date.now();let rebuildMs=0;
    const job=join(root,'data/private/delete-jobs',randomUUID()),stage=join(job,'stage'),backup=join(job,'backup');await mkdir(stage,{recursive:true});await mkdir(backup);
    let committed=false,rollbackFailed=false;const moved=[];
@@ -265,7 +296,7 @@ export function createChatStore(root,{rebuild=rebuildDeletionStage}={}){
     if(await exists(bookmarkFile)){const bookmarks=await readBookmarkDocument(root);bookmarks.items=bookmarks.items.filter(b=>b.chat_id!==body.id);await atomic(join(stage,'data/private/bookmarks.ceobe.json'),bookmarks)}
     const rebuildStart=Date.now();await rebuild(stage,root);rebuildMs=Date.now()-rebuildStart;
     // Durable journal allows fail-closed manual recovery after a process/OS crash.
-    await atomic(join(job,'journal.json'),{id:body.id,state:'prepared',paths:[]});
+    await atomic(join(job,'journal.json'),{id:body.id,state:'prepared',paths:[],archive_backup:archiveBackup});
     const paths=[...(await exists(bookmarkFile)?['data/private/bookmarks.ceobe.json']:[]),...targets.map(dir=>relative(root,dir).replaceAll('\\','/')),'archive/library.ceobe.json',CHAT_INDEX_FILE,'data/private/chats.ceobe.json',...(await exists(join(stage,'data/private/decoration-stamps.json'))?['data/private/decoration-stamps.json']:[]),...(await exists(join(stage,'data/private/asset-library-cache.json'))?['data/private/asset-library-cache.json']:[]),...(await exists(projectFile)?['data/private/projects.ceobe.json']:[]),'replay'];
     for(const path of paths){
       const live=join(root,path),old=join(backup,path),fresh=join(stage,path);
@@ -283,7 +314,7 @@ export function createChatStore(root,{rebuild=rebuildDeletionStage}={}){
     committed=true;
     // Success is not returned while raw archives or old generated copies remain.
     await rm(job,{recursive:true});await markDistStale(root,'delete');
-    console.log(`Chat delete: ${body.id} took ${((Date.now()-startedAt)/1000).toFixed(1)}s (rebuild ${(rebuildMs/1000).toFixed(1)}s)`);
+    console.log(`Chat delete: ${body.id} took ${((Date.now()-startedAt)/1000).toFixed(1)}s (rebuild ${(rebuildMs/1000).toFixed(1)}s, backup ${relative(root,archiveBackup).replaceAll('\\','/')})`);
     return {deleted:body.id,redirect:'./index.html'};
    }catch(e){
     if(!committed){try{for(const item of moved.reverse()){if(item.rollback){await item.rollback();continue}const live=join(root,item.path);if(item.installed)await rm(live,{recursive:true,force:true});if(item.hadOld){await mkdir(dirname(live),{recursive:true});try{await renameWithRetry(join(backup,item.path),live)}catch(error){if(error.status!==409)throw error;await cp(join(backup,item.path),live,{recursive:true})}}}}catch{rollbackFailed=true}}

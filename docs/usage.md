@@ -372,6 +372,33 @@ npm run archive:share -- https://chatgpt.com/share/<share-id> --keep-failed
 
 `data/private/mutation.lock` 以及 `data/private/delete-jobs/*/journal.json` 可能记录未完成操作。先确认进程状态和恢复记录，**不要为了消除提示直接删除锁文件或恢复目录**。导入、项目与书签写入、聊天删除使用同一工作区锁。
 
+### 删除后的 archive 恢复
+
+每次永久删除会话前，会在 `data/private/archive-backups/` 下生成一份完整的 archive 快照：
+
+```text
+data/private/archive-backups/<时间>-<会话短 id>-<随机后缀>/
+  manifest.json
+  archive/
+```
+
+这份快照不随 `delete-jobs` 清理，也不会自动删除；多次删除就是多代快照。也可以随时手动创建一份（不删除任何内容）：
+
+```powershell
+npm run archive:backup
+```
+
+恢复单个会话时，先停止本地服务，再把快照中的目录复制回：
+
+```powershell
+Copy-Item "data/private/archive-backups/<快照>/archive/chatgpt-share/<会话 id>" `
+  "archive/chatgpt-share/<会话 id>" -Recurse
+npm run library
+```
+
+恢复整个 `archive/` 时，先把当前目录改名留底，再复制快照的 `archive/`，然后运行 `npm run library` 和 `npm run build`。
+快照使用硬链接，能防止误删，但不能防止整块磁盘损坏；重要档案仍应另外复制到另一块盘或外部备份。
+
 ## 命令行与演示
 
 以下是高级入口，不是首次使用的必经步骤。执行会重建页面的命令前，请确认本地服务没有写入任务。

@@ -39,6 +39,9 @@
   `archive-resources`、`library-assets`、`library-media` 使用硬链接；提交时只对变化文件
   rename（占用时回退 copy）并静默备份。第二次真实删除实测 42.8s，其中 stage 准备 5.0s、
   构建 35.2s、提交 2.5s。
+- 删除前在 `data/private/archive-backups/` 保留完整的 archive 硬链接快照，独立于
+  `delete-jobs`，不自动清理；新增 `npm run archive:backup` 手动快照入口。硬链接只防误删，
+  不替代异盘备份。
 
 ### 时间线可读性
 

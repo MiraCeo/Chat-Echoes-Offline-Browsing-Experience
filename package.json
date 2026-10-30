@@ -5,6 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "archive:backup": "node scripts/backup-archive.mjs",
     "archive:share": "node scripts/archive-share.mjs",
     "library": "node scripts/build-library.mjs",
     "memory:export": "node scripts/export-ai-memory.mjs",
