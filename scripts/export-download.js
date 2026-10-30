@@ -9,7 +9,12 @@ export async function openChatFolder(id){if(openingFolder||!id)return;openingFol
  catch(e){tell('打开文件夹失败：'+(e.name==='TimeoutError'?'本地服务无响应。':e.message||'请稍后重试。'))}finally{openingFolder=false}
 }
 export async function saveArchive(kind,id,title){if(busy||!id)return;busy=true;let writable;const zip=kind==='zip',extension=zip?'.zip':'.md',mime=zip?'application/zip':'text/markdown',suggested=markdownFilename(title||(zip?'项目':'聊天')).slice(0,-3)+extension;
- try{const handle=typeof window.showSaveFilePicker==='function'&&window.isSecureContext?await window.showSaveFilePicker({id:'ceobe-'+kind+'-export',suggestedName:suggested,excludeAcceptAllOption:true,types:[{description:zip?'项目 Markdown 压缩包':'Markdown 纯文本',accept:{[mime]:[extension]}}]}):null;
+ try{
+  // Use the browser download path for ZIP: it writes a .crdownload until the
+  // complete Blob is ready, instead of creating a visible 0-byte .zip via the
+  // File System Access save picker. Markdown keeps the picker.
+  const picker=!zip&&typeof window.showSaveFilePicker==='function'&&window.isSecureContext;
+  const handle=picker?await window.showSaveFilePicker({id:'ceobe-'+kind+'-export',suggestedName:suggested,excludeAcceptAllOption:true,types:[{description:zip?'项目 Markdown 压缩包':'Markdown 纯文本',accept:{[mime]:[extension]}}]}):null;
   tell(zip?'正在打包项目内全部 Markdown…':'正在准备 Markdown…');const response=await fetch('/api/'+(zip?'projects/export-zip':'chats/export-md')+'?id='+encodeURIComponent(id),{cache:'no-store',signal:AbortSignal.timeout(zip?120000:30000)});let blob,filename;
   if(zip){if(!response.ok||!response.headers.get('Content-Type')?.includes('application/zip')){const error=await response.json().catch(()=>null);throw Error(error?.error||'无法生成 ZIP，请使用本地服务')}blob=await response.blob();filename=decodeURIComponent(response.headers.get('X-CEOBE-Filename')||encodeURIComponent(suggested))}
   else{const data=await response.json().catch(()=>null);if(!response.ok||typeof data?.markdown!=='string')throw Error(data?.error||'无法生成 Markdown，请使用本地服务');blob=new Blob([data.markdown],{type:mime+';charset=utf-8'});filename=markdownFilename(data.title||title)}
