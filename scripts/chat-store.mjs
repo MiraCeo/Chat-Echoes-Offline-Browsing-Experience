@@ -106,6 +106,8 @@ export async function rebuildDeletionStage(stage,sourceRoot){
   const source=join(sourceRoot,'data/private',name);
   if(await exists(source)){await mkdir(join(stage,'data/private'),{recursive:true});await cp(source,join(stage,'data/private',name))}
  }
+ const memoryBanks=join(sourceRoot,'data/private/memory-kernel/ceobe-banks.json');
+ if(await exists(memoryBanks)){await mkdir(join(stage,'data/private/memory-kernel'),{recursive:true});await cp(memoryBanks,join(stage,'data/private/memory-kernel/ceobe-banks.json'))}
  const buildStarted=Date.now();
  await run(stage,['scripts/build-library.mjs']);
  console.log(`Deletion stage: prepare ${(prepareMs/1000).toFixed(1)}s, build ${((Date.now()-buildStarted)/1000).toFixed(1)}s`);
