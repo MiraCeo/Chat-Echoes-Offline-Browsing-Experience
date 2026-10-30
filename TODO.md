@@ -6,7 +6,7 @@
 [HANDOVER](HANDOVER.md) 与 [CHANGELOG](CHANGELOG.md)，不在这里重复。
 
 **版本口径**：**1.2 = 时间模块基础**（时间线 + 时间轴）；**1.3 = AI 整理与事件线**。
-当前 package 版本是 `1.2.0`，CHANGELOG 已归并为单一的 `1.2.0（2026-10-30）`；
+当前 package 版本是 `1.2.1`，CHANGELOG 已归并为 1.2.1（2026-10-30）；1.2.0 保留为 2026-10-28 的历史 tag；
 还差 tag / push / 正式发布。
 
 ## 一、1.2 收尾状态
@@ -27,7 +27,7 @@
 - 删除硬链接 stage + replay 逐文件增量提交；
 - 每次删除前的 archive 硬链接快照 + `npm run archive:backup`；
 - 会话→会话 Turbo 持久侧栏；
-- 单一 `1.2.0` CHANGELOG 与 stale 摘要清理：`npm run timeline:summaries:prune`。
+- 单一 `1.2.1` CHANGELOG 与 stale 摘要清理：`npm run timeline:summaries:prune`。
 
 ## 二、1.2 发布前需要你确认
 
