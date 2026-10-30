@@ -1,5 +1,7 @@
 import { normalize, parseQuery, chatMatches, titleHit, bodyScoped, turnMatches, titleHighlights, bodyHighlights, titleParts, bodyParts, emptyCopy } from './search-query.mjs';
 (() => {
+ if (window.__ceobeSidebarControls) return;
+ window.__ceobeSidebarControls = true;
  document.addEventListener('click',e=>{const button=e.target.closest('[data-ceobe-project-new]');if(!button)return;e.preventDefault();e.stopPropagation();document.dispatchEvent(new CustomEvent('ceobe:open-project',{detail:{opener:button}}))},true);
  const sidebar=document.getElementById('stage-slideover-sidebar'),rail=document.getElementById('stage-sidebar-tiny-bar'),panel=document.querySelector('[data-ceobe-sidebar-panel]'),dialog=document.querySelector('[data-ceobe-search]');if(!sidebar||!rail||!panel||!dialog)return;
  const root=new URL(location.pathname.includes('/conversations/')?'../':'./',location.href),key='ceobe.sidebar-collapsed.v1';

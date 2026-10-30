@@ -1,4 +1,4 @@
-import{readFile,writeFile,readdir,copyFile}from'node:fs/promises';import{join}from'node:path';import{createHash}from'node:crypto';import{parseHTML}from'linkedom';import{htmlSafeSvg}from'./serialize-html.mjs';import{ensureStylesheet,placeStylesheet,placeScript}from'./page-decoration.mjs';
+import{readFile,writeFile,readdir,copyFile,mkdir,rm}from'node:fs/promises';import{join}from'node:path';import{createHash}from'node:crypto';import{parseHTML}from'linkedom';import{htmlSafeSvg}from'./serialize-html.mjs';import{ensureStylesheet,placeStylesheet,placeScript}from'./page-decoration.mjs';
 export async function buildSidebarControls(root,pageCache=null,selected=null){
  const base=join(root,'replay'),f=JSON.parse(await readFile(join(root,'official-templates/sidebar-search.json'),'utf8')),files={};
  // linkedom 按插入顺序序列化属性；先删再设，保证每次重建的属性顺序一致（否则同一页两次构建字节不同）。
@@ -14,10 +14,20 @@ export async function buildSidebarControls(root,pageCache=null,selected=null){
  if(!controlsSource.includes("'./"+queryName+"'"))throw new Error('sidebar-controls.js 没有引用 search-query.mjs');
  files['sidebar-controls.js']='sidebar-controls.'+createHash('sha256').update(controlsSource).digest('hex').slice(0,12)+'.js';
  await writeFile(join(base,files['sidebar-controls.js']),controlsSource);
+ const turboSource=await readFile(join(root,'scripts/vendor/turbo.es2017-umd.js'),'utf8');
+ const turboName='turbo.'+createHash('sha256').update(turboSource).digest('hex').slice(0,12)+'.js';
+ await mkdir(join(base,'public'),{recursive:true});
+ await writeFile(join(base,'public',turboName),turboSource);
+ const turboChatSource=await readFile(join(root,'scripts/turbo-chat.js'),'utf8');
+ const turboChatName='turbo-chat.'+createHash('sha256').update(turboChatSource).digest('hex').slice(0,12)+'.js';
+ await writeFile(join(base,'public',turboChatName),turboChatSource);
+ const publicDir=join(base,'public');
+ for(const name of await readdir(publicDir))if(/^turbo(?:-chat)?\.[a-f0-9]+\.js$/.test(name)&&![turboName,turboChatName].includes(name))await rm(join(publicDir,name),{force:true});
  for(const name of f.stylesheets)await copyFile(join(root,'official-templates/assets',name),join(base,'assets',name));
  const pages=selected??(await readdir(base)).filter(n=>n.endsWith('.html')).concat((await readdir(join(base,'conversations'))).filter(n=>n.endsWith('.html')).map(n=>'conversations/'+n));
  for(const page of pages){
   const d=pageCache?await pageCache.load(page):parseHTML(await readFile(join(base,page),'utf8')).document,sidebar=d.getElementById('stage-slideover-sidebar');if(!sidebar)continue;
+  sidebar.setAttribute('data-turbo-permanent','');
   // 幂等：先清掉本步骤上一次注入的节点、启动脚本与标记属性。
   for(const sel of ['[data-ceobe-rail-recent]','#ceobe-rail-recent-row','[data-ceobe-search]','#ceobe-search-row','#ceobe-search-body-row','#ceobe-search-empty'])for(const n of d.querySelectorAll(sel))n.remove();
   for(const n of d.querySelectorAll('script'))if((n.textContent||'').includes('ceobeSidebarCollapsed'))n.remove();
@@ -36,7 +46,7 @@ export async function buildSidebarControls(root,pageCache=null,selected=null){
   const status=d.createElement('p');status.className='sr-only';status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.dataset.ceobeSearchStatus='';dialog.append(status);
   // 语法提示：一行放得下，说明可用字段；空结果文案由脚本按查询形态改写。
   const hint=d.createElement('p');hint.className='ceobe-search-hint';hint.dataset.ceobeSearchHint='';hint.textContent='引号短语 · -排除 · A/B 任一 · title: · from:user/gpt · has:code/table/image · created:2025-06 · messages:>20';dialog.querySelector('.F_cuGW_modalContent').insertBefore(hint,dialog.querySelector('.F_cuGW_resultsScroller'));
-  d.body.append(dialog);
+  d.body.append(dialog);dialog.id='ceobe-search-dialog';dialog.setAttribute('data-turbo-permanent','');
   for(const [id,html]of [['ceobe-search-row',f.row],['ceobe-search-body-row',f.row],['ceobe-search-empty',f.empty]]){const template=d.createElement('template');template.id=id;template.innerHTML=html;for(const use of template.content.querySelectorAll('use')){const href=use.getAttribute('href');use.setAttribute('href',prefix+'cdn/assets/'+(href.includes('sprites-shell')?'sprites-shell-097001e7.svg':'sprites-core-26c3f2d4.svg')+'#'+href.split('#')[1])}
    if(id==='ceobe-search-empty'){const box=template.content.querySelector('.F_cuGW_noResults'),text=[...box.childNodes].find(n=>n.nodeType===3&&n.textContent.trim());if(text){const span=d.createElement('span');span.dataset.ceobeSearchEmptyText='';span.textContent=text.textContent.trim();text.replaceWith(span)}}
    syncTemplate(template);d.body.append(template)}
@@ -47,6 +57,11 @@ export async function buildSidebarControls(root,pageCache=null,selected=null){
   for(const name of f.stylesheets.map(n=>'assets/'+n))ensureStylesheet(d,prefix+name);
   placeStylesheet(d,'sidebar-controls.',prefix+files['sidebar-controls.css']);
   placeScript(d,'sidebar-controls.',prefix+files['sidebar-controls.js']);
+
+  for(const n of d.querySelectorAll('script[data-ceobe-turbo],script[data-ceobe-turbo-chat]'))n.remove();
+  for(const n of d.querySelectorAll('[data-chat-delete],[data-ceobe-chat-menu],[data-ceobe-chat-submenu]'))n.setAttribute('data-turbo-permanent','');
+  const turboScript=d.createElement('script');turboScript.src=prefix+turboName;turboScript.defer=true;turboScript.dataset.ceobeTurbo='';d.head.append(turboScript);
+  const turboChatScript=d.createElement('script');turboChatScript.src=prefix+turboChatName;turboChatScript.defer=true;turboChatScript.dataset.ceobeTurboChat='';d.head.append(turboChatScript);
   if(pageCache)pageCache.markDirty(page);else await writeFile(join(base,page),'<!DOCTYPE html>\n'+htmlSafeSvg(d.documentElement.outerHTML));
  }
 }

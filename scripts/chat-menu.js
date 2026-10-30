@@ -1,6 +1,8 @@
 import {saveArchive,openChatFolder} from './export-download.js';
 // Keep handlers scoped when Vite concatenates this module with legacy reader scripts.
 (() => {
+if (window.__ceobeChatMenu) return;
+window.__ceobeChatMenu = true;
 const menu=document.querySelector('[data-ceobe-chat-menu]'),sub=document.querySelector('[data-ceobe-chat-submenu]');
 const move=menu.querySelector('[data-chat-action=move]'),list=sub.querySelector('[data-chat-project-list]'),status=document.getElementById('ceobe-chat-status');
 const layouts=JSON.parse(document.getElementById('ceobe-chat-layout').textContent);

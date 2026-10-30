@@ -4,6 +4,14 @@
 
 ## 未发布（1.2 时间模块：时间线 + 时间轴）
 
+### 侧栏持久布局
+
+- 会话→会话切换接入 vendored Turbo Drive（`@hotwired/turbo` 8.0.23 的 UMD 文件，独立于 node_modules）：
+  侧栏、搜索弹层、聊天菜单和删除弹层标记 `data-turbo-permanent`，切换时不再重建，滚动位置和活动项保留。
+- 只接管 `/conversations/*.html` 之间的链接；其他入口和表单仍走整页加载。首次进入页面仍由
+  `chats.json`/`/api/chats` 填充目录，时间线等顶层页首次进入会话仍整页加载。
+- 新增 `scripts/test-turbo-browser.mjs`，锁定侧栏 DOM、完整列表、活动项和后退恢复。
+
 ### 时间线 / 时间轴
 
 - 卡片改为固定高度（224px）的等高网格：标题 + 轮数在左，模型在右上，摘要 4 行，

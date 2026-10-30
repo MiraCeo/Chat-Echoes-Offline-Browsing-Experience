@@ -85,6 +85,9 @@ npm run verify:archive      # 只读检查档案结构
   tag 最多显示 6 个、超出 `+N`；活跃条按日轮次三档绿色，无消息留白；
   契约见 `docs/summary-contract.md`；索引仍是构建期 `replay/public/timeline-index.json`，
   含 `turns` / `rounds` / `models` / `primary_model` / `user_chars` / `assistant_chars`，标题取 `chats.json`；
+- 会话→会话切换使用 vendored Turbo Drive 保持侧栏；侧栏/搜索/聊天菜单/删除弹层标记
+  `data-turbo-permanent`，页面级脚本用 `?turbo=N` 重新初始化。只接管会话页之间的链接，
+  其他入口仍整页加载；时间线等顶层页首次进入会话仍会重新加载侧栏；
 - 资料库可以自建文件夹（当标签用，一条资源可属多个）并上传自己的文件；
   上传字节在 `data/private/library-files/`，不进 `archive/`，任何路径都不删原文件；
 - 附件随页拷贝：并行渲染的每一页都写自己会话的附件字节，`replay/archive-resources` 与 `dist` 都是 321 个文件，

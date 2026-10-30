@@ -1,14 +1,16 @@
 import {createChatOrganizer} from './chat-organizer.js';
 import {applyProjectLabel} from './sidebar-project-label.js';
 (() => {
+if (window.__ceobeChatActions) return;
+window.__ceobeChatActions = true;
 const recent=document.querySelector('[data-chat-recent-list]'),pinned=document.querySelector('[data-chat-pinned-section]'),dialog=document.querySelector('[data-chat-delete]'),status=document.getElementById('ceobe-chat-status');
 const prefix=location.pathname.includes('/conversations/')?'../':'./';let catalog=[],catalogLoaded=false,writable=false,editing=null,deleting=null,inerted=[],busy=false;
 // 会话列表由构建期写成一行模板（#ceobe-sidebar-chat-row），浏览器按 chats.json 复制出全部行。
 // 页面里既不含全部会话的 <li>，也不含 #ceobe-chat-catalog，删改会话才不会改写每一页。
 const rowTemplate=document.getElementById('ceobe-sidebar-chat-row'),staticRow=recent?.firstElementChild||null;
 // 活动态按页面自己的会话决定：导图/资料库/项目页的 body 里没有 readerChatId，也没有活动行。
-const pageChatId=(['data-ceobe-import-page','data-ceobe-project-detail','data-ceobe-projects-page','data-ceobe-asset-library'].some(attribute=>document.body.hasAttribute(attribute))
- ?'' : document.body.dataset.readerChatId||(location.pathname.match(/\/conversations\/([^/]+)\.html$/)?.[1]||''));
+const currentChatId=()=>['data-ceobe-import-page','data-ceobe-project-detail','data-ceobe-projects-page','data-ceobe-asset-library'].some(attribute=>document.body.hasAttribute(attribute))?'':document.body.dataset.readerChatId||(location.pathname.match(/\/conversations\/([^/]+)\.html$/)?.[1]||'');
+let pageChatId=currentChatId();
 let projects=JSON.parse(document.getElementById('ceobe-projects-data').textContent),projectGeneration=0;
 const labelTemplate=document.getElementById('ceobe-sidebar-project-label').content.firstElementChild;
 const pinKey='ceobe.pinned-expanded.v1';let pinnedExpanded=true;try{pinnedExpanded=localStorage.getItem(pinKey)!=='false'}catch{}
@@ -62,4 +64,5 @@ document.addEventListener('ceobe:chat-action',async e=>{const c=catalog.find(x=>
 document.addEventListener('click',e=>{const b=e.target.closest('[data-chat-unpin]');if(b){e.preventDefault();e.stopPropagation();document.dispatchEvent(new CustomEvent('ceobe:chat-action',{detail:{id:b.dataset.chatUnpin,action:'pin'}}))}},true);
 pinned?.querySelector('button')?.addEventListener('click',()=>{pinnedExpanded=!pinnedExpanded;try{localStorage.setItem(pinKey,String(pinnedExpanded))}catch{}paintPinned()});
 render();seedCatalog();load();window.addEventListener('focus',()=>{if(!editing&&!deleting)load()});
+document.addEventListener('turbo:load',()=>{pageChatId=currentChatId();if(catalogLoaded)render();markSidebarReady();load()});
 })();
