@@ -10,8 +10,8 @@ import { placeScript, placeStylesheet } from './page-decoration.mjs';
 const hash = value => createHash('sha256').update(value).digest('hex').slice(0, 12);
 
 /**
- * Top-level read-only L3.1 page. The source is the kernel's projected
- * ceobe-banks.json; CEOBE only copies it into replay/public and renders cards.
+ * Top-level read-only L3.1 page. The source is the normalized memory view
+ * produced by import-memory-overlay.mjs; CEOBE copies it into replay/public.
  */
 export async function buildMemoryPage(projectRoot = resolve(import.meta.dirname, '..')) {
   const replay = join(projectRoot, 'replay');
@@ -29,7 +29,7 @@ export async function buildMemoryPage(projectRoot = resolve(import.meta.dirname,
     <div class="ceobe-memory-inner">
       <header class="ceobe-memory-header">
         <h1>记忆</h1>
-        <p class="ceobe-memory-lede">按已确认账号组整理的项目记忆库。只读；内容来自本地记忆内核。</p>
+        <p class="ceobe-memory-lede">按已确认账号组整理的项目记忆库与主线。只读；内容来自本地记忆内核。</p>
       </header>
       <div class="ceobe-memory-toolbar">
         <div class="ceobe-memory-groups" data-memory-groups role="group" aria-label="记忆分组"></div>
@@ -40,11 +40,11 @@ export async function buildMemoryPage(projectRoot = resolve(import.meta.dirname,
     </div>`;
   document.querySelector('main')?.replaceWith(main);
 
-  const source = join(projectRoot, 'data/private/memory-kernel/ceobe-banks.json');
-  let doc = { banks: [] };
-  try { doc = JSON.parse(await readFile(source, 'utf8')); } catch { /* optional until kernel data is copied */ }
+  const source = join(projectRoot, 'data/private/memory-kernel/memory-view.json');
+  let doc = { schema: 'ceobe.memory-view/1', groups: [], ungrouped: { count: 0, sessions: [] } };
+  try { doc = JSON.parse(await readFile(source, 'utf8')); } catch { /* optional until overlay is adapted */ }
   await mkdir(join(replay, 'public'), { recursive: true });
-  await writeFile(join(replay, 'public', 'memory-banks.json'), JSON.stringify(doc), 'utf8');
+  await writeFile(join(replay, 'public', 'memory-data.json'), JSON.stringify(doc), 'utf8');
 
   const script = await readFile(join(projectRoot, 'scripts/memory.js'), 'utf8');
   const scriptFile = 'memory.' + hash(script) + '.js';

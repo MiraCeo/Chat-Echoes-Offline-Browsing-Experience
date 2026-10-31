@@ -6,8 +6,9 @@
 
 ### 记忆（L3.1）
 
-- 新增顶层「记忆」页：读取 `ceobe-banks.json`，按已确认账号组渲染
-  「我是谁 / 在手的事 / 等着的事 / 近期变化」四块只读卡片；支持 `?group=gq|g1`。
+- 新增顶层「记忆」页：读取 `memory-view.json`，按已确认账号组渲染
+  「我是谁 / 在手的事 / 等着的事 / 近期变化」四块只读卡片，并显示主线、主题、delta 和未分组降级；
+  支持 `?group=gq|g1|ungrouped`。
 - 侧栏新增「记忆」入口；项目详情的「项目记忆」按钮按项目名跳转：
   `国庆 → gq`、`User → g1`，其他项目不显示。
 - 内核导出的 `input/manifest.json` 与 Markdown frontmatter 增加 `group_id`；

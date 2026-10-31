@@ -143,13 +143,18 @@ npm run preview
 
 ### 记忆
 
-侧栏「记忆」页展示已确认账号组的只读 L3.1 记忆库，当前有国庆组和 01–05 序列两组：
+侧栏「记忆」页展示已确认账号组的只读 L3.1 记忆库，当前有国庆组、01–05 序列和未分组三部分：
 
 - 四个区块：我是谁 / 在手的事 / 等着的事 / 近期变化；
-- 支持 `memory.html?group=gq`、`?group=g1` 直接打开；
+- 顶部显示覆盖会话、轮数和快照截止日；
+- 主线清单按数组显示，当前两组各 5 条；跨线主题单独列出，不冒充主线；
+- 「未分组」只显示有 L1/L2/L4 的会话，不生成 L3/L3.1；
+- 支持 `memory.html?group=gq`、`?group=g1`、`?group=ungrouped` 直接打开；
 - 项目详情页的项目名对应分组：“国庆”跳到 gq，“User”跳到 g1；
 - 其他项目没有对应的记忆库，不显示“项目记忆”；
-- 数据来自本地 `data/private/memory-kernel/ceobe-banks.json`，由 `npm run library` 复制到 `replay/public/memory-banks.json`；页面只读，不修改内核产物。
+- 数据来自 `D:\ai-memory\overlay`，先运行 `npm run memory:overlay` 校验并生成
+  `data/private/memory-kernel/memory-view.json`；`npm run library` 再发布为
+  `replay/public/memory-data.json`。页面只读，不修改内核产物。
 
 ### 搜索、置顶与项目
 

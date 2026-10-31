@@ -14,7 +14,7 @@
 2026-10-30 验证结果：
 
 - `npm test`：全量通过（含 Turbo 会话切换回归）；
-- `npm run check`：41 页巡检通过；
+- `npm run check`：38 页巡检通过；
 - `npm run build`：生产构建通过；
 - 当前档案：34 个会话；stale 摘要已清理到 34 条，源文件与 `replay/public` 一致；
 - `v1.2.1` 已推送到 `origin/main`，annotated tag 已推送；

@@ -59,16 +59,18 @@ npm run dev -- --host 127.0.0.1 --port 5173
 - 首次进入仍未 ready 的静态一行不会被 Turbo 自动修正；Turbo 只保证后续会话切换不再重建侧栏。
   `scripts/test-turbo-browser.mjs` 锁定侧栏 DOM 保留、活动项更新和后退恢复；
 
-### 记忆页（L3.1）
+### 记忆页（L3.1 / overlay v2）
 
-- `build-memory-page.mjs` 从 `import.html` 复制外壳，生成只读 `replay/memory.html`；
-  数据源是 `data/private/memory-kernel/ceobe-banks.json`，构建时复制为
-  `replay/public/memory-banks.json`；
-- 页面由 `memory.js` 按 `?group=` 渲染 `banks` 的四个 block；分组名由内核产物提供；
+- `import-memory-overlay.mjs` 读取 `D:\ai-memory\overlay`，校验 31 个 archive-map 路径、
+  `preferred/outcome`、delta 结构、mainline 引用，再生成
+  `data/private/memory-kernel/memory-view.json`；
+- `build-memory-page.mjs` 从 `import.html` 复制外壳，生成只读 `replay/memory.html`，
+  并把 view 复制为 `replay/public/memory-data.json`；
+- 页面由 `memory.js` 按 `?group=` 渲染 L3.1 四块、主线清单、主题、delta 和 ungrouped；
 - `build-memory-nav.mjs` 克隆「项目」行，插在「时间」之后；`page-decoration` 清理重复行；
 - 项目页在 `project-detail.js` 按项目名映射：`User → g1`、`国庆 → gq`，
   只在有记忆库的项目上显示「项目记忆」按钮；
-- 这是 L3.1 只读版，L2/L3 总览、L4 事件树和 L5 跨会话树尚未接入；
+- 这是 L3.1 只读版，L2/L3 总览、L4 事件树和 L5 跨会话树尚未接入。
 - 后处理步骤必须**幂等**：`scripts/page-decoration.mjs` 的 `clearPageDecorations()` 在每趟构建开头统一清场，
   资源引用用 `placeStylesheet`/`placeScript` 就地更新版本，`writeIfChanged` 在内容没变时不写盘。
   新增后处理步骤时照这个模式写，否则每次重建都会重复注入节点、页面体积持续增长。

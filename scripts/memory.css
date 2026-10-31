@@ -108,6 +108,51 @@
   color: #667085;
   font-size: 13px;
 }
+.ceobe-memory-mainlines {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border: 1px solid #e4e7ec;
+  border-radius: 9px;
+  background: #f8fafc;
+}
+.ceobe-memory-mainlines h3 {
+  margin: 0 0 9px;
+  color: #344054;
+  font-size: 11px;
+  font-weight: 600;
+}
+.ceobe-memory-mainline-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.ceobe-memory-chip {
+  display: inline-block;
+  padding: 3px 8px;
+  border: 1px solid #d0d5dd;
+  border-radius: 6px;
+  background: #fff;
+  color: #475467;
+  font-size: 11px;
+}
+.ceobe-memory-theme { margin: 10px 0 0; color: #667085; font-size: 11px; }
+.ceobe-memory-delta {
+  margin: 0 0 16px;
+  padding: 9px 12px;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+  color: #475467;
+  font-size: 11px;
+}
+.ceobe-memory-delta summary { cursor: pointer; }
+.ceobe-memory-delta ul { display: grid; gap: 5px; margin: 9px 0 0; padding-left: 18px; }
+.ceobe-memory-delta li strong { color: #344054; }
+.ceobe-memory-ungrouped-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.ceobe-memory-ungrouped-list li {
+  padding: 14px 16px;
+  border: 1px solid #e4e7ec;
+  border-radius: 9px;
+}
+.ceobe-memory-ungrouped-list h3 { margin: 0 0 3px; font-size: 14px; font-weight: 600; }
+.ceobe-memory-ungrouped-meta { margin: 0 0 7px; color: #98a2b3; font-size: 11px; }
+.ceobe-memory-ungrouped-list p { margin: 5px 0 0; color: #475467; font-size: 12px; line-height: 1.6; }
+.ceobe-memory-tags { color: #98a2b3 !important; font-size: 10px !important; }
 @media (max-width: 720px) {
   .ceobe-memory-inner { width: min(100% - 32px, 900px); padding-top: 28px; }
   .ceobe-memory-toolbar { align-items: flex-start; flex-direction: column; }
