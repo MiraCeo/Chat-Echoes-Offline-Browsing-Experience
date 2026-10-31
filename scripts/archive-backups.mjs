@@ -12,6 +12,7 @@ import { existsSync } from 'node:fs';
 import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { acquireMutation } from './workspace-mutation.mjs';
 
 const projectRoot = resolve(import.meta.dirname, '..');
 const backupsRoot = root => join(root, 'data/private/archive-backups');
@@ -76,6 +77,12 @@ export async function exportSnapshot(root = projectRoot, { snapshot = 'latest', 
   if (existsSync(target)) throw new Error(`目标已存在，拒绝覆盖：${target}`);
   await mkdir(dirname(target), { recursive: true });
   await cp(selected.path, target, { recursive: true, force: false, errorOnExist: true });
+  const sourceLibrary = JSON.parse(await readFile(join(selected.path, 'archive/library.ceobe.json'), 'utf8'));
+  const targetLibrary = JSON.parse(await readFile(join(target, 'archive/library.ceobe.json'), 'utf8'));
+  if (!Array.isArray(targetLibrary.conversations)
+    || targetLibrary.conversations.length !== sourceLibrary.conversations.length) {
+    throw new Error('导出后会话数与源快照不一致，请检查目标目录。');
+  }
   return { snapshot: selected, target };
 }
 
@@ -83,7 +90,11 @@ export async function pruneSnapshots(root = projectRoot, { keep = 5, dryRun = tr
   if (!Number.isInteger(keep) || keep < 1) throw new Error('--keep 必须是大于 0 的整数');
   const snapshots = await listSnapshots(root);
   const removed = snapshots.slice(keep);
-  if (!dryRun) for (const item of removed) await rm(item.path, { recursive: true, force: true });
+  if (!dryRun && removed.length) {
+    const release = await acquireMutation(root);
+    try { for (const item of removed) await rm(item.path, { recursive: true, force: true }); }
+    finally { await release(); }
+  }
   return { keep, removed, remaining: snapshots.slice(0, keep), dryRun };
 }
 
@@ -115,20 +126,28 @@ export async function restoreConversation(root = projectRoot, {
     if ((current.conversations || []).some(item => item.id === chatId)) throw new Error(`当前 archive 已存在会话：${chatId}`);
     if (existsSync(targetDir)) throw new Error(`目标目录已存在，拒绝覆盖：${targetDir}`);
     if (dryRun) return { snapshot: selected, entry, sourceDir, targetDir, copied: false, dryRun: true };
-    await mkdir(dirname(targetDir), { recursive: true });
-    await cp(sourceDir, targetDir, { recursive: true, force: false, errorOnExist: true });
-    const afterCopy = JSON.parse(await readFile(join(root, 'archive/library.ceobe.json'), 'utf8'));
-    if ((afterCopy.conversations || []).some(item => item.id === chatId)) throw new Error(`恢复过程中发现重复会话：${chatId}`);
-    afterCopy.conversations.push(entry);
-    afterCopy.generated_at = new Date().toISOString();
-    const tmp = join(root, 'archive/library.ceobe.json.' + process.pid + '.tmp');
-    await writeFile(tmp, JSON.stringify(afterCopy, null, 2) + '\n', 'utf8');
-    await rename(tmp, join(root, 'archive/library.ceobe.json'));
-    if (build) {
-      const result = spawnSync(process.execPath, ['scripts/build-library.mjs'], { cwd: root, stdio: 'inherit', windowsHide: true });
-      if (result.status !== 0) throw new Error('会话已恢复，但 build-library 失败；archive 未回滚。');
+    const release = await acquireMutation(root);
+    try {
+      const current = JSON.parse(await readFile(join(root, 'archive/library.ceobe.json'), 'utf8'));
+      if ((current.conversations || []).some(item => item.id === chatId)) throw new Error(`当前 archive 已存在会话：${chatId}`);
+      if (existsSync(targetDir)) throw new Error(`目标目录已存在，拒绝覆盖：${targetDir}`);
+      await mkdir(dirname(targetDir), { recursive: true });
+      await cp(sourceDir, targetDir, { recursive: true, force: false, errorOnExist: true });
+      const afterCopy = JSON.parse(await readFile(join(root, 'archive/library.ceobe.json'), 'utf8'));
+      if ((afterCopy.conversations || []).some(item => item.id === chatId)) throw new Error(`恢复过程中发现重复会话：${chatId}`);
+      afterCopy.conversations.push(entry);
+      afterCopy.generated_at = new Date().toISOString();
+      const tmp = join(root, 'archive/library.ceobe.json.' + process.pid + '.tmp');
+      await writeFile(tmp, JSON.stringify(afterCopy, null, 2) + '\n', 'utf8');
+      await rename(tmp, join(root, 'archive/library.ceobe.json'));
+      if (build) {
+        const result = spawnSync(process.execPath, ['scripts/build-library.mjs'], { cwd: root, stdio: 'inherit', windowsHide: true });
+        if (result.status !== 0) throw new Error('会话已恢复，但 build-library 失败；archive 未回滚。');
+      }
+      return { snapshot: selected, entry, sourceDir, targetDir, copied: true, dryRun: false };
+    } finally {
+      await release();
     }
-    return { snapshot: selected, entry, sourceDir, targetDir, copied: true, dryRun: false };
   }
   throw new Error(`目标已存在，拒绝覆盖：${targetDir}`);
 }
