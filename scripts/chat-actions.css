@@ -1,2 +1,25 @@
 [data-chat-delete][hidden],[data-chat-pinned-section][hidden]{display:none!important}
 [data-chat-delete] button,[data-chat-unpin],[data-chat-pinned-section]>div>button,input[name=title-editor]{pointer-events:auto!important}
+.ceobe-sidebar-skeleton{
+  display:flex!important;
+  align-items:center;
+  min-height:36px;
+  padding:8px 10px;
+  box-sizing:border-box;
+  list-style:none;
+  pointer-events:none;
+}
+.ceobe-sidebar-skeleton-body{display:flex;flex-direction:column;gap:6px;width:100%;min-width:0}
+.ceobe-sidebar-skeleton-line{
+  display:block;
+  height:7px;
+  border-radius:4px;
+  background:linear-gradient(90deg,rgba(127,127,127,.13) 25%,rgba(127,127,127,.22) 37%,rgba(127,127,127,.13) 63%);
+  background-size:400% 100%;
+  animation:ceobe-sidebar-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.ceobe-sidebar-skeleton-title{width:62%}
+.ceobe-sidebar-skeleton-meta{width:36%;height:6px;opacity:.72}
+.ceobe-sidebar-skeleton:nth-child(n+7){display:none!important}
+@keyframes ceobe-sidebar-skeleton-shimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
+@media (prefers-reduced-motion:reduce){.ceobe-sidebar-skeleton-line{animation:none;background:rgba(127,127,127,.16)}}

@@ -57,6 +57,8 @@ npm run dev -- --host 127.0.0.1 --port 5173
   导航前给新页 body 脚本加 `?turbo=N`，强制页面级脚本重新初始化。`sidebar-controls` /
   `chat-actions` / `chat-menu` 有单例保护，不会重复绑定侧栏；
 - 首次进入仍未 ready 的静态一行不会被 Turbo 自动修正；Turbo 只保证后续会话切换不再重建侧栏。
+  `chat-actions.js` 在数据到达前先渲染 6 行可见骨架（总共 8 行，窄屏隐藏后两行），
+  数据到达后整体替换；8 秒超时恢复静态行。`scripts/test-sidebar-skeleton-browser.mjs` 锁定该生命周期。
   `scripts/test-turbo-browser.mjs` 锁定侧栏 DOM 保留、活动项更新和后退恢复；
 
 ### 记忆页（L3.1 / overlay v2）

@@ -8,6 +8,32 @@ const prefix=location.pathname.includes('/conversations/')?'../':'./';let catalo
 // 会话列表由构建期写成一行模板（#ceobe-sidebar-chat-row），浏览器按 chats.json 复制出全部行。
 // 页面里既不含全部会话的 <li>，也不含 #ceobe-chat-catalog，删改会话才不会改写每一页。
 const rowTemplate=document.getElementById('ceobe-sidebar-chat-row'),staticRow=recent?.firstElementChild||null;
+// 首屏先用骨架占位，避免构建期那一行在 chats.json 到达前单独闪一下。
+const SKELETON_ROWS=8;
+let skeletonTimer;
+function paintSkeleton(){
+ if(!recent||catalogLoaded)return;
+ const fragment=document.createDocumentFragment();
+ for(let i=0;i<SKELETON_ROWS;i++){
+  const li=document.createElement('li');
+  li.className='ceobe-sidebar-skeleton';
+  li.dataset.ceobeSidebarSkeleton='';
+  li.setAttribute('aria-hidden','true');
+  const body=document.createElement('div');
+  body.className='ceobe-sidebar-skeleton-body';
+  const title=document.createElement('span');
+  title.className='ceobe-sidebar-skeleton-line ceobe-sidebar-skeleton-title';
+  const meta=document.createElement('span');
+  meta.className='ceobe-sidebar-skeleton-line ceobe-sidebar-skeleton-meta';
+  body.append(title,meta);
+  li.append(body);
+  fragment.append(li);
+ }
+ recent.replaceChildren(fragment);
+ clearTimeout(skeletonTimer);
+ // Local fetch should be quick; if it never arrives, put the real static row back rather than leave ghosts.
+ skeletonTimer=setTimeout(()=>{if(!catalogLoaded&&recent){recent.replaceChildren();if(staticRow)recent.append(staticRow)}},8000);
+}
 // 活动态按页面自己的会话决定：导图/资料库/项目页的 body 里没有 readerChatId，也没有活动行。
 const currentChatId=()=>['data-ceobe-import-page','data-ceobe-project-detail','data-ceobe-projects-page','data-ceobe-asset-library'].some(attribute=>document.body.hasAttribute(attribute))?'':document.body.dataset.readerChatId||(location.pathname.match(/\/conversations\/([^/]+)\.html$/)?.[1]||'');
 let pageChatId=currentChatId();
@@ -43,7 +69,7 @@ function render(){
  const current=catalog.find(c=>c.id===pageChatId);if(current)document.title=current.title;
 }
 // 构建期写出的静态清单（replay/chats.json）先撑起侧栏；本地服务可用时 load() 会换成最新数据。
-function markSidebarReady(){document.documentElement.dataset.ceobeSidebarChats='ready'}
+function markSidebarReady(){clearTimeout(skeletonTimer);document.documentElement.dataset.ceobeSidebarChats='ready'}
 function seedCatalog(){fetch(new URL(prefix+'chats.json',location.href),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(data=>{if(catalogLoaded||!Array.isArray(data?.chats))return;catalog=data.chats;catalogLoaded=true;render();markSidebarReady()}).catch(()=>{})}
 async function load(){loadProjects();try{const r=await fetch('/api/chats',{cache:'no-store'}),data=await r.json();if(!r.ok||!Array.isArray(data.conversations))throw new Error();catalog=data.conversations;catalogLoaded=true;writable=true;render();markSidebarReady()}catch{writable=false}}
 function update(c){catalog=catalog.map(x=>x.id===c.id?c:x);render();document.dispatchEvent(new Event('ceobe:chat-updated'))}
@@ -63,6 +89,8 @@ dialog.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();cl
 document.addEventListener('ceobe:chat-action',async e=>{const c=catalog.find(x=>x.id===e.detail.id);if(!c)return;if(!writable){tell('当前服务不可写，请使用本地开发或预览服务。');return}if(e.detail.action==='rename')rename(c,e.detail.opener);else if(e.detail.action==='delete')openDelete(c);else if(e.detail.action==='pin'){try{const result=await post({id:c.id,action:'pin',pinned:!c.pinned_at});update(result.conversation)}catch(err){tell(err.message)}}});
 document.addEventListener('click',e=>{const b=e.target.closest('[data-chat-unpin]');if(b){e.preventDefault();e.stopPropagation();document.dispatchEvent(new CustomEvent('ceobe:chat-action',{detail:{id:b.dataset.chatUnpin,action:'pin'}}))}},true);
 pinned?.querySelector('button')?.addEventListener('click',()=>{pinnedExpanded=!pinnedExpanded;try{localStorage.setItem(pinKey,String(pinnedExpanded))}catch{}paintPinned()});
+// 先挂骨架，再启动静态播种和 API 刷新；render() 到齐后会整体替换。
+paintSkeleton();
 render();seedCatalog();load();window.addEventListener('focus',()=>{if(!editing&&!deleting)load()});
 document.addEventListener('turbo:load',()=>{pageChatId=currentChatId();if(catalogLoaded)render();markSidebarReady();load()});
 })();

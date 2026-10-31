@@ -6,8 +6,9 @@
 [HANDOVER](HANDOVER.md) 与 [CHANGELOG](CHANGELOG.md)，不在这里重复。
 
 **版本口径**：**1.2 = 时间模块基础**（时间线 + 时间轴）；**1.3 = AI 整理与事件线**。
-当前 package 版本是 `1.2.1`，CHANGELOG 已归并为 1.2.1（2026-10-30）；1.2.0 保留为 2026-10-28 的历史 tag。
-`v1.2.1` 已 tag 并 push；按本地服务口径不创建 GitHub Release 页面。
+当前 package 版本是 `1.2.2`，CHANGELOG 已归并为 1.2.2（2026-10-31）；1.2.1 保留为历史 tag。
+`v1.2.1` 已 tag 并 push；`1.2.2` 目前只在本地，未 tag、未 push。
+按本地服务口径不创建 GitHub Release 页面。
 
 ## 〇、当前工作流（2026-10-31 起）
 
@@ -27,7 +28,7 @@
 - `npm run build`：生产构建通过（性能测试前）；
 - 当前档案：31 个会话（gq 10 / g1 6 / 未分组 15）；1 份 31 会话 archive 基线；
 - 性能测试导入的 `6ae5fe47` 已删除，测试产生的 32 会话快照也已清理；
-- `v1.2.1` 已推送到 `origin/main`，annotated tag 已推送；本轮 1.3 记忆接入只在本地提交；
+- `v1.2.1` 已推送到 `origin/main`，annotated tag 已推送；`1.2.2` 工程修复版只在本地，未 tag、未 push；
 - 最新提交以 `git log -1` 为准。
 
 已完成但不需要再列进待办：
@@ -40,7 +41,7 @@
 - 快照列表、单会话恢复、异盘导出 CLI；
 - 会话→会话 Turbo 持久侧栏；
 - 记忆覆盖层 v2 接入：L3.1 四块、主线、theme、delta、ungrouped；
-- 单一 `1.2.1` CHANGELOG 与 stale 摘要清理：`npm run timeline:summaries:prune`。
+- 单一 `1.2.2` CHANGELOG（1.2.1 保留历史）与 stale 摘要清理：`npm run timeline:summaries:prune`。
 
 ## 二、1.2 发布后待确认
 
