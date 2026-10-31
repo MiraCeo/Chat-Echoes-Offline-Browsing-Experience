@@ -128,6 +128,8 @@ npm run verify:archive      # 只读检查档案结构
 | 真实导入（2026-10-31 第一次，8 个资源下载） | 41.6s：capture 24.3s、rebuild 17.2s |
 | 真实导入（2026-10-31 第二次，0 下载 / 10 unresolved） | 32.4s：capture 17.7s、rebuild 14.6s；负载不同，不与第一次直接比较 |
 | 优化后真实删除（测试会话，API） | 17.9s；服务日志 15.2s（prepare 1.5s、build 12.8s、rebuild 14.3s） |
+| 资源基准（大链接，隔离 capture） | 30.0s；资源 URL 解析 20.8s，下载 6.6s；7,179,470 bytes / 8 下载 + 2 unresolved |
+| 资源基准（小链接，无附件） | skip 解析浏览器后 1.0s（此前 12.5s，其中解析 11.5s） |
 | 删除后校验 | 测试会话 archive/page/index 全部消失，其余 34 会话保留；`delete-jobs` 清空；live 的 library-assets/media 哈希与 mtime 未变 |
 | 删除备份 | 每次删除前在 `data/private/archive-backups/` 生成完整 archive 硬链接快照；`npm run archive:backup` 手动生成；`archive:backups` 列表、`archive:restore` 恢复单会话、`archive:export` 导出到异盘、`archive:prune` 默认预览保留策略 |
 

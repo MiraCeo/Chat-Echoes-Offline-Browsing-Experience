@@ -3,7 +3,7 @@ import { resolve, join, dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { parseArgs } from 'node:util';
-import { downloadResources, resourceMatches } from './archive-resources.mjs';
+import { downloadResources, resourceMatches, collectResources } from './archive-resources.mjs';
 import { exportConversationMarkdown } from './export-conversation-markdown.mjs';
 import { parseRetryAfter } from './import-throttle.mjs';
 import { resolveShareResources } from './resolve-share-resources.mjs';
@@ -89,10 +89,17 @@ if (run.status !== 0) {
 }
 mark('decoded');
 const conversation = JSON.parse(await readFile(join(folder, 'conversation.ceobe.json'), 'utf8'));
-console.log('Resolving public share attachment URLs in an anonymous browser…');
 mark('canonical-written');
-const resolutions = await resolveShareResources(conversation, url.href);
-mark('resources-resolved');
+const queuedResources = collectResources(conversation);
+let resolutions = [];
+if (queuedResources.length) {
+  console.log('Resolving public share attachment URLs in an anonymous browser…');
+  resolutions = await resolveShareResources(conversation, url.href);
+  mark('resources-resolved');
+} else {
+  console.log('No downloadable resources; skipping the anonymous browser resolution.');
+  mark('resources-resolved');
+}
 await writeFile(join(folder, 'raw', 'resource-responses.json'), JSON.stringify(resolutions, null, 2), { flag: 'wx' });
 conversation.resources = await downloadResources(conversation, folder, { resolutions });
 mark('resources-downloaded');
@@ -120,6 +127,6 @@ const libraryRun = spawnSync(process.execPath, ['scripts/build-library.mjs'], { 
 if (libraryRun.status === 0) console.log(libraryRun.stdout.trim());
 else console.warn(`Archive saved, but library index update failed: ${libraryRun.stderr || libraryRun.error}`);
 mark('library-rebuilt');
+}
 console.log('Timing: ' + timing.marks.map(([name, ms]) => `${name}=${(ms / 1000).toFixed(1)}s`).join(' ')
   + ` total=${((Date.now() - timing.started) / 1000).toFixed(1)}s`);
-}
