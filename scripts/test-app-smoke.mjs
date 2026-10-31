@@ -39,7 +39,7 @@ try {
   }, value);
   await typeSearch('支付');
   await page.waitForTimeout(600);
-  const hits = await page.locator('a[data-sidebar-item][href*="./conversations/"]').count();
+  const hits = await page.locator('a[data-sidebar-item][href*="conversations/"]').count();
   assert.ok(hits >= 1, `搜索“支付”应至少命中一条，实际 ${hits}`);
   await typeSearch('');
   await page.waitForTimeout(400);

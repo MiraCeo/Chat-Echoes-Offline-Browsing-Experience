@@ -2,7 +2,7 @@ import {initProjectMore} from './project-more.js';
 export function createChatOrganizer(recent){
  initProjectMore();
  const block=document.querySelector('[data-organizer-recent]'),section=document.querySelector('[data-organizer-projects]');if(!block||!section)return {update(){}};
- const header=block.querySelector('[data-organizer-header]'),popup=document.querySelector('[data-organizer-popup]'),menu=popup.querySelector('[role=menu]'),items=[...menu.querySelectorAll('[role=menuitemradio]')],prefix=location.pathname.includes('/conversations/')?'../':'./';
+ const header=block.querySelector('[data-organizer-header]'),popup=document.querySelector('[data-organizer-popup]'),menu=popup.querySelector('[role=menu]'),items=[...menu.querySelectorAll('[role=menuitemradio]')],root=new URL(location.pathname.includes('/conversations/')?'../':'./',location.href);
  const template=key=>document.querySelector(`[data-organizer-template="${key}"]`).firstElementChild.cloneNode(true),key='ceobe.chat-organization.v1';
  let state={mode:'list',recent:true,projects:true,open:[]},trigger=null,projects=[],chats=[];try{const s=JSON.parse(localStorage.getItem(key));if(s&&['list','projects'].includes(s.mode))state={mode:s.mode,recent:s.recent!==false,projects:s.projects!==false,open:Array.isArray(s.open)?s.open.filter(x=>typeof x==='string'):[]}}catch{}
  const save=()=>{try{localStorage.setItem(key,JSON.stringify(state))}catch{}};
@@ -23,7 +23,7 @@ export function createChatOrganizer(recent){
  }
  header.querySelector('button').addEventListener('click',()=>{state.recent=!state.recent;save();regroup()});section.querySelector('button').addEventListener('click',()=>{state.projects=!state.projects;save();regroup()});
  section.querySelector('[aria-label="新项目"]').addEventListener('click',e=>document.dispatchEvent(new CustomEvent('ceobe:open-project',{detail:{opener:e.currentTarget}})));
- section.addEventListener('click',e=>{const home=e.target.closest('[data-organizer-home]');if(home){location.href=prefix+'project.html?id='+encodeURIComponent(home.dataset.organizerHome);return}const t=e.target.closest('[data-organizer-toggle]');if(t){const id=t.dataset.organizerToggle;state.open=state.open.includes(id)?state.open.filter(x=>x!==id):[...state.open,id];save();const panel=document.getElementById(t.getAttribute('aria-controls'));panel.hidden=!state.open.includes(id);t.setAttribute('aria-expanded',String(!panel.hidden))}});
+ section.addEventListener('click',e=>{const home=e.target.closest('[data-organizer-home]');if(home){location.href=new URL('project.html?id='+encodeURIComponent(home.dataset.organizerHome),root).href;return}const t=e.target.closest('[data-organizer-toggle]');if(t){const id=t.dataset.organizerToggle;state.open=state.open.includes(id)?state.open.filter(x=>x!==id):[...state.open,id];save();const panel=document.getElementById(t.getAttribute('aria-controls'));panel.hidden=!state.open.includes(id);t.setAttribute('aria-expanded',String(!panel.hidden))}});
  section.addEventListener('keydown',e=>{if(e.target.matches('[data-organizer-toggle]')&&['Enter',' '].includes(e.key)){e.preventDefault();e.target.click()}});
  for(const b of document.querySelectorAll('[data-organizer-trigger]'))b.addEventListener('click',e=>open(b,e.detail===0));
  for(const [i,item]of items.entries())item.addEventListener('click',()=>{state.mode=i===0?'list':'projects';save();close();document.dispatchEvent(new Event('ceobe:organizer-change'))});

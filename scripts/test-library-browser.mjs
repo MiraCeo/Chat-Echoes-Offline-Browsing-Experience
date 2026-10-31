@@ -14,7 +14,7 @@ try {
   // 侧栏会话列表由客户端按 chats.json 渲染（页面里只留当前会话一行），等它渲染完成再数行数。
   await page.waitForFunction(() => document.documentElement.dataset.ceobeSidebarChats === 'ready');
   assert.equal(await page.title(), library.conversations[0].title);
-  const links = page.locator('a[data-sidebar-item][href*="./conversations/"]');
+  const links = page.locator('a[data-sidebar-item][href*="conversations/"]');
   assert.equal(await links.count(), library.conversations.length);
   // 置顶/项目聊天会给 aria-label 加注解并改变侧边栏顺序，比较标题集合。
   const sidebarTitles = await links.evaluateAll(nodes => nodes.map(node => (node.getAttribute('aria-label') || '').split(' — ')[0]));

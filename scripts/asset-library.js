@@ -1,5 +1,7 @@
 import { enhanceSheetGrids } from './sheet-grid.js';
 
+const pageAbort=window.__ceobeTopPageAbort&&!window.__ceobeTopPageAbort.signal.aborted?window.__ceobeTopPageAbort:(window.__ceobeTopPageAbort=new AbortController()),pageSignal=pageAbort.signal;
+
 const projectMode=!!document.querySelector('[data-project-files]');
 let data = projectMode?(window.ceobeProjectFiles||[]):JSON.parse(document.getElementById('ceobe-assets-data').textContent);
 const grid = document.querySelector('[data-ceobe-asset-rows]');
@@ -325,7 +327,7 @@ async function syncLibrary() {
     render();
   } catch { /* 纯静态：保持构建时的文件夹数据 */ }
 }
-document.addEventListener('ceobe:project-files',e=>{if(!projectMode)return;if(dialog.open)close();data=e.detail.items;if(grid)render()});
+document.addEventListener('ceobe:project-files',e=>{if(!projectMode)return;if(dialog.open)close();data=e.detail.items;if(grid)render()},{signal:pageSignal});
 function buildControls() {
   if (!grid || document.querySelector('[data-asset-advanced]')) return;
   const style = document.createElement('style');
@@ -417,12 +419,12 @@ function buildControls() {
     sourceSelect.replaceChildren(new Option('全部来源', 'all'), ...titles.map(title => new Option(title, title)));
     sourceSelect.value = titles.includes(current) ? current : 'all';
     sourceFilter = sourceSelect.value;
-  });
+  }, { signal: pageSignal });
 }
 buildControls();
 search?.addEventListener('input', render);
 if (!projectMode) syncLibrary();
-document.addEventListener('ceobe:asset-preview',e=>{const item=data.find(x=>x.id===e.detail?.id);if(item)open(item,e.detail.opener)});
+document.addEventListener('ceobe:asset-preview',e=>{const item=data.find(x=>x.id===e.detail?.id);if(item)open(item,e.detail.opener)},{signal:pageSignal});
 document.addEventListener('click', event => {
   const target = event.target.closest('button'); if (!target) return;
   if (target.dataset.assetFilter) { filter = target.dataset.assetFilter; render(); }
@@ -439,7 +441,7 @@ document.addEventListener('click', event => {
     for (const sheet of dialog.querySelectorAll('[data-ceobe-sheet]')) sheet.hidden = sheet.dataset.ceobeSheet !== target.dataset.ceobeSheetTab;
     for (const tab of dialog.querySelectorAll('[data-ceobe-sheet-tab]')) tab.setAttribute('aria-pressed', String(tab === target));
   }
-});
+}, { signal: pageSignal });
 dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
 if(grid)render();
 
@@ -458,4 +460,4 @@ document.addEventListener('copy', event => {
     .join('\t')).join('\n');
   event.clipboardData.setData('text/plain', tsv);
   event.preventDefault();
-});
+}, { signal: pageSignal });

@@ -10,6 +10,10 @@
 
 - 构建期静态会话行之外增加 8 行骨架；JS 启动后、`chats.json` / `/api/chats` 到达前不再闪单行。
 - 数据到达后骨架整体替换；8 秒超时则恢复静态行，避免永久骨架。
+- Turbo 从“仅会话→会话”扩展到本地页面（导入、资料库、项目、时间、记忆）；侧栏跨页面保持，
+  `turbo:load` 同步顶层活动项。
+- 侧栏的链接和图标在首次加载时统一转成绝对 URL，避免 Turbo 跨目录后 `./timeline.html`
+  被解析到 `/conversations/`；顶层页面脚本用 AbortController 清理 document/window 监听。
 
 ### 性能
 

@@ -3,6 +3,7 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
   const input = document.querySelector('[data-ceobe-import-input]');
   const submit = document.querySelector('[data-ceobe-import-submit]');
   if (!form || !input || !submit) throw new Error('Official import composer is incomplete.');
+  const pageAbort=window.__ceobeTopPageAbort&&!window.__ceobeTopPageAbort.signal.aborted?window.__ceobeTopPageAbort:(window.__ceobeTopPageAbort=new AbortController()),pageSignal=pageAbort.signal;
 
   // 统一在这里定义导入页的附加样式（折叠标题、上传入口、上传区）。
   if (!document.getElementById('ceobe-package-styles')) {
@@ -217,7 +218,7 @@ if (document.body.hasAttribute('data-ceobe-import-page') || document.body.hasAtt
   });
   window.addEventListener('beforeunload', event => {
     if (busy) { event.preventDefault(); event.returnValue = ''; }
-  });
+  }, { signal: pageSignal });
 
   form.addEventListener('submit', async event => {
     event.preventDefault();

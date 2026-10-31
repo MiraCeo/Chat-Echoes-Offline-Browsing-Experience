@@ -49,13 +49,13 @@ npm run dev -- --host 127.0.0.1 --port 5173
   `document.documentElement.dataset.ceobeSidebarChats = 'ready'`，浏览器测试等这个标记再数行数；
 - 因此**删除/重命名一个会话不会改写其他页面**；`scripts/test-sidebar-client-render.mjs` 用逐字节哈希守住这一点；
 - 想回到“每页写入全部会话”的旧行为做对照：`CEOBE_LEGACY_SIDEBAR=1 npm run library`（只用于逐字节比对，不要长期开启）；
-- 会话→会话切换用 vendored Turbo Drive 保持侧栏：`build-sidebar-controls` 注入
-  `scripts/vendor/turbo.es2017-umd.js` 和 `scripts/turbo-chat.js`，并给侧栏、搜索弹层、
-  聊天菜单和删除弹层标记 `data-turbo-permanent`。只拦截 `/conversations/*.html` 之间的链接；
-  从时间线等顶层页首次进入仍整页加载，避免根目录/子目录相对路径混用；
-- `turbo-chat.js` 关闭自动 Drive（`Turbo.session.drive = false`），只手动 `Turbo.visit` 会话链接；
-  导航前给新页 body 脚本加 `?turbo=N`，强制页面级脚本重新初始化。`sidebar-controls` /
-  `chat-actions` / `chat-menu` 有单例保护，不会重复绑定侧栏；
+- 本地页面之间（会话、导入、资料库、项目、时间、记忆）切换用 vendored Turbo Drive 保持侧栏：
+  `build-sidebar-controls` 注入 `scripts/vendor/turbo.es2017-umd.js` 和 `scripts/turbo-chat.js`，
+  并给侧栏、搜索弹层、聊天菜单和删除弹层标记 `data-turbo-permanent`；
+- `turbo-chat.js` 关闭自动 Drive（`Turbo.session.drive = false`），只手动 `Turbo.visit` 本地页面链接；
+  导航前给新页 body 脚本加 `?turbo=N`，强制页面级脚本重新初始化；`turbo:load` 同步顶层导航活动项；
+- 侧栏是 Turbo-permanent，首次加载时把其中的相对 `href` / `use[href]` / `img[src]` 统一转成绝对 URL；
+  顶层页面脚本在 document/window 上的监听通过 `window.__ceobeTopPageAbort` 在下次导航前 abort；
 - 首次进入仍未 ready 的静态一行不会被 Turbo 自动修正；Turbo 只保证后续会话切换不再重建侧栏。
   `chat-actions.js` 在数据到达前先渲染 6 行可见骨架（总共 8 行，窄屏隐藏后两行），
   数据到达后整体替换；8 秒超时恢复静态行。`scripts/test-sidebar-skeleton-browser.mjs` 锁定该生命周期。

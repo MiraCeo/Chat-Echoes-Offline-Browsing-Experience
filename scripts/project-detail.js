@@ -1,4 +1,5 @@
 (() => {
+const pageAbort=window.__ceobeTopPageAbort&&!window.__ceobeTopPageAbort.signal.aborted?window.__ceobeTopPageAbort:(window.__ceobeTopPageAbort=new AbortController()),pageSignal=pageAbort.signal;
 const id=new URLSearchParams(location.search).get('id'),list=document.querySelector('[data-project-conversations]'),status=document.querySelector('[data-project-detail-status]'),title=document.querySelector('[name=project-title]'),input=document.querySelector('[data-ceobe-import-input]');
 const memoryGroups={User:'g1','国庆':'gq'};
 const initial=JSON.parse(document.getElementById('ceobe-projects-data').textContent),previews=JSON.parse(document.getElementById('ceobe-project-previews').textContent);
@@ -22,6 +23,6 @@ async function load(){const token=++generation;try{const [pr,cr]=await Promise.a
 chats=[];render();load();fetch(new URL('chats.json',location.href),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(d=>{if(chats.length||!Array.isArray(d?.chats))return;chats=d.chats;render()}).catch(()=>{});
 list.addEventListener('click',e=>{if(e.target.closest('button,a,input'))return;e.target.closest('li')?.querySelector('a')?.click()});
 list.addEventListener('focusin',e=>{if(e.target.matches('input[name=title-editor]'))editing=true});
-document.addEventListener('ceobe:chat-updated',()=>{editing=false;load()});document.addEventListener('ceobe:project-updated',load);document.addEventListener('ceobe:project-moved',load);document.addEventListener('ceobe:project-created',load);document.addEventListener('ceobe:project-imported',load);window.addEventListener('focus',()=>{if(!editing)load()});
-document.addEventListener('click',e=>{if(e.target.closest('main [aria-disabled=true]')){e.preventDefault();e.stopPropagation()}},true);
+document.addEventListener('ceobe:chat-updated',()=>{editing=false;load()},{signal:pageSignal});document.addEventListener('ceobe:project-updated',load,{signal:pageSignal});document.addEventListener('ceobe:project-moved',load,{signal:pageSignal});document.addEventListener('ceobe:project-created',load,{signal:pageSignal});document.addEventListener('ceobe:project-imported',load,{signal:pageSignal});window.addEventListener('focus',()=>{if(!editing)load()},{signal:pageSignal});
+document.addEventListener('click',e=>{if(e.target.closest('main [aria-disabled=true]')){e.preventDefault();e.stopPropagation()}},{capture:true,signal:pageSignal});
 })();

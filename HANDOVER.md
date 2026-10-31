@@ -89,8 +89,9 @@ npm run verify:archive      # 只读检查档案结构
 - 侧栏「记忆」页：读取 `data/private/memory-kernel/memory-view.json`，渲染已确认账号组的
   L3.1 四块记忆库、5 条主线清单、跨线主题、delta 和 ungrouped；项目详情的「项目记忆」按
   `User → g1`、`国庆 → gq` 跳转，其他项目不显示；只读，不接 L2/L4/L5；
-- 会话→会话切换使用 vendored Turbo Drive 保持侧栏；侧栏/搜索/聊天菜单/删除弹层标记
-  `data-turbo-permanent`，页面级脚本用 `?turbo=N` 重新初始化。只接管会话页之间的链接，
+- 本地页面之间（会话、导入、资料库、项目、时间、记忆）切换使用 vendored Turbo Drive 保持侧栏；
+  侧栏/搜索/聊天菜单/删除弹层标记 `data-turbo-permanent`，页面级脚本用 `?turbo=N` 重新初始化，
+  顶层导航活动项在 `turbo:load` 更新；
   其他入口仍整页加载；时间线等顶层页首次进入会话仍会重新加载侧栏；
 - 资料库可以自建文件夹（当标签用，一条资源可属多个）并上传自己的文件；
   上传字节在 `data/private/library-files/`，不进 `archive/`，任何路径都不删原文件；

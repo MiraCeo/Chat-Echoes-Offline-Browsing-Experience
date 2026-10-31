@@ -1,4 +1,5 @@
 (() => {
+const pageAbort=window.__ceobeTopPageAbort&&!window.__ceobeTopPageAbort.signal.aborted?window.__ceobeTopPageAbort:(window.__ceobeTopPageAbort=new AbortController()),pageSignal=pageAbort.signal;
 const main=document.querySelector('main'),rows=main.querySelector('[data-project-rows]'),template=document.getElementById('ceobe-project-row');
 const modal=document.querySelector('[data-project-modal]'),picker=document.querySelector('[data-project-picker]'),form=modal.querySelector('form'),input=form.querySelector('#project-name'),submit=form.querySelector('[type=submit]'),error=form.querySelector('#project-form-error');
 const search=main.querySelector('[data-project-search]'),status=main.querySelector('[data-project-status]')||document.getElementById('ceobe-chat-status'),icons=JSON.parse(document.getElementById('ceobe-project-icons').textContent);
@@ -27,7 +28,7 @@ async function openProject(button,id=null){
  if(!writable)await load();if(!writable){status.textContent='当前服务只读，无法新建项目。请使用本地开发或预览服务。';status.hidden=false;return;}opener=button;conversationId=id;form.reset();color='default';icon='folder';requestId=crypto.randomUUID();error.textContent='';input.removeAttribute('aria-invalid');paintIcon();update();modal.showModal();input.focus();
 }
 for(const button of main.querySelectorAll('[data-project-new]'))button.addEventListener('click',()=>openProject(button));
-document.addEventListener('ceobe:open-project',e=>openProject(e.detail.opener,e.detail.conversationId));
+document.addEventListener('ceobe:open-project',e=>openProject(e.detail.opener,e.detail.conversationId),{signal:pageSignal});
 modal.querySelector('[data-testid=close-button]').addEventListener('click',close);
 modal.addEventListener('cancel',e=>{e.preventDefault();close()});
 iconButton.addEventListener('click',()=>{paintIcon();picker.showModal();picker.querySelector('input:checked')?.focus()});
@@ -53,7 +54,7 @@ form.addEventListener('submit',async e=>{
 search?.addEventListener('input',render);
 for(const b of main.querySelectorAll('[data-project-filter]'))b.addEventListener('click',()=>{filter=b.dataset.projectFilter;render()});
 async function load(){try{const r=await fetch('/api/projects',{cache:'no-store'});const result=await r.json();if(!r.ok||!Array.isArray(result.projects))throw new Error();projects=result.projects;writable=result.writable===true;status.textContent='项目保存在本地工作区；关联聊天中的附件会自动汇总到项目文件；暂不支持手动上传或云端共享。';}catch{writable=false;status.textContent='当前为只读快照。新建项目请使用本地 npm run dev 或 npm run preview 服务。';}for(const b of main.querySelectorAll('[data-project-new]')){b.disabled=!writable;b.title=writable?'创建本地项目':'当前服务只读';}render()}
-document.addEventListener('ceobe:project-updated',load);window.addEventListener('focus',()=>{if(!modal.open)load()});
+document.addEventListener('ceobe:project-updated',load,{signal:pageSignal});window.addEventListener('focus',()=>{if(!modal.open)load()},{signal:pageSignal});
 render();load();
 
 })();

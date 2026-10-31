@@ -56,7 +56,7 @@ try {
   assert.equal(state.timelineHidden, false);
   assert.equal(state.axisHidden, true);
   assert.equal(state.active, 'page', '时间页上的入口应标记当前页');
-  assert.equal(state.href, './timeline.html');
+  assert.ok(state.href.endsWith('/timeline.html'), '时间入口应指回时间页');
   assert.equal(state.previousIsProjects, true, '入口在「项目」之后');
   assert.equal(state.nextHasMore, true, '入口在「更多」之前');
   assert.equal(state.overflowX, false, '页面不应横向溢出');
@@ -236,10 +236,10 @@ try {
       const link = document.querySelector('[data-ceobe-timeline-row]');
       return { href: link?.getAttribute('href'), active: link?.getAttribute('aria-current') };
     });
-    assert.equal(back.href, '../timeline.html', '会话页上的入口应指回时间');
+    assert.ok(back.href.endsWith('/timeline.html'), '会话页上的入口应指回时间');
     assert.equal(back.active, null, '会话页上入口不应标记当前页');
     await page.locator('[data-ceobe-timeline-row]').click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => location.pathname.endsWith('/timeline.html'));
     assert.equal(await page.title(), '时间', '从会话页可以回到时间');
   }
 
