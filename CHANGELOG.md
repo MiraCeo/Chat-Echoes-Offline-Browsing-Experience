@@ -4,6 +4,12 @@
 
 ## 未发布
 
+### 备份与恢复
+
+- 新增 `archive:backups` 快照列表、`archive:restore` 单会话恢复、`archive:export` 异盘导出、
+  `archive:prune` 保留策略；
+  恢复默认重建页面，拒绝覆盖已有会话；`--dry-run` 可先检查计划，prune 默认只预览。
+
 ### 记忆（L3.1）
 
 - 新增顶层「记忆」页：读取 `memory-view.json`，按已确认账号组渲染

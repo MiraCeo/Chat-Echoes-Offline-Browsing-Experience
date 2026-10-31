@@ -7,6 +7,10 @@
   "scripts": {
     "timeline:summaries:prune": "node scripts/prune-timeline-summaries.mjs",
     "archive:backup": "node scripts/backup-archive.mjs",
+    "archive:backups": "node scripts/archive-backups.mjs list",
+    "archive:restore": "node scripts/archive-backups.mjs restore",
+    "archive:export": "node scripts/archive-backups.mjs export",
+    "archive:prune": "node scripts/archive-backups.mjs prune",
     "archive:share": "node scripts/archive-share.mjs",
     "library": "node scripts/build-library.mjs",
     "memory:export": "node scripts/export-ai-memory.mjs",

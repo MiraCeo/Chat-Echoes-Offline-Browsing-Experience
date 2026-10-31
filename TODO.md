@@ -7,17 +7,17 @@
 
 **版本口径**：**1.2 = 时间模块基础**（时间线 + 时间轴）；**1.3 = AI 整理与事件线**。
 当前 package 版本是 `1.2.1`，CHANGELOG 已归并为 1.2.1（2026-10-30）；1.2.0 保留为 2026-10-28 的历史 tag。
-`v1.2.1` 已 tag 并 push；GitHub Release 页面/发布说明尚未创建。
+`v1.2.1` 已 tag 并 push；按本地服务口径不创建 GitHub Release 页面。
 
 ## 一、1.2 收尾状态
 
-2026-10-30 验证结果：
+2026-10-31 验证结果：
 
-- `npm test`：全量通过（含 Turbo 会话切换回归）；
+- `npm test`：全量通过（含 Turbo 会话切换、记忆 v2 回归）；
 - `npm run check`：38 页巡检通过；
 - `npm run build`：生产构建通过；
-- 当前档案：34 个会话；stale 摘要已清理到 34 条，源文件与 `replay/public` 一致；
-- `v1.2.1` 已推送到 `origin/main`，annotated tag 已推送；
+- 当前档案：31 个会话（gq 10 / g1 6 / 未分组 15）；1 份 31 会话 archive 基线；
+- `v1.2.1` 已推送到 `origin/main`，annotated tag 已推送；本轮 1.3 记忆接入只在本地提交；
 - 最新提交以 `git log -1` 为准。
 
 已完成但不需要再列进待办：
@@ -27,20 +27,22 @@
 - 真实 `timeline-summaries.json` 接入；
 - 删除硬链接 stage + replay 逐文件增量提交；
 - 每次删除前的 archive 硬链接快照 + `npm run archive:backup`；
+- 快照列表、单会话恢复、异盘导出 CLI；
 - 会话→会话 Turbo 持久侧栏；
+- 记忆覆盖层 v2 接入：L3.1 四块、主线、theme、delta、ungrouped；
 - 单一 `1.2.1` CHANGELOG 与 stale 摘要清理：`npm run timeline:summaries:prune`。
 
 ## 二、1.2 发布后待确认
 
 1. **GitHub Release 页面**
-   - 当前只有 annotated tag 和 CHANGELOG；
-   - 是否在 GitHub 建 Release、写发布说明由你决定；
-   - 发布说明可以从 CHANGELOG 的 1.2.1 段整理。
+   - 不创建。CEOBE 是本地服务，发布以 tag 和 CHANGELOG 为准；
+   - 本轮 1.3 记忆接入尚未定版本，不新建 release/tag。
 
 2. **archive 备份的运维边界**
-   - 当前每次删除生成一份完整硬链接快照，不自动清理；
-   - 目前只有 1 份基线快照；没有列表/恢复 CLI、没有保留策略；
-   - 硬链接只防误删，不防磁盘损坏；需要把 `archive-backups` 复制到异盘/外部介质。
+   - 已增加 `archive:backups`、`archive:restore`、`archive:export`、`archive:prune`；
+   - 当前 31 会话基线已导出到 `E:\CEOBE_backup\archive-2026-10-31`，31 会话 / 622 个 archive 文件 / 约 960 MB；38 个 `conversation.ceobe.json` 已做 SHA-256 比对；
+   - E 是另一块内置卷，不是异地介质；仍建议定期复制到外置硬盘或 NAS；
+   - `archive:prune` 默认只预览，`--confirm` 才删除；当前没有自动定时清理。
 
 3. **Turbo 的已知边界**
    - 首次打开页面仍会先显示静态一行，再加载完整目录；
@@ -52,10 +54,11 @@
 
 - **首屏目录缓存/skeleton**：消除首次打开以及顶层页→会话的一行闪烁；
 - **Turbo 跨目录扩展**：统一侧栏绝对链接后，覆盖时间线→会话；
-- **删除/导入构建性能**：当前导入完整构建约 103.7s，删除构建 23–35s；
-  下一步是合并装饰步骤或做增量导入/原地 delta 构建；
-- **备份运维**：增加快照列表、恢复命令、保留策略和异盘复制提示；
-- **摘要自动 prune**：删除/导入后清理不再存在的会话摘要。
+- **删除/导入构建性能**：冷 I/O 下删除仍可能约 68s（最近一次 prepare 41.5s + build 16.4s + commit 9.6s）；
+  下一步是减少 previews 的 stage 复制或做原地 delta 构建；
+- **备份运维**：保留策略、定期异盘复制、恢复后校验；
+- **摘要自动 prune**：删除/导入后清理不再存在的会话摘要；
+- **记忆 overlay 新鲜度**：把 `memory:overlay` 纳入检查，overlay 比 view 新时给出告警。
 
 ## 四、已评估、暂不做
 
@@ -90,13 +93,14 @@
 - 单文件 HTML 导出仍实验性，图片不内嵌；
 - 生产 HTML 引用带哈希资源，裸路径命中 SPA 回退；
 - Windows 保留端口可能让 5173 绑定失败；
-- 删除仍约 30–43s，主要成本是整库构建（stage 复制已降到 5s 左右）；
+- 删除仍可能在 16–68s 波动，冷 I/O 下主要成本是 stage 复制和整库构建；
 - Turbo 只覆盖会话→会话；首次页面与顶层页→会话仍整页加载；
 - archive 快照是硬链接，不替代异盘备份，也不会自动清理。
 
-## 八、1.3 候选（未批准）
+## 八、1.3 状态
 
-按依赖顺序：
+已接 L3.1 记忆页：两组 L3 覆盖层、5 条主线、theme、delta、未分组降级。
+事件时间线、会话内事件树、长期事实层和跨聊天事件树仍在研究/未批准阶段，按依赖顺序保留：
 
 1. **事件时间线**：从聊天整理带 `occurred_at` / `recorded_at` / `sources` / `status` / `confidence` 的事件，
    与档案时间线共用时间轴；先做数据契约和只读视图；

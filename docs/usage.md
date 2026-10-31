@@ -406,16 +406,38 @@ data/private/archive-backups/<时间>-<会话短 id>-<随机后缀>/
 npm run archive:backup
 ```
 
-恢复单个会话时，先停止本地服务，再把快照中的目录复制回：
+恢复单个会话时，先列出快照，再按会话 ID 恢复：
 
 ```powershell
-Copy-Item "data/private/archive-backups/<快照>/archive/chatgpt-share/<会话 id>" `
-  "archive/chatgpt-share/<会话 id>" -Recurse
-npm run library
+npm run archive:backups
+npm run archive:restore -- --snapshot <快照名> --chat <会话 id>
 ```
 
-恢复整个 `archive/` 时，先把当前目录改名留底，再复制快照的 `archive/`，然后运行 `npm run library` 和 `npm run build`。
-快照使用硬链接，能防止误删，但不能防止整块磁盘损坏；重要档案仍应另外复制到另一块盘或外部备份。
+恢复命令会：
+
+- 拒绝覆盖当前已有的会话目录或重复 ID；
+- 复制完整会话目录（含附件）；
+- 更新 `archive/library.ceobe.json`；
+- 默认运行 `npm run library` 重建页面；加 `--no-build` 只恢复文件。
+- 加 `--dry-run` 只打印计划，不写盘。
+
+导出一份快照到异盘时，目标目录必须尚不存在：
+
+```powershell
+npm run archive:export -- --snapshot <快照名> --to D:\CEOBE-backup\<快照名>
+```
+
+默认保留 5 份快照；先看删除计划，再确认：
+
+```powershell
+npm run archive:prune -- --keep 5
+npm run archive:prune -- --keep 5 --confirm
+```
+
+不带 `--confirm` 只打印将删除的快照，不写盘。当前实际已导出一份到
+`E:\CEOBE_backup\archive-2026-10-31`（31 会话，约 960 MB；另一个独立卷，不是异地介质）。
+
+`sources/` 不包含在快照里；快照使用硬链接，能防止误删，但不能防止整块磁盘损坏。重要档案仍应另外复制到另一块盘或外部备份。
 
 ## 命令行与演示
 
