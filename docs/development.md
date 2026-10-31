@@ -111,10 +111,12 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 没有变化的页面不该被重新装饰——这是删除/重命名一个会话仍然要几十秒的主要原因。
 
-删除事务现在把 `archive/`、`replay/archive-resources`、`public/library-assets` 和
-`public/library-media` 硬链接进 stage，只复制可写页面/预览；装回时按文件差异逐文件 rename
-（被占用时回退 copy），并静默备份变化/删除的文件。删除耗时受磁盘缓存影响很大：
-曾观测 16–68s（冷 I/O 下 stage 准备可到 41.5s），剩余主成本仍是 stage 复制和整库构建。
+删除事务现在把 `archive/`、`replay/archive-resources`、`public/library-assets`、
+`public/library-media`、`replay/conversations` 和 `replay/previews` 硬链接进 stage，只复制可写页面/索引；
+页面和预览写入全部走同目录临时文件 + rename，避免通过硬链接穿透 live。
+装回时按文件差异逐文件 rename（被占用时回退 copy），并静默备份变化/删除的文件。
+真实规模 stage prepare 已从约 41.5s 降到约 1.5s；冷构建仍可能到 44s，整次删除基准约 45.6s。
+导入后的整库重建在暖缓存下约 14.2s，剩余主成本是页面装饰、索引和捕获本身。
 
 每次删除前还会在 `data/private/archive-backups/` 保留一份完整的 archive 硬链接快照，
 快照不随 delete job 清理、不自动删除；`npm run archive:backup` 可随时手动生成一份。

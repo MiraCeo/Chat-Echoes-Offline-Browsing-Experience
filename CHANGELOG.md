@@ -4,6 +4,11 @@
 
 ## 未发布
 
+### 性能
+
+- 删除 stage 对 `conversations` / `previews` 采用硬链接，页面和预览写入改为临时文件 + rename，
+  prepare 从约 41.5s 降到约 1.5s；避免构建通过硬链接改写 live 文件。
+
 ### 备份与恢复
 
 - 新增 `archive:backups` 快照列表、`archive:restore` 单会话恢复、`archive:export` 异盘导出、

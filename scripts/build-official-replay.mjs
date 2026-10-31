@@ -10,6 +10,7 @@ import { parseHTML } from 'linkedom';
 import { renderAssistantMarkdown } from "./render-markdown.mjs";
 import { createOfficialCitations } from "./official-citations.mjs";
 import { buildFilePreviews } from "./build-file-previews.mjs";
+import { writeFileAtomic } from './page-cache.mjs';
 import { conversationToHtmlView } from "./conversation-to-html-view.mjs";
 import { parseArgs } from "node:util";
 import { htmlSafeSvg, assertHtmlSerializable } from './serialize-html.mjs';
@@ -923,7 +924,7 @@ assertHtmlSerializable(output, `Reader page ${relative(projectRoot, outputPage)}
 
 await localizeGeneratedFonts(outputRoot);
 await mkdir(dirname(outputPage), { recursive: true });
-await writeFile(outputPage, placeholderMissingImages(output), "utf8");
+await writeFileAtomic(outputPage, placeholderMissingImages(output));
 
 console.log([
   `Built official replay from CEOBE JSON and official template package v${officialTemplates.manifest.version}.`,

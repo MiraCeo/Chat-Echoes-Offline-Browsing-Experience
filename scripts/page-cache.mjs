@@ -1,9 +1,27 @@
 // 共享页面缓存：多个构建步骤原本各自「读文件 → parseHTML → 改 → 写回」，
 // 同一张页面在一次构建里会被解析/序列化多遍。合并后只解析一次、最后统一写盘。
-import { readFile, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { dirname, join } from 'node:path';
 import { parseHTML } from 'linkedom';
 import { htmlSafeSvg } from './serialize-html.mjs';
+
+/**
+ * Write through a same-directory temp file and rename. The deletion stage
+ * hardlinks conversation pages and previews from the live replay; an in-place
+ * write would mutate the live inode through that hardlink. Rename gives the
+ * stage its own file instead.
+ */
+export async function writeFileAtomic(file, output) {
+  await mkdir(dirname(file), { recursive: true });
+  const tmp = `${file}.${process.pid}.${randomUUID().slice(0, 8)}.tmp`;
+  try {
+    await writeFile(tmp, output);
+    await rename(tmp, file);
+  } finally {
+    await rm(tmp, { force: true });
+  }
+}
 
 /**
  * 内容没变就不写盘。删除/重命名一个会话时，没有变动的页面只是被重新装饰了一遍，
@@ -11,7 +29,7 @@ import { htmlSafeSvg } from './serialize-html.mjs';
  */
 export async function writeIfChanged(file, output) {
   try { if (await readFile(file, 'utf8') === output) return false; } catch { /* 新文件 */ }
-  await writeFile(file, output);
+  await writeFileAtomic(file, output);
   return true;
 }
 

@@ -5,6 +5,7 @@ import { join, basename, extname } from 'node:path';
 import { homedir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { resourceMatches } from './archive-resources.mjs';
+import { writeFileAtomic } from './page-cache.mjs';
 
 const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 
@@ -231,7 +232,7 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
     // Keep the official viewer DOM out of the conversation document. The
     // browser fetches and parses this fragment only when its opener is used.
     const previewFile = `${key.replace(/[^a-zA-Z0-9_-]/g, '_')}.html`;
-    await writeFile(join(templateAssets, previewFile), pane.outerHTML, 'utf8');
+    await writeFileAtomic(join(templateAssets, previewFile), pane.outerHTML);
     previewFiles.set(key, previewFile);
   }
   const existingStylesheets = new Set([...document.querySelectorAll('link[rel="stylesheet"]')]
