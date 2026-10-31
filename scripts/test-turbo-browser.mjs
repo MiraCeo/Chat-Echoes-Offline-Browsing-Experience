@@ -41,6 +41,14 @@ try {
   await page.waitForSelector('.ceobe-prompt-menu');
   assert.equal(await page.locator('.ceobe-prompt-menu').count(), 1, 'Turbo 导航后右侧总览应重新初始化');
 
+  const menuUrl = page.url();
+  const options = page.locator('[data-conversation-options-trigger]').first();
+  await options.locator('xpath=ancestor::li').hover();
+  await options.click();
+  await page.waitForSelector('[data-ceobe-chat-menu]:not([hidden])');
+  assert.equal(page.url(), menuUrl, '点击侧栏“更多”不应触发会话跳转');
+  await page.keyboard.press('Escape');
+
   await page.goBack();
   await page.waitForFunction(id => location.pathname.endsWith(id + '.html'), first.id);
   await page.waitForTimeout(250);

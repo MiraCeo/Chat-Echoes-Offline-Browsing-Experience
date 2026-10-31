@@ -32,6 +32,10 @@
     if (!location.pathname.startsWith('/conversations/')) return;
     const link = event.target instanceof Element ? event.target.closest('a[href]') : null;
     if (!link || link.target || link.hasAttribute('download') || link.dataset.turbo === 'false') return;
+    // Sidebar chat rows wrap trailing controls (pin/options/delete) inside the
+    // conversation anchor. Do not turn a click on one of those controls into a
+    // Turbo visit; let the control's own handler open its menu.
+    if (event.target instanceof Element && event.target.closest('button, [role="button"], input, select, textarea, label, [data-conversation-options-trigger]')) return;
     let url;
     try { url = new URL(link.href); } catch { return; }
     if (url.origin !== location.origin || !isConversationUrl(url)) return;
