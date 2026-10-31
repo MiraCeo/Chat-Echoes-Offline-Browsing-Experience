@@ -52,6 +52,7 @@
 
 2. **archive 备份的运维边界**
    - 已增加 `archive:backups`、`archive:restore`、`archive:export`、`archive:prune`；
+   - `archive:restore` 的默认 `--build` 路径已有隔离测试：成功写入构建标记，构建失败时会话仍保留；
    - 当前 31 会话基线已导出到 `E:\CEOBE_backup\archive-2026-10-31`，31 会话 / 622 个 archive 文件 / 约 960 MB；38 个 `conversation.ceobe.json` 已做 SHA-256 比对；
    - E 是另一块内置卷，不是异地介质；仍建议定期复制到外置硬盘或 NAS；
    - `archive:prune` 默认只预览，`--confirm` 才删除；当前没有自动定时清理。
