@@ -42,7 +42,8 @@
 - 本地页面 Turbo 持久侧栏（会话、导入、资料库、项目、时间、记忆），侧栏链接/图标已绝对化；
 - 首屏 8 行（窄屏 6 行）sidebar skeleton，数据到达后替换；
 - 记忆覆盖层 v2 接入：L3.1 四块、主线、theme、delta、ungrouped；
-- 单一 `1.2.2` CHANGELOG（1.2.1 保留历史）与 stale 摘要清理：`npm run timeline:summaries:prune`。
+- 单一 `1.2.2` CHANGELOG（1.2.1 保留历史）与 stale 摘要清理：`npm run timeline:summaries:prune`；
+- 历史调试材料归档到 `data/private/_attic/2026-11-01`（187 个文件；含日志、截图、一次性脚本、fixture；恢复材料仍保留在 `data/private`）。
 
 ## 二、1.2 发布后待确认
 
