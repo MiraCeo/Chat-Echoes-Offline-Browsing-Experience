@@ -125,6 +125,7 @@ npm run verify:archive      # 只读检查档案结构
 | 删除耗时（真实 35 会话，硬链接 + 增量提交） | 30.7–42.8s；第二次 stage 准备 5.0s、构建 35.2s、提交 2.5s |
 | 删除 stage（当前 31 会话） | 硬链接 conversations/previews + 原子写后 prepare 约 1.5s；冷构建 44s，整次基准约 45.6s |
 | 导入/整库重建（当前 31 会话，暖缓存） | 约 14.2s（含页面装饰、搜索/时间线索引；不含网络捕获） |
+| 真实导入（2026-10-31，当前 32 会话） | 总计 41.6s：capturing→publishing 约 24.3s，publishing→返回约 17.2s；8 个资源下载、2 个 unresolved |
 | 删除后校验 | 测试会话 archive/page/index 全部消失，其余 34 会话保留；`delete-jobs` 清空；live 的 library-assets/media 哈希与 mtime 未变 |
 | 删除备份 | 每次删除前在 `data/private/archive-backups/` 生成完整 archive 硬链接快照；`npm run archive:backup` 手动生成；`archive:backups` 列表、`archive:restore` 恢复单会话、`archive:export` 导出到异盘、`archive:prune` 默认预览保留策略 |
 
