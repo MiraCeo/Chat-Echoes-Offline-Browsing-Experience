@@ -59,6 +59,8 @@ try {
     stats: [...document.querySelectorAll('.ceobe-memory-stat')].map(node => node.textContent),
     mainlines: document.querySelectorAll('[data-memory-mainline]').length,
     docs: document.querySelectorAll('.ceobe-memory-doc-list > li').length,
+    sessions: document.querySelectorAll('[data-memory-session]').length,
+    overview: document.querySelector('.ceobe-memory-overview summary')?.textContent,
     title: document.querySelector('.ceobe-memory-bank-head h2')?.textContent,
   }));
   assert.equal(global.title, '全局记忆');
@@ -66,8 +68,27 @@ try {
   assert.match(global.status, /1559 轮/);
   assert.equal(global.mainlines, 13, '全局应有 13 条主线');
   assert.equal(global.docs, 12, '全局应有 12 份 Markdown 分册');
+  assert.equal(global.sessions, 31, '全局应列 31 个会话');
+  assert.match(global.overview || '', /全局总览正文/);
   assert.match(global.stats.join(' '), /381/);
   assert.match(global.stats.join(' '), /183/);
+
+  await page.locator('[data-memory-session]').first().click();
+  await page.waitForSelector('.ceobe-memory-session-summary');
+  const session = await page.evaluate(() => ({
+    path: location.search,
+    title: document.querySelector('.ceobe-memory-bank-head h2')?.textContent,
+    l1: document.querySelector('.ceobe-memory-session-summary p')?.textContent,
+    l2: document.querySelector('.ceobe-memory-session-section .ceobe-memory-prose h1')?.textContent,
+    l4: document.querySelectorAll('.ceobe-memory-event-list > li').length,
+    back: document.querySelector('.ceobe-memory-back')?.textContent,
+  }));
+  assert.match(session.path, /session=/);
+  assert.ok(session.title?.length > 0);
+  assert.ok(session.l1?.length > 0);
+  assert.ok(session.l2?.length > 0, 'L2 Markdown 应渲染出标题');
+  assert.ok(session.l4 > 0, 'L4 应渲染事件节点');
+  assert.match(session.back || '', /返回/);
 
   await page.goto(base + 'project.html?id=4a801995-cd88-4b62-9686-d21ed87e2980', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-project-memory]');
@@ -78,7 +99,7 @@ try {
   }));
   assert.equal(gq.href, './memory.html?group=gq');
   assert.equal(gq.hidden, false);
-  assert.equal(gq.label, '项目记忆');
+  assert.equal(gq.label, '组记忆');
 
   await page.goto(base + 'project.html?id=fe24db15-b1ce-4f1a-9c4b-0db48f0b3089', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-project-memory]');

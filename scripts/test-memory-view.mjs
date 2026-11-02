@@ -12,6 +12,9 @@ assert.equal(view.groups.find(group => group.group === 'g1').name, '01–07 序�
 assert.equal(view.groups.find(group => group.group === 'g1').coverage.sessions, 7);
 assert.equal(view.sessions.length, 31);
 assert.equal(view.sessions.filter(session => session.staging).length, 1);
+assert.ok(view.sessions.every(session => session.l2.html.length > 100));
+assert.ok(view.sessions.every(session => session.l4.nodes.length > 0));
+assert.ok(view.global.overview.html.length > 1000);
 assert.equal(view.ungrouped.count, 0);
 assert.equal(view.ungrouped.sessions.length, 0);
 assert.equal(view.global.mainlines.length, 13);

@@ -9,6 +9,7 @@
 
   const setStatus = text => { if (status) status.textContent = text; };
   const groupFromUrl = () => new URLSearchParams(location.search).get('group');
+  const sessionFromUrl = () => new URLSearchParams(location.search).get('session');
   const make = (tag, className, text) => {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -22,8 +23,17 @@
   function choose(group) {
     const next = new URL(location.href);
     next.searchParams.set('group', group);
+    next.searchParams.delete('session');
     history.replaceState(null, '', next);
     render(group);
+  }
+
+  function chooseSession(session) {
+    const next = new URL(location.href);
+    next.searchParams.set('group', session.group);
+    next.searchParams.set('session', session.id);
+    history.replaceState(null, '', next);
+    render(session.group, session.id);
   }
 
   function renderTabs(group) {
@@ -125,8 +135,91 @@
     if (flags) content.append(flags);
   }
 
-  function renderGlobal(global) {
-    setStatus(`${global.coverage?.sessions ?? '—'} 个会话 · ${global.coverage?.rounds ?? '—'} 轮 · 截至 ${global.as_of}`);
+  function groupName(id) {
+    return view.groups.find(group => group.group === id)?.name || id;
+  }
+
+  function renderSessionIndex() {
+    const section = make('section', 'ceobe-memory-global-section');
+    section.append(make('h3', '', `会话语料 ${view.sessions.length} 个`));
+    const grid = make('div', 'ceobe-memory-session-grid');
+    for (const session of view.sessions) {
+      const button = make('button', 'ceobe-memory-session');
+      button.type = 'button';
+      button.dataset.memorySession = session.id;
+      button.append(
+        make('strong', '', session.title),
+        make('span', '', `${groupName(session.group)} · ${session.rounds} 轮${session.staging ? ' · staging' : ''}`),
+      );
+      button.addEventListener('click', () => chooseSession(session));
+      grid.append(button);
+    }
+    section.append(grid);
+    return section;
+  }
+
+  function renderSession(session) {
+    setStatus(`${groupName(session.group)} · ${session.rounds} 轮${session.staging ? ' · inbox staging' : ''}`);
+    const head = make('section', 'ceobe-memory-bank-head');
+    head.append(make('h2', '', session.title));
+    const meta = make('p', '', `${groupName(session.group)} · ${session.rounds} 轮${session.project_label ? ` · 项目 ${session.project_label}` : ''}`);
+    head.append(meta);
+    const back = make('button', 'ceobe-memory-back');
+    back.type = 'button';
+    back.textContent = `← 返回${groupName(session.group)}`;
+    back.addEventListener('click', () => choose(session.group));
+    head.append(back);
+    content.append(head);
+
+    const l1 = make('section', 'ceobe-memory-session-summary');
+    l1.append(make('h3', '', 'L1 摘要'));
+    l1.append(make('p', '', session.l1?.summary || '无摘要'));
+    if (session.l1?.tags?.length) l1.append(make('p', 'ceobe-memory-tags', session.l1.tags.map(tag => `#${tag}`).join(' ')));
+    content.append(l1);
+
+    const l2 = make('section', 'ceobe-memory-session-section');
+    l2.append(make('h3', '', 'L2 记忆文档'));
+    const prose = make('div', 'ceobe-memory-prose');
+    prose.innerHTML = session.l2?.html || '<p>没有 L2 文档。</p>';
+    l2.append(prose);
+    content.append(l2);
+
+    const l4 = make('section', 'ceobe-memory-session-section');
+    l4.append(make('h3', '', `L4 事件树 · ${session.l4?.nodes?.length || 0} 节点`));
+    if (session.l4?.nodes?.length) {
+      const list = make('ol', 'ceobe-memory-event-list');
+      for (const node of session.l4.nodes) {
+        const item = make('li');
+        item.dataset.eventType = node.t || '';
+        item.dataset.eventStatus = node.s || '';
+        const range = Array.isArray(node.r) ? (node.r[0] === node.r[1] ? `第 ${node.r[0]} 轮` : `第 ${node.r[0]}–${node.r[1]} 轮`) : '';
+        item.append(
+          make('strong', '', `#${node.n} ${node.t || 'event'} · ${node.s || ''}`),
+          make('span', 'ceobe-memory-event-range', range),
+          make('p', '', node.x || ''),
+        );
+        list.append(item);
+      }
+      l4.append(list);
+    } else {
+      l4.append(make('p', '', '没有 L4 事件树。'));
+    }
+    if (session.l4?.edges?.length) {
+      const edges = make('p', 'ceobe-memory-event-edges', `关系：${session.l4.edges.map(edge => `#${edge[0]} —${edge[2]}→ #${edge[1]}`).join('；')}`);
+      l4.append(edges);
+    }
+    if (session.l4?.open?.length) {
+      const open = make('details', 'ceobe-memory-flags');
+      open.append(make('summary', '', `未决问题 ${session.l4.open.length} 条`));
+      const list = make('ul');
+      for (const question of session.l4.open) list.append(make('li', '', question));
+      open.append(list);
+      l4.append(open);
+    }
+    content.append(l4);
+  }
+
+  function renderGlobal(global) {    setStatus(`${global.coverage?.sessions ?? '—'} 个会话 · ${global.coverage?.rounds ?? '—'} 轮 · 截至 ${global.as_of}`);
     const head = make('section', 'ceobe-memory-bank-head');
     head.append(make('h2', '', '全局记忆'), make('p', '', `${global.as_of} 快照 · 四组并集`));
     content.append(head);
@@ -152,6 +245,17 @@
       renderChips(mainlines, global.mainlines);
       content.append(mainlines);
     }
+
+    if (global.overview?.html) {
+      const overview = make('details', 'ceobe-memory-global-section ceobe-memory-overview');
+      overview.append(make('summary', '', `全局总览正文 · ${global.overview.chars} 字`));
+      const prose = make('div', 'ceobe-memory-prose');
+      prose.innerHTML = global.overview.html;
+      overview.append(prose);
+      content.append(overview);
+    }
+
+    content.append(renderSessionIndex());
 
     if (global.thread_docs?.length) {
       const docs = make('section', 'ceobe-memory-global-section');
@@ -181,9 +285,10 @@
     content.append(make('p', 'ceobe-memory-global-note', 'L2 单会话详情、L4 事件树与 L5 树视图将在此数据层之上接入。'));
   }
 
-  function render(group) {
-    const current = selected(group);
-    const actualGroup = current === view.global ? 'global' : current?.group;
+  function render(group, sessionId) {
+    const session = sessionId ? view.sessions.find(item => item.id === sessionId) : null;
+    const current = session || selected(group);
+    const actualGroup = session ? session.group : current === view.global ? 'global' : current?.group;
     renderTabs(actualGroup);
     content.replaceChildren();
     empty.hidden = Boolean(current);
@@ -191,7 +296,8 @@
       setStatus('还没有可显示的记忆。');
       return;
     }
-    if (actualGroup === 'global') renderGlobal(current);
+    if (session) renderSession(session);
+    else if (actualGroup === 'global') renderGlobal(current);
     else renderGroup(current);
   }
 
@@ -204,9 +310,10 @@
       view = {
         groups: Array.isArray(data?.groups) ? data.groups : [],
         global: data?.global || null,
+        sessions: Array.isArray(data?.sessions) ? data.sessions : [],
         ungrouped: data?.ungrouped || { count: 0, sessions: [] },
       };
-      render(groupFromUrl());
+      render(groupFromUrl(), sessionFromUrl());
     })
     .catch(error => {
       empty.hidden = false;

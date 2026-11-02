@@ -7,6 +7,7 @@
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
+import { marked } from 'marked';
 
 const projectRoot = resolve(import.meta.dirname, '..');
 const option = name => {
@@ -35,6 +36,8 @@ const requireFile = path => {
 };
 const sections = text => [...text.matchAll(/^##\s+(.+)$/gm)].map(match => match[1].trim());
 const chars = text => text.replace(/\s/g, '').length;
+const stripFrontmatter = text => text.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/, '');
+const renderMarkdown = text => marked.parse(stripFrontmatter(text), { async: false });
 
 const archive = await readJson(join(projectRoot, 'archive/library.ceobe.json'));
 const currentIds = new Set((archive.conversations || []).map(item => item.id));
@@ -65,7 +68,10 @@ const threadDir = join(source, 'global/threads');
 const threadDocs = [];
 for (const name of (await readdir(threadDir)).filter(name => name.endsWith('.md')).sort()) {
   const text = await readFile(join(threadDir, name), 'utf8');
-  threadDocs.push({ name: name.slice(0, -3), path: `global/threads/${name}`, chars: chars(text), sections: sections(text) });
+  threadDocs.push({
+    name: name.slice(0, -3), path: `global/threads/${name}`, chars: chars(text),
+    sections: sections(text), html: renderMarkdown(text),
+  });
 }
 const tree = await readJson(await requireFile(join(source, 'global/tree.json')));
 const treeStats = { path: 'global/tree.json', nodes: tree.nodes?.length || 0, edges: tree.edges?.length || 0, sessions: l3Global.coverage?.sessions || 0 };
@@ -110,6 +116,8 @@ for (const session of sessions) {
   if (!session.l2?.path || !existsSync(l2Path)) throw new Error(`缺少 L2：${session.id}`);
   if (!session.l4?.path || !existsSync(l4Path)) throw new Error(`缺少 L4：${session.id}`);
   const l1 = await readJson(l1Path);
+  const l2Text = await readFile(requireFile(l2Path), 'utf8');
+  const l4 = await readJson(requireFile(l4Path));
   sessionView.push({
     id: session.id,
     short: session.short || session.id.slice(0, 8),
@@ -119,8 +127,14 @@ for (const session of sessions) {
     rounds: session.rounds,
     staging: Boolean(session.l1?.staging || session.l2?.staging || session.l4?.staging),
     l1: { path: session.l1.path, summary: l1.summary || '', tags: l1.tags || [] },
-    l2: { path: session.l2.path },
-    l4: { path: session.l4.path },
+    l2: { path: session.l2.path, html: renderMarkdown(l2Text) },
+    l4: {
+      path: session.l4.path,
+      ents: l4.ents || [],
+      nodes: (l4.nodes || []).map(node => ({ n: node.n, t: node.t, s: node.s, r: node.r, x: node.x })),
+      edges: l4.edges || [],
+      open: l4.open || [],
+    },
   });
 }
 
@@ -152,7 +166,10 @@ const view = {
       id: conflict.id, topic: conflict.topic, status: conflict.status,
       kind: conflict.kind || conflict.type, preferred: conflict.preferred,
     })),
-    overview: { path: 'global/overview-v2.md', chars: chars(overviewText), sections: sections(overviewText) },
+    overview: {
+      path: 'global/overview-v2.md', chars: chars(overviewText),
+      sections: sections(overviewText), html: renderMarkdown(overviewText),
+    },
     thread_docs: threadDocs,
     tree: treeStats,
     thread_map_counts: threadMap.counts || null,
