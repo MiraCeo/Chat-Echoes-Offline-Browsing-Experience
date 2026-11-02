@@ -349,6 +349,24 @@
   font-size: 10px;
 }
 button.ceobe-memory-source { cursor: pointer; pointer-events: auto !important; }
+.ceobe-memory-source-link {
+  padding: 1px 5px;
+  border: 1px solid #e4e7ec;
+  border-radius: 4px;
+  background: #f8fafc;
+  color: #475467;
+  font-size: 10px;
+  text-decoration: none;
+}
+.ceobe-memory-source-link:hover { border-color: #b2c2d6; color: #344054; }
+.ceobe-memory-event-jump {
+  display: inline-block;
+  margin-top: 5px;
+  color: #667085;
+  font-size: 10px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 .ceobe-memory-edge-list {
   display: grid;
   gap: 4px;

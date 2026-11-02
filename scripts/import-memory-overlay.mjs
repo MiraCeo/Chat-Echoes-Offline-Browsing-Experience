@@ -8,6 +8,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { marked } from 'marked';
+import { bookmarkTargets } from './bookmark-targets.mjs';
 
 const projectRoot = resolve(import.meta.dirname, '..');
 const option = name => {
@@ -118,6 +119,11 @@ for (const session of sessions) {
   const l1 = await readJson(l1Path);
   const l2Text = await readFile(requireFile(l2Path), 'utf8');
   const l4 = await readJson(requireFile(l4Path));
+  const libraryEntry = archive.conversations.find(item => item.id === session.id);
+  const roundMap = libraryEntry?.conversation_path && existsSync(join(projectRoot, libraryEntry.conversation_path))
+    ? bookmarkTargets(await readJson(join(projectRoot, libraryEntry.conversation_path)))
+      .map((target, index) => ({ round: index + 1, role: target.role, message_id: target.message_id }))
+    : [];
   sessionView.push({
     id: session.id,
     short: session.short || session.id.slice(0, 8),
@@ -125,6 +131,8 @@ for (const session of sessions) {
     group: session.group,
     project_label: session.project_label || null,
     rounds: session.rounds,
+    page: libraryEntry?.page || null,
+    round_map: roundMap,
     staging: Boolean(session.l1?.staging || session.l2?.staging || session.l4?.staging),
     l1: { path: session.l1.path, summary: l1.summary || '', tags: l1.tags || [] },
     l2: { path: session.l2.path, html: renderMarkdown(l2Text) },

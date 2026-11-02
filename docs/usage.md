@@ -152,6 +152,7 @@ npm run preview
 - 四个账号组：国庆组 10、01–07 序列 7、早期账号 11、十月账号 3；未分组当前为 0，不显示；
 - 支持 `memory.html?group=global`、`?group=gq`、`?group=g1`、`?group=g-early`、`?group=g-oct` 直接打开；
 - 「全局」里的会话列表可打开 31 个会话的 L1 摘要、L2 记忆文档和 L4 事件节点；
+- L4 节点的“跳到原文”和 L5 节点的来源轮次会跳到对应会话消息并高亮；
 - 项目详情页只给已绑定项目显示「组记忆」（不是项目专属记忆）：“国庆”跳到 gq，“User”跳到 g1；
 - 数据源在 CEOBE 私有目录 `data/private/memory-kernel/source/`（不提交）；先运行
   `npm run memory:import` 校验并生成 `data/private/memory-kernel/memory-view.json`，

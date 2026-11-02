@@ -76,6 +76,8 @@ try {
   assert.match(global.stats.join(' '), /183/);
   assert.equal(global.treeNodes, 381, 'L5 应渲染 381 个节点');
   assert.equal(global.treeEdges, 183, 'L5 应渲染 183 条边');
+  const sourceHref = await page.locator('.ceobe-memory-source-link').first().getAttribute('href');
+  assert.match(sourceHref || '', /\/conversations\/[^/]+\.html#bookmark=/, 'L5 来源应指向具体消息锚点');
 
   await page.locator('.ceobe-memory-thread').first().locator('summary').click();
   assert.ok(await page.locator('.ceobe-memory-thread').first().locator('.ceobe-memory-prose h1').count(), '分册正文应可展开');
@@ -96,6 +98,8 @@ try {
   assert.ok(session.l2?.length > 0, 'L2 Markdown 应渲染出标题');
   assert.ok(session.l4 > 0, 'L4 应渲染事件节点');
   assert.match(session.back || '', /返回/);
+  const eventJump = await page.locator('.ceobe-memory-event-jump').first().getAttribute('href');
+  assert.match(eventJump || '', /#bookmark=/, 'L4 节点应能跳到原文');
 
   await page.goto(base + 'project.html?id=4a801995-cd88-4b62-9686-d21ed87e2980', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-project-memory]');
@@ -116,8 +120,22 @@ try {
   }));
   assert.equal(g1.href, './memory.html?group=g1');
   assert.equal(g1.hidden, false);
+
+  await page.goto(base + 'memory.html?group=global', { waitUntil: 'networkidle' });
+  await page.locator('.ceobe-memory-tree-details').first().locator('summary').click();
+  await page.locator('.ceobe-memory-source-link').first().click();
+  await page.waitForSelector('.ceobe-bookmark-highlight', { timeout: 6000 });
+  const evidence = await page.evaluate(() => ({
+    path: location.pathname,
+    hash: location.hash,
+    highlight: Boolean(document.querySelector('.ceobe-bookmark-highlight')),
+  }));
+  assert.match(evidence.path, /\/conversations\/[^/]+\.html$/);
+  assert.match(evidence.hash, /^#bookmark=/);
+  assert.equal(evidence.highlight, true, 'L5 来源应定位并高亮原消息');
+
   assert.deepEqual(errors, [], '记忆页和项目跳转不应产生页面错误');
-  console.log('PASS memory v4: global + four groups, L1/L2/L4 details, L5 tree, 12 thread docs and group memory links');
+  console.log('PASS memory v4: global + four groups, L1/L2/L4 details, L5 tree, 12 thread docs, group memory links and evidence highlight');
 } finally {
   await browser.close();
 }

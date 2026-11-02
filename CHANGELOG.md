@@ -13,6 +13,8 @@
 - 全局页新增 31 会话索引；单会话可查看 L1 摘要、渲染后的 L2 文档和 L4 事件节点；
 - 全局页新增 L5 只读树（381 节点 / 183 边，节点来源可跳会话）和 12 份可展开分册正文；
   全局 overview 正文可展开；项目入口改名为「组记忆」；
+- L4/L5 证据链落到 `#bookmark=<message_id>`：来源轮次通过 archive 的 round_map 解析，
+  跳到原会话并高亮对应消息；
 - `npm run memory:import` 是推荐入口；底层 `memory:overlay` 只负责生成派生 view，
   不再默认从外部 handover 目录读取；
 - 内核源已收进 `data/private/memory-kernel/source/`（不提交）；新增 `npm run memory:import`

@@ -162,6 +162,23 @@
     return view.sessions.find(session => session.short === short || session.id.startsWith(short));
   }
 
+  function messageHref(session, round) {
+    const target = session?.round_map?.find(item => item.round === round);
+    if (!session?.page || !target?.message_id) return null;
+    return `${new URL(session.page, location.href).href}#bookmark=${encodeURIComponent(target.message_id)}`;
+  }
+
+  function appendSourceLink(container, session, round, text) {
+    const href = messageHref(session, round);
+    if (!href) return false;
+    const link = make('a', 'ceobe-memory-source-link', text);
+    link.href = href;
+    link.dataset.memorySourceSession = session.id;
+    link.dataset.memorySourceRound = String(round);
+    container.append(link);
+    return true;
+  }
+
   function formatDate(ts) {
     if (!Number.isFinite(ts)) return '';
     try { return new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium' }).format(new Date(ts * 1000)); }
@@ -193,13 +210,15 @@
         const sources = make('div', 'ceobe-memory-tree-sources');
         for (const source of node.src) {
           const session = findSession(source.s);
+          const label = `${source.s}${source.r ? ` · ${source.r[0]}–${source.r[1]} 轮` : ''}`;
+          if (session && appendSourceLink(sources, session, source.r?.[0], label)) continue;
           const chip = make(session ? 'button' : 'span', 'ceobe-memory-source');
           if (session) {
             chip.type = 'button';
             chip.dataset.memorySourceSession = session.id;
             chip.addEventListener('click', () => chooseSession(session));
           }
-          chip.textContent = `${source.s}${source.r ? ` · ${source.r[0]}–${source.r[1]} 轮` : ''}`;
+          chip.textContent = label;
           if (!session) chip.title = '该来源不在当前 31 会话 archive 中';
           sources.append(chip);
         }
@@ -263,6 +282,13 @@
           make('span', 'ceobe-memory-event-range', range),
           make('p', '', node.x || ''),
         );
+        const jump = messageHref(session, node.r?.[0]);
+        if (jump) {
+          const link = make('a', 'ceobe-memory-event-jump', '跳到原文');
+          link.href = jump;
+          link.dataset.memoryEventRound = String(node.r[0]);
+          item.append(link);
+        }
         list.append(item);
       }
       l4.append(list);
