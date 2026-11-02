@@ -16,7 +16,7 @@ try {
   const check = async (selector, path, label) => {
     await page.locator(selector + ':visible').first().click();
     await page.waitForFunction(value => location.pathname.endsWith(value), path, { timeout: 10000 });
-    await page.waitForTimeout(300);
+    await page.waitForFunction(() => (document.querySelector('main')?.textContent.trim().length || 0) > 40, { timeout: 5000 });
     const state = await page.evaluate(() => ({
       path: location.pathname,
       marker: document.getElementById('stage-slideover-sidebar')?.dataset.persistentMarker || null,

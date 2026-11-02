@@ -133,6 +133,13 @@ try {
   assert.match(evidence.path, /\/conversations\/[^/]+\.html$/);
   assert.match(evidence.hash, /^#bookmark=/);
   assert.equal(evidence.highlight, true, 'L5 来源应定位并高亮原消息');
+  const entry = page.locator('[data-reader-memory]');
+  assert.equal(await entry.count(), 1, '会话页应有本会话记忆入口');
+  const entryHref = await entry.getAttribute('href');
+  assert.match(entryHref || '', /memory\.html\?group=.+&session=/);
+  await entry.click();
+  await page.waitForSelector('.ceobe-memory-session-summary');
+  assert.match(await page.evaluate(() => location.search), /session=/);
 
   assert.deepEqual(errors, [], '记忆页和项目跳转不应产生页面错误');
   console.log('PASS memory v4: global + four groups, L1/L2/L4 details, L5 tree, 12 thread docs, group memory links and evidence highlight');

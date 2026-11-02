@@ -52,6 +52,10 @@
     }
   }
   let navigation = 0;
+  let navigationUrl = location.href;
+  document.addEventListener('turbo:before-visit', event => {
+    if (event.detail?.url) navigationUrl = event.detail.url;
+  });
   document.addEventListener('turbo:before-render', event => {
     navigation += 1;
     // Top-level page scripts register document/window listeners. Abort them so
@@ -59,10 +63,15 @@
     window.__ceobeTopPageAbort?.abort();
     window.__ceobeTopPageAbort = null;
     const body = event.detail?.newBody;
+    const pageUrl = navigationUrl || body?.baseURI || location.href;
     for (const script of body?.querySelectorAll?.('script[src]') || []) {
-      const url = new URL(script.src);
-      url.searchParams.set('turbo', String(navigation));
-      script.src = url.href;
+      // Resolve against the target page, not the current document: Turbo now
+      // crosses /conversations/ and root-level pages.
+      try {
+        const url = new URL(script.getAttribute('src'), pageUrl);
+        url.searchParams.set('turbo', String(navigation));
+        script.setAttribute('src', url.href);
+      } catch {}
     }
   });
   document.addEventListener('turbo:load', () => {
