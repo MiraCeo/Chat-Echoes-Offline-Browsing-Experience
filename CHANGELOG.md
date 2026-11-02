@@ -17,6 +17,7 @@
   跳到原会话并高亮对应消息；
 - 会话页右上角新增「本会话记忆」，构建期从 memory view 解析 group，直接打开当前会话；
 - 项目详情页新增组记忆摘要：组名、覆盖会话/轮次、快照日、主线和入口；
+- 记忆页新增页内搜索：覆盖组块、主线、会话 L1/L2/L4、L5 节点、12 份分册和全局项目/冲突；
 - 修复 Turbo 跨目录脚本重写：用 `turbo:before-visit` 的目标 URL 解析新页脚本，
   避免从 `/conversations/` 进入根级页面时把 `memory.js` 解析成 `/conversations/memory.js`；
 - `npm run memory:import` 是推荐入口；底层 `memory:overlay` 只负责生成派生 view，

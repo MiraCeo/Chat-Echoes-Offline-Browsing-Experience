@@ -5,7 +5,11 @@
   const content = root.querySelector('[data-memory-content]');
   const status = root.querySelector('[data-memory-status]');
   const empty = root.querySelector('[data-memory-empty]');
+  const searchInput = root.querySelector('[data-memory-search]');
+  const searchResults = root.querySelector('[data-memory-search-results]');
+  const searchStatus = root.querySelector('[data-memory-search-status]');
   let view = { groups: [], global: null, ungrouped: { count: 0, sessions: [] } };
+  let searchIndex = [];
 
   const setStatus = text => { if (status) status.textContent = text; };
   const groupFromUrl = () => new URLSearchParams(location.search).get('group');
@@ -242,6 +246,99 @@
     return section;
   }
 
+  function stripHtml(html) {
+    return String(html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function buildSearchIndex() {
+    const entries = [];
+    const add = (kind, title, text, target) => {
+      const body = String(text || '').replace(/\s+/g, ' ').trim();
+      if (body) entries.push({ kind, title, text: body, target });
+    };
+    for (const group of view.groups) {
+      add('组', group.name, `${group.name} ${group.as_of}`, { type: 'group', group: group.group });
+      for (const key of group.block_order || []) {
+        for (const entry of group.blocks?.[key] || []) {
+          add('记忆', `${group.name} · ${group.block_labels?.[key] || key}`, `${entry.key || ''} ${entry.text || ''}`, { type: 'group', group: group.group });
+        }
+      }
+      for (const mainline of group.mainlines || []) add('主线', `${group.name} · ${mainline.label}`, mainline.label, { type: 'group', group: group.group });
+      for (const flag of [...(group.flags || []), ...(group.coverage_gaps || [])]) add('说明', group.name, flag.text || flag.note || flag.reason || flag.caveat, { type: 'group', group: group.group });
+    }
+    for (const session of view.sessions) {
+      add('会话', session.title, `${session.title} ${session.l1?.summary || ''} ${(session.l1?.tags || []).join(' ')}`, { type: 'session', session });
+      add('L2', session.title, stripHtml(session.l2?.html), { type: 'session', session });
+      for (const node of session.l4?.nodes || []) add('L4', `${session.title} · #${node.n}`, node.x, { type: 'session', session });
+    }
+    for (const node of view.global?.tree_data?.nodes || []) {
+      const source = node.src?.[0];
+      const session = source ? findSession(source.s) : null;
+      add('L5', `L5 #${node.n}`, node.x, session ? { type: 'href', href: messageHref(session, source.r?.[0]) } : { type: 'global' });
+    }
+    for (const doc of view.global?.thread_docs || []) add('分册', doc.name, stripHtml(doc.html), { type: 'doc', name: doc.name });
+    for (const mainline of view.global?.mainlines || []) add('全局主线', mainline.label, mainline.label, { type: 'global' });
+    for (const project of view.global?.projects || []) add('项目', project.label, project.label, { type: 'global' });
+    for (const conflict of view.global?.conflicts || []) add('冲突', conflict.topic || conflict.id, `${conflict.topic || ''} ${conflict.status || ''}`, { type: 'global' });
+    add('总览', '全局总览', stripHtml(view.global?.overview?.html), { type: 'global' });
+    searchIndex = entries;
+  }
+
+  function openThreadDoc(name) {
+    choose('global');
+    requestAnimationFrame(() => {
+      const details = [...content.querySelectorAll('.ceobe-memory-thread')]
+        .find(node => node.querySelector('summary')?.textContent === name);
+      if (details) {
+        details.open = true;
+        details.scrollIntoView({ block: 'start' });
+      }
+    });
+  }
+
+  function clearSearch() {
+    if (searchInput) searchInput.value = '';
+    if (searchResults) searchResults.hidden = true;
+    if (searchStatus) searchStatus.textContent = '';
+    content.hidden = false;
+  }
+
+  function renderSearch() {
+    const query = searchInput?.value.trim().toLowerCase() || '';
+    if (!query) {
+      clearSearch();
+      return;
+    }
+    const hits = searchIndex.filter(entry => `${entry.title} ${entry.text}`.toLowerCase().includes(query)).slice(0, 60);
+    searchResults.replaceChildren();
+    searchResults.hidden = false;
+    content.hidden = true;
+    searchStatus.textContent = `${hits.length} 条结果`;
+    if (!hits.length) {
+      searchResults.append(make('p', 'ceobe-memory-search-empty', '没有匹配的记忆。'));
+      return;
+    }
+    for (const hit of hits) {
+      const button = make('button', 'ceobe-memory-search-hit');
+      button.type = 'button';
+      button.append(make('strong', '', `${hit.kind} · ${hit.title}`), make('span', '', hit.text.slice(0, 180)));
+      button.addEventListener('click', () => {
+        clearSearch();
+        if (hit.target.type === 'session') chooseSession(hit.target.session);
+        else if (hit.target.type === 'group') choose(hit.target.group);
+        else if (hit.target.type === 'doc') openThreadDoc(hit.target.name);
+        else if (hit.target.type === 'href' && hit.target.href) location.href = hit.target.href;
+        else choose('global');
+      });
+      searchResults.append(button);
+    }
+  }
+
+  searchInput?.addEventListener('input', renderSearch);
+  searchInput?.addEventListener('keydown', event => {
+    if (event.key === 'Escape') clearSearch();
+  });
+
   function renderSession(session) {
     setStatus(`${groupName(session.group)} · ${session.rounds} 轮${session.staging ? ' · inbox staging' : ''}`);
     const head = make('section', 'ceobe-memory-bank-head');
@@ -411,6 +508,7 @@
         sessions: Array.isArray(data?.sessions) ? data.sessions : [],
         ungrouped: data?.ungrouped || { count: 0, sessions: [] },
       };
+      buildSearchIndex();
       render(groupFromUrl(), sessionFromUrl());
     })
     .catch(error => {

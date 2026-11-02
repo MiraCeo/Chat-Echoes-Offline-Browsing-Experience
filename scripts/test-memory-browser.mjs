@@ -154,6 +154,20 @@ try {
   await page.waitForSelector('.ceobe-memory-session-summary');
   assert.match(await page.evaluate(() => location.search), /session=/);
 
+  await page.goto(base + 'memory.html?group=global', { waitUntil: 'networkidle' });
+  await page.locator('[data-memory-search]').fill('TourGrid');
+  await page.waitForSelector('.ceobe-memory-search-hit');
+  const search = await page.evaluate(() => ({
+    hits: document.querySelectorAll('.ceobe-memory-search-hit').length,
+    status: document.querySelector('[data-memory-search-status]')?.textContent,
+    contentHidden: document.querySelector('[data-memory-content]')?.hidden,
+  }));
+  assert.ok(search.hits > 0, '记忆搜索应有结果');
+  assert.match(search.status || '', /条结果/);
+  assert.equal(search.contentHidden, true);
+  await page.locator('.ceobe-memory-search-hit').first().click();
+  await page.waitForFunction(() => !document.querySelector('[data-memory-content]')?.hidden);
+
   assert.deepEqual(errors, [], '记忆页和项目跳转不应产生页面错误');
   console.log('PASS memory v4: global + four groups, L1/L2/L4 details, L5 tree, 12 thread docs, group memory links and evidence highlight');
 } finally {

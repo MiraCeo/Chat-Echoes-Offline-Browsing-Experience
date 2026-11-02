@@ -35,6 +35,11 @@ export async function buildMemoryPage(projectRoot = resolve(import.meta.dirname,
         <div class="ceobe-memory-groups" data-memory-groups role="group" aria-label="记忆分组"></div>
         <p class="ceobe-memory-status" data-memory-status role="status">正在读取记忆库…</p>
       </div>
+      <div class="ceobe-memory-search-row">
+        <input type="search" data-memory-search aria-label="搜索记忆、主线、L5 节点和分册" placeholder="搜索记忆、主线、L5 节点和分册…">
+        <p data-memory-search-status role="status"></p>
+      </div>
+      <div class="ceobe-memory-search-results" data-memory-search-results hidden></div>
       <div class="ceobe-memory-content" data-memory-content></div>
       <p class="ceobe-memory-empty" data-memory-empty hidden>没有可显示的项目记忆。</p>
     </div>`;
