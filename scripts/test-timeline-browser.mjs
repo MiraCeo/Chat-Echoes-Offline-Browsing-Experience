@@ -37,6 +37,8 @@ try {
       monthCounts: [...document.querySelectorAll('.ceobe-timeline-month-count')].map(node => node.textContent.trim()),
       entries: rows.length,
       allLinks: rows.every(link => /\/conversations\/[^/]+\.html/.test(link.getAttribute('href') || '')),
+      memoryLinks: document.querySelectorAll('[data-timeline-memory]').length,
+      memoryHrefs: [...document.querySelectorAll('[data-timeline-memory]')].map(link => link.getAttribute('href')),
       twoLineRows: rows.every(link => link.children.length === 2
         && link.firstElementChild?.classList.contains('ceobe-timeline-title')
         && link.lastElementChild?.classList.contains('ceobe-timeline-meta')
@@ -62,6 +64,8 @@ try {
   assert.equal(state.overflowX, false, '页面不应横向溢出');
   assert.equal(state.entries, expected, '条目数应等于时间线索引里的会话数');
   assert.equal(state.allLinks, true, '每条都链到会话页');
+  assert.ok(state.memoryLinks > 0, '时间线条目应有相关记忆入口');
+  assert.ok(state.memoryHrefs.every(href => /memory\.html\?group=.+&session=/.test(href || '')), '记忆入口应带 group/session');
   assert.equal(state.twoLineRows, true, '每行是“标题 + 时间/对话轮次”两行');
   assert.equal(state.datedFormat, true, '时间用统一的「M 月 D 日 HH:mm」格式');
   assert.equal(state.stickyHead, 'sticky', '月份标题在滚动时吸顶');

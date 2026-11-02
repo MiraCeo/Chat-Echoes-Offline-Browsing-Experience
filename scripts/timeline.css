@@ -177,6 +177,20 @@
   padding: 0;
   list-style: none;
 }
+.ceobe-timeline-memory {
+  display: inline-flex;
+  align-items: center;
+  margin: -5px 10px 8px;
+  padding: 2px 7px;
+  border: 1px solid #e4e7ec;
+  border-radius: 5px;
+  background: #fff;
+  color: #667085;
+  font-size: 10px;
+  text-decoration: none;
+}
+.ceobe-timeline-memory:hover { border-color: #b2c2d6; color: #344054; }
+.ceobe-timeline-cards .ceobe-timeline-memory { margin: -4px 0 8px; }
 .ceobe-timeline-row {
   display: flex;
   flex-direction: column;

@@ -140,6 +140,7 @@ npm run preview
 - 索引在 `npm run library`（含导入后的重建）时生成；缺失时会提示重建。重命名只更新 `chats.json`，
   不需要重建时间线索引。
 - 视图切换写在 URL（`?view=axis`）和 `localStorage`；分享/刷新后保持。
+- 时间线条目下方有「记忆」入口，直接打开该会话的 L1/L2/L4。
 
 ### 记忆
 

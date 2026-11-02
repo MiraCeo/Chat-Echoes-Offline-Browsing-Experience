@@ -11,6 +11,7 @@
   const LAYOUT_KEY = 'ceobe.timeline.layout';
   let order = 'newest';
   let layout = 'list';
+  let memorySessions = new Map();
   try {
     if (localStorage.getItem(ORDER_KEY) === 'oldest') order = 'oldest';
     if (localStorage.getItem(LAYOUT_KEY) === 'cards') layout = 'cards';
@@ -148,6 +149,18 @@
     if (empty) empty.hidden = true;
   };
 
+  const appendMemoryLink = (row, item) => {
+    const memory = memorySessions.get(item.id);
+    if (!memory) return;
+    const link = document.createElement('a');
+    link.className = 'ceobe-timeline-memory';
+    link.dataset.timelineMemory = item.id;
+    link.href = new URL('memory.html?group=' + encodeURIComponent(memory.group) + '&session=' + encodeURIComponent(item.id), root).href;
+    link.textContent = '记忆';
+    link.setAttribute('aria-label', '打开“' + titleOf(item) + '”的本会话记忆');
+    row.append(link);
+  };
+
   const buildList = (items, { undated = false } = {}) => {
     const list = document.createElement('ol');
     list.className = 'ceobe-timeline-list';
@@ -185,6 +198,7 @@
       const accessible = [titleOf(item), when.textContent, turns.textContent].filter(Boolean).join('，');
       link.setAttribute('aria-label', accessible);
       row.append(link);
+      appendMemoryLink(row, item);
       list.append(row);
     }
     return list;
@@ -355,6 +369,7 @@
       ].filter(Boolean).join('，');
       link.setAttribute('aria-label', accessible);
       row.append(link);
+      appendMemoryLink(row, item);
       list.append(row);
     }
     return list;
@@ -474,7 +489,10 @@
     fetch(new URL('timeline-summaries.json', root), { cache: 'no-store' })
       .then(response => (response.ok ? response.json() : null))
       .catch(() => null),
-  ]).then(([payload, catalog, summaryPayload]) => {
+    fetch(new URL('public/memory-session-index.json', root), { cache: 'no-store' })
+      .then(response => (response.ok ? response.json() : null))
+      .catch(() => null),
+  ]).then(([payload, catalog, summaryPayload, memoryPayload]) => {
     if (!payload || payload.kind !== 'ceobe.timeline-index' || !Array.isArray(payload.conversations)) {
       fail('时间线索引不可用：请运行 npm run library 重建阅读页。');
       return;
@@ -483,6 +501,7 @@
     timezone = normalizeTimezone(payload.timezone);
     titles = new Map((catalog?.chats || []).map(chat => [chat.id, chat.title]));
     summaries = normalizeSummaries(summaryPayload);
+    memorySessions = new Map(Object.entries(memoryPayload?.sessions || {}));
     draw();
   }).catch(error => fail('时间线索引不可用：' + (error?.message || error) + '。请运行 npm run library 重建阅读页。'));
 })();

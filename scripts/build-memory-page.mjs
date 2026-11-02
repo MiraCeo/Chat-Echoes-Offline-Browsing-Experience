@@ -60,6 +60,14 @@ export async function buildMemoryPage(projectRoot = resolve(import.meta.dirname,
     }])),
   };
   await writeFile(join(replay, 'public', 'memory-project-index.json'), JSON.stringify(projectIndex), 'utf8');
+  const sessionIndex = {
+    schema: 'ceobe.memory-session-index/1',
+    sessions: Object.fromEntries((doc.sessions || []).map(session => [session.id, {
+      group: session.group,
+      title: session.title,
+    }])),
+  };
+  await writeFile(join(replay, 'public', 'memory-session-index.json'), JSON.stringify(sessionIndex), 'utf8');
 
   const script = await readFile(join(projectRoot, 'scripts/memory.js'), 'utf8');
   const scriptFile = 'memory.' + hash(script) + '.js';

@@ -130,12 +130,12 @@
 - 会话页右上角「本会话记忆」入口；
 - 项目页组记忆摘要（组名、覆盖、快照日、主线、入口）；
 - 记忆页内搜索（组块、主线、会话 L1/L2/L4、L5、分册、全局项目/冲突）；
+- 时间线条目「记忆」入口；
 - 项目入口改名「组记忆」。
 
 待做：
 
-1. **时间线关联**：让记忆节点和时间线互通；
-2. **整体验收与版本**：跑全量、构建、38 页巡检和多视口检查后决定 1.3.0。
+1. **整体验收与版本**：跑全量、构建、38 页巡检和多视口检查后决定 1.3.0。
 
 参考项目：`getzep/graphiti`、`mem0ai/mem0`、`basicmachines-co/basic-memory`、
 `JerryZLiu/Dayflow`、`ActivityWatch/activitywatch`、`syncable-dev/memtrace-public`、
