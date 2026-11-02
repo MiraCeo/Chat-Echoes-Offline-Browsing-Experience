@@ -143,18 +143,18 @@ npm run preview
 
 ### 记忆
 
-侧栏「记忆」页展示已确认账号组的只读 L3.1 记忆库，当前有国庆组、01–05 序列和未分组三部分：
+侧栏「记忆」页展示已确认账号组与全局的只读记忆库，当前为全局 + 四组：
 
 - 四个区块：我是谁 / 在手的事 / 等着的事 / 近期变化；
 - 顶部显示覆盖会话、轮数和快照截止日；
-- 主线清单按数组显示，当前两组各 5 条；跨线主题单独列出，不冒充主线；
-- 「未分组」只显示有 L1/L2/L4 的会话，不生成 L3/L3.1；
-- 支持 `memory.html?group=gq`、`?group=g1`、`?group=ungrouped` 直接打开；
-- 项目详情页的项目名对应分组：“国庆”跳到 gq，“User”跳到 g1；
-- 其他项目没有对应的记忆库，不显示“项目记忆”；
-- 数据来自 `D:\ai-memory\overlay`，先运行 `npm run memory:overlay` 校验并生成
+- 主线清单按数组显示，跨线主题单独列出，不冒充主线；
+- 「全局」显示 31 会话、13 条主线、7 个项目、9 条冲突、12 份 Markdown 分册和 L5 381 节点 / 183 边；
+- 四个账号组：国庆组 10、01–07 序列 7、早期账号 11、十月账号 3；未分组当前为 0，不显示；
+- 支持 `memory.html?group=global`、`?group=gq`、`?group=g1`、`?group=g-early`、`?group=g-oct` 直接打开；
+- 项目详情页只给已绑定项目显示「项目记忆」：“国庆”跳到 gq，“User”跳到 g1；
+- 数据来自 `D:\ai-memory-handover`，先运行 `npm run memory:overlay` 生成
   `data/private/memory-kernel/memory-view.json`；`npm run library` 再发布为
-  `replay/public/memory-data.json`。页面只读，不修改内核产物。
+  `replay/public/memory-data.json`。当前已接入 L1/L2/L4 会话索引，L2 详情、L4 事件树和 L5 树视图仍待页面层接入。
 
 ### 搜索、置顶与项目
 

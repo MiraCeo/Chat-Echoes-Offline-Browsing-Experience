@@ -88,9 +88,10 @@ npm run verify:archive      # 只读检查档案结构
   tag 最多显示 6 个、超出 `+N`；活跃条按日轮次三档绿色，无消息留白；
   契约见 `docs/summary-contract.md`；索引仍是构建期 `replay/public/timeline-index.json`，
   含 `turns` / `rounds` / `models` / `primary_model` / `user_chars` / `assistant_chars`，标题取 `chats.json`；
-- 侧栏「记忆」页：读取 `data/private/memory-kernel/memory-view.json`，渲染已确认账号组的
-  L3.1 四块记忆库、5 条主线清单、跨线主题、delta 和 ungrouped；项目详情的「项目记忆」按
-  `User → g1`、`国庆 → gq` 跳转，其他项目不显示；只读，不接 L2/L4/L5；
+- 侧栏「记忆」页：读取 `data/private/memory-kernel/memory-view.json`，渲染全局 + 四组
+  （gq 10 / g1 7 / g-early 11 / g-oct 3）的 L3.1 四块记忆库、主线清单、跨线主题、delta、
+  coverage flags 和全局 L3/L5 元数据；项目详情的「项目记忆」按 `User → g1`、`国庆 → gq`
+  跳转，其他项目不显示；当前已接入会话 L1/L2/L4 索引，L2 详情、L4 和 L5 树视图待页面接入；
 - 本地页面之间（会话、导入、资料库、项目、时间、记忆）切换使用 vendored Turbo Drive 保持侧栏；
   侧栏/搜索/聊天菜单/删除弹层标记 `data-turbo-permanent`，页面级脚本用 `?turbo=N` 重新初始化，
   顶层导航活动项在 `turbo:load` 更新；

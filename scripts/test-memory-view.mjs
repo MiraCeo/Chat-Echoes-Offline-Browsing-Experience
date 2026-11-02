@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+
+const view = JSON.parse(await readFile('data/private/memory-kernel/memory-view.json', 'utf8'));
+assert.equal(view.schema, 'ceobe.memory-view/2');
+assert.equal(view.archive.total, 31);
+assert.deepEqual(view.archive.groups, { gq: 10, g1: 7, 'g-early': 11, 'g-oct': 3 });
+assert.equal(view.archive.ungrouped, 0);
+assert.equal(view.groups.length, 4);
+assert.deepEqual(view.groups.map(group => group.group), ['gq', 'g1', 'g-early', 'g-oct']);
+assert.equal(view.groups.find(group => group.group === 'g1').name, '01–07 序列');
+assert.equal(view.groups.find(group => group.group === 'g1').coverage.sessions, 7);
+assert.equal(view.sessions.length, 31);
+assert.equal(view.sessions.filter(session => session.staging).length, 1);
+assert.equal(view.ungrouped.count, 0);
+assert.equal(view.ungrouped.sessions.length, 0);
+assert.equal(view.global.mainlines.length, 13);
+assert.equal(view.global.threads.length, 15);
+assert.equal(view.global.projects.length, 7);
+assert.equal(view.global.conflicts.length, 9);
+assert.equal(view.global.thread_docs.length, 12);
+assert.equal(view.global.tree.nodes, 381);
+assert.equal(view.global.tree.edges, 183);
+console.log('PASS memory view: four groups, 31 sessions, global/L5 metadata, no ungrouped');
