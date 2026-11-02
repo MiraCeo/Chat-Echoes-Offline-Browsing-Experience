@@ -158,6 +158,71 @@
     return section;
   }
 
+  function findSession(short) {
+    return view.sessions.find(session => session.short === short || session.id.startsWith(short));
+  }
+
+  function formatDate(ts) {
+    if (!Number.isFinite(ts)) return '';
+    try { return new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium' }).format(new Date(ts * 1000)); }
+    catch { return ''; }
+  }
+
+  function renderTree(global) {
+    const tree = global.tree_data;
+    if (!tree?.nodes?.length) return null;
+    const section = make('section', 'ceobe-memory-global-section ceobe-memory-tree');
+    section.append(make('h3', '', `L5 跨会话树 · ${tree.nodes.length} 节点 / ${tree.edges.length} 边`));
+    section.append(make('p', 'ceobe-memory-tree-note', '只读浏览；节点按时间编号，来源轮次可跳到对应会话。'));
+
+    const nodes = make('details', 'ceobe-memory-tree-details');
+    nodes.append(make('summary', '', `节点 ${tree.nodes.length}`));
+    const list = make('div', 'ceobe-memory-tree-nodes');
+    for (const node of tree.nodes) {
+      const item = make('article', 'ceobe-memory-tree-node');
+      item.dataset.treeNode = String(node.n);
+      const head = make('div', 'ceobe-memory-tree-node-head');
+      head.append(
+        make('strong', '', `#${node.n}`),
+        make('span', 'ceobe-memory-tree-type', `${node.t || 'event'} · ${node.s || ''}`),
+      );
+      const date = formatDate(node.ts);
+      if (date) head.append(make('time', 'ceobe-memory-tree-date', date));
+      item.append(head, make('p', '', node.x || ''));
+      if (node.src?.length) {
+        const sources = make('div', 'ceobe-memory-tree-sources');
+        for (const source of node.src) {
+          const session = findSession(source.s);
+          const chip = make(session ? 'button' : 'span', 'ceobe-memory-source');
+          if (session) {
+            chip.type = 'button';
+            chip.dataset.memorySourceSession = session.id;
+            chip.addEventListener('click', () => chooseSession(session));
+          }
+          chip.textContent = `${source.s}${source.r ? ` · ${source.r[0]}–${source.r[1]} 轮` : ''}`;
+          if (!session) chip.title = '该来源不在当前 31 会话 archive 中';
+          sources.append(chip);
+        }
+        item.append(sources);
+      }
+      list.append(item);
+    }
+    nodes.append(list);
+    section.append(nodes);
+
+    if (tree.edges?.length) {
+      const edges = make('details', 'ceobe-memory-tree-details');
+      edges.append(make('summary', '', `关系 ${tree.edges.length}`));
+      const edgeList = make('ul', 'ceobe-memory-edge-list');
+      for (const edge of tree.edges) {
+        edgeList.append(make('li', '', `#${edge[0]} —${edge[2]}→ #${edge[1]}`));
+      }
+      edges.append(edgeList);
+      section.append(edges);
+    }
+    return section;
+  }
+
   function renderSession(session) {
     setStatus(`${groupName(session.group)} · ${session.rounds} 轮${session.staging ? ' · inbox staging' : ''}`);
     const head = make('section', 'ceobe-memory-bank-head');
@@ -256,13 +321,20 @@
     }
 
     content.append(renderSessionIndex());
+    const tree = renderTree(global);
+    if (tree) content.append(tree);
 
     if (global.thread_docs?.length) {
       const docs = make('section', 'ceobe-memory-global-section');
       docs.append(make('h3', '', `Markdown 分册 ${global.thread_docs.length} 份`));
-      const list = make('ul', 'ceobe-memory-doc-list');
-      for (const doc of global.thread_docs) list.append(make('li', '', doc.name));
-      docs.append(list);
+      for (const doc of global.thread_docs) {
+        const details = make('details', 'ceobe-memory-thread');
+        details.append(make('summary', '', doc.name));
+        const prose = make('div', 'ceobe-memory-prose');
+        prose.innerHTML = doc.html || '';
+        details.append(prose);
+        docs.append(details);
+      }
       content.append(docs);
     }
 

@@ -24,4 +24,7 @@ assert.equal(view.global.conflicts.length, 9);
 assert.equal(view.global.thread_docs.length, 12);
 assert.equal(view.global.tree.nodes, 381);
 assert.equal(view.global.tree.edges, 183);
+assert.equal(view.global.tree_data.nodes.length, 381);
+assert.equal(view.global.tree_data.edges.length, 183);
+assert.ok(view.global.thread_docs.every(doc => doc.html.length > 100));
 console.log('PASS memory view: four groups, 31 sessions, global/L5 metadata, no ungrouped');

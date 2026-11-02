@@ -58,9 +58,11 @@ try {
     status: document.querySelector('[data-memory-status]')?.textContent,
     stats: [...document.querySelectorAll('.ceobe-memory-stat')].map(node => node.textContent),
     mainlines: document.querySelectorAll('[data-memory-mainline]').length,
-    docs: document.querySelectorAll('.ceobe-memory-doc-list > li').length,
+    docs: document.querySelectorAll('.ceobe-memory-thread').length,
     sessions: document.querySelectorAll('[data-memory-session]').length,
     overview: document.querySelector('.ceobe-memory-overview summary')?.textContent,
+    treeNodes: document.querySelectorAll('[data-tree-node]').length,
+    treeEdges: document.querySelectorAll('.ceobe-memory-edge-list > li').length,
     title: document.querySelector('.ceobe-memory-bank-head h2')?.textContent,
   }));
   assert.equal(global.title, '全局记忆');
@@ -72,6 +74,11 @@ try {
   assert.match(global.overview || '', /全局总览正文/);
   assert.match(global.stats.join(' '), /381/);
   assert.match(global.stats.join(' '), /183/);
+  assert.equal(global.treeNodes, 381, 'L5 应渲染 381 个节点');
+  assert.equal(global.treeEdges, 183, 'L5 应渲染 183 条边');
+
+  await page.locator('.ceobe-memory-thread').first().locator('summary').click();
+  assert.ok(await page.locator('.ceobe-memory-thread').first().locator('.ceobe-memory-prose h1').count(), '分册正文应可展开');
 
   await page.locator('[data-memory-session]').first().click();
   await page.waitForSelector('.ceobe-memory-session-summary');
@@ -110,7 +117,7 @@ try {
   assert.equal(g1.href, './memory.html?group=g1');
   assert.equal(g1.hidden, false);
   assert.deepEqual(errors, [], '记忆页和项目跳转不应产生页面错误');
-  console.log('PASS memory v3: global + four group banks, 31 sessions, g1 01–07, flags and project links');
+  console.log('PASS memory v4: global + four groups, L1/L2/L4 details, L5 tree, 12 thread docs and group memory links');
 } finally {
   await browser.close();
 }

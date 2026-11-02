@@ -155,7 +155,7 @@ npm run preview
 - 项目详情页只给已绑定项目显示「组记忆」（不是项目专属记忆）：“国庆”跳到 gq，“User”跳到 g1；
 - 数据来自 `D:\ai-memory-handover`，先运行 `npm run memory:overlay` 生成
   `data/private/memory-kernel/memory-view.json`；`npm run library` 再发布为
-  `replay/public/memory-data.json`。当前已接入 L1/L2/L4；L5 树视图和 12 份分册正文仍待页面接入。
+  `replay/public/memory-data.json`。L1/L2/L4 详情、L5 树和 12 份分册正文均已接入。
 
 ### 搜索、置顶与项目
 

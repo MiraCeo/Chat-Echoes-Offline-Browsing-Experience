@@ -172,6 +172,12 @@ const view = {
     },
     thread_docs: threadDocs,
     tree: treeStats,
+    tree_data: {
+      nodes: tree.nodes || [],
+      edges: tree.edges || [],
+      open: tree.open || [],
+      pruned: tree.pruned || [],
+    },
     thread_map_counts: threadMap.counts || null,
   },
   sessions: sessionView,

@@ -308,6 +308,57 @@
 .ceobe-memory-event-edges { margin: 10px 0 0; color: #667085; font-size: 11px; line-height: 1.6; }
 .ceobe-memory-overview summary { cursor: pointer; color: #344054; font-weight: 600; }
 .ceobe-memory-overview .ceobe-memory-prose { margin-top: 12px; }
+.ceobe-memory-thread {
+  margin: 7px 0;
+  padding: 8px 10px;
+  border: 1px solid #eaecf0;
+  border-radius: 7px;
+  background: #fcfcfd;
+}
+.ceobe-memory-thread summary { cursor: pointer; color: #344054; font-size: 12px; font-weight: 500; }
+.ceobe-memory-thread .ceobe-memory-prose { margin-top: 12px; }
+.ceobe-memory-tree-note { margin: -3px 0 10px; color: #98a2b3; font-size: 11px; line-height: 1.6; }
+.ceobe-memory-tree-details summary { cursor: pointer; color: #344054; font-size: 12px; font-weight: 500; }
+.ceobe-memory-tree-nodes {
+  display: grid;
+  gap: 7px;
+  max-height: 460px;
+  margin-top: 10px;
+  overflow: auto;
+  padding-right: 4px;
+}
+.ceobe-memory-tree-node {
+  padding: 9px 11px;
+  border: 1px solid #eaecf0;
+  border-radius: 7px;
+  background: #fff;
+}
+.ceobe-memory-tree-node-head { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.ceobe-memory-tree-node-head strong { color: #344054; font-size: 11px; }
+.ceobe-memory-tree-type { color: #667085; font-size: 10px; }
+.ceobe-memory-tree-date { margin-left: auto; color: #98a2b3; font-size: 10px; }
+.ceobe-memory-tree-node p { margin: 5px 0 0; color: #475467; font-size: 12px; line-height: 1.55; }
+.ceobe-memory-tree-sources { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.ceobe-memory-source {
+  padding: 1px 5px;
+  border: 1px solid #e4e7ec;
+  border-radius: 4px;
+  background: #f8fafc;
+  color: #667085;
+  font: inherit;
+  font-size: 10px;
+}
+button.ceobe-memory-source { cursor: pointer; pointer-events: auto !important; }
+.ceobe-memory-edge-list {
+  display: grid;
+  gap: 4px;
+  max-height: 280px;
+  margin: 9px 0 0;
+  padding-left: 20px;
+  overflow: auto;
+  color: #667085;
+  font-size: 11px;
+}
 @media (max-width: 720px) {
   .ceobe-memory-inner { width: min(100% - 32px, 900px); padding-top: 28px; }
   .ceobe-memory-toolbar { align-items: flex-start; flex-direction: column; }
