@@ -155,6 +155,7 @@ npm run preview
 - 会话页右上角「本会话记忆」直接打开当前会话的 L1/L2/L4；
 - L4 节点的“跳到原文”和 L5 节点的来源轮次会跳到对应会话消息并高亮；
 - 项目详情页只给已绑定项目显示「组记忆」（不是项目专属记忆）：“国庆”跳到 gq，“User”跳到 g1；
+  项目页同时显示所在组的覆盖、快照日和主线摘要；
 - 数据源在 CEOBE 私有目录 `data/private/memory-kernel/source/`（不提交）；先运行
   `npm run memory:import` 校验并生成 `data/private/memory-kernel/memory-view.json`，
   `npm run library` 再发布为 `replay/public/memory-data.json`。流程见

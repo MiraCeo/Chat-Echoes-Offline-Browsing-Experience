@@ -111,6 +111,16 @@ try {
   assert.equal(gq.href, './memory.html?group=gq');
   assert.equal(gq.hidden, false);
   assert.equal(gq.label, '组记忆');
+  await page.waitForSelector('[data-project-memory-summary]');
+  const gqSummary = await page.evaluate(() => ({
+    text: document.querySelector('[data-project-memory-summary]')?.textContent,
+    mainlines: document.querySelectorAll('.ceobe-project-memory-mainlines span').length,
+    link: document.querySelector('.ceobe-project-memory-link')?.getAttribute('href'),
+  }));
+  assert.match(gqSummary.text || '', /国庆组/);
+  assert.match(gqSummary.text || '', /10 个会话/);
+  assert.equal(gqSummary.mainlines, 5);
+  assert.equal(gqSummary.link, './memory.html?group=gq');
 
   await page.goto(base + 'project.html?id=fe24db15-b1ce-4f1a-9c4b-0db48f0b3089', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-project-memory]');
@@ -120,6 +130,9 @@ try {
   }));
   assert.equal(g1.href, './memory.html?group=g1');
   assert.equal(g1.hidden, false);
+  await page.waitForSelector('[data-project-memory-summary]');
+  assert.match(await page.locator('[data-project-memory-summary]').innerText(), /01–07 序列/);
+  assert.match(await page.locator('[data-project-memory-summary]').innerText(), /7 个会话/);
 
   await page.goto(base + 'memory.html?group=global', { waitUntil: 'networkidle' });
   await page.locator('.ceobe-memory-tree-details').first().locator('summary').click();

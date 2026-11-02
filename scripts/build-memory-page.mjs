@@ -45,6 +45,16 @@ export async function buildMemoryPage(projectRoot = resolve(import.meta.dirname,
   try { doc = JSON.parse(await readFile(source, 'utf8')); } catch { /* optional until overlay is adapted */ }
   await mkdir(join(replay, 'public'), { recursive: true });
   await writeFile(join(replay, 'public', 'memory-data.json'), JSON.stringify(doc), 'utf8');
+  const projectIndex = {
+    schema: 'ceobe.memory-project-index/1',
+    groups: Object.fromEntries((doc.groups || []).map(group => [group.group, {
+      name: group.name,
+      as_of: group.as_of,
+      coverage: group.coverage,
+      mainlines: group.mainlines || [],
+    }])),
+  };
+  await writeFile(join(replay, 'public', 'memory-project-index.json'), JSON.stringify(projectIndex), 'utf8');
 
   const script = await readFile(join(projectRoot, 'scripts/memory.js'), 'utf8');
   const scriptFile = 'memory.' + hash(script) + '.js';
