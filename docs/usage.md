@@ -153,9 +153,10 @@ npm run preview
 - 支持 `memory.html?group=global`、`?group=gq`、`?group=g1`、`?group=g-early`、`?group=g-oct` 直接打开；
 - 「全局」里的会话列表可打开 31 个会话的 L1 摘要、L2 记忆文档和 L4 事件节点；
 - 项目详情页只给已绑定项目显示「组记忆」（不是项目专属记忆）：“国庆”跳到 gq，“User”跳到 g1；
-- 数据来自 `D:\ai-memory-handover`，先运行 `npm run memory:overlay` 生成
-  `data/private/memory-kernel/memory-view.json`；`npm run library` 再发布为
-  `replay/public/memory-data.json`。L1/L2/L4 详情、L5 树和 12 份分册正文均已接入。
+- 数据源在 CEOBE 私有目录 `data/private/memory-kernel/source/`（不提交）；先运行
+  `npm run memory:import` 校验并生成 `data/private/memory-kernel/memory-view.json`，
+  `npm run library` 再发布为 `replay/public/memory-data.json`。流程见
+  [记忆内核本地导入](memory-kernel-import.md)。L1/L2/L4 详情、L5 树和 12 份分册正文均已接入。
 
 ### 搜索、置顶与项目
 

@@ -13,7 +13,10 @@
 - 全局页新增 31 会话索引；单会话可查看 L1 摘要、渲染后的 L2 文档和 L4 事件节点；
 - 全局页新增 L5 只读树（381 节点 / 183 边，节点来源可跳会话）和 12 份可展开分册正文；
   全局 overview 正文可展开；项目入口改名为「组记忆」；
-- `npm run memory:overlay` 默认读取 `D:\ai-memory-handover`，只写派生 view，不复制原文；
+- `npm run memory:import` 是推荐入口；底层 `memory:overlay` 只负责生成派生 view，
+  不再默认从外部 handover 目录读取；
+- 内核源已收进 `data/private/memory-kernel/source/`（不提交）；新增 `npm run memory:import`
+  依次跑 overlay/L1/L2/L4/L3/L5/index/分册校验，再生成 view 和 source manifest；
 - L1–L5 页面层接入完成，待整体验收后决定 1.3 版本。
 
 ## 1.2.2（2026-10-31）

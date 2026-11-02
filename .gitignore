@@ -16,6 +16,10 @@ archive/*
 !archive/.gitkeep
 
 data/private/*
+# Memory-kernel source, derived view and manifest are local-only personal data.
+data/private/memory-kernel/source/
+data/private/memory-kernel/memory-view.json
+data/private/memory-kernel/source-manifest.json
 attachments/private/*
 
 # Assistant workspace: local session memory, not project source.

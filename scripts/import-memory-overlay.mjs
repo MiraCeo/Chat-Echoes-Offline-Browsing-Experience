@@ -14,7 +14,7 @@ const option = name => {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : null;
 };
-const source = resolve(option('--source') || process.env.CEOBE_MEMORY_SOURCE || 'D:/ai-memory-handover');
+const source = resolve(option('--source') || process.env.CEOBE_MEMORY_SOURCE || join(projectRoot, 'data/private/memory-kernel/source'));
 const target = join(projectRoot, 'data/private/memory-kernel/memory-view.json');
 const groupIds = ['gq', 'g1', 'g-early', 'g-oct'];
 const groupLabels = {
