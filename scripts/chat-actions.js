@@ -4,7 +4,7 @@ import {applyProjectLabel} from './sidebar-project-label.js';
 if (window.__ceobeChatActions) return;
 window.__ceobeChatActions = true;
 const recent=document.querySelector('[data-chat-recent-list]'),pinned=document.querySelector('[data-chat-pinned-section]'),dialog=document.querySelector('[data-chat-delete]'),status=document.getElementById('ceobe-chat-status');
-const prefix=location.pathname.includes('/conversations/')?'../':'./';let catalog=[],catalogLoaded=false,writable=false,editing=null,deleting=null,inerted=[],busy=false;
+const prefix=location.pathname.includes('/conversations/')?'../':'./',root=new URL(prefix,location.href);let catalog=[],catalogLoaded=false,writable=false,editing=null,deleting=null,inerted=[],busy=false;
 // 会话列表由构建期写成一行模板（#ceobe-sidebar-chat-row），浏览器按 chats.json 复制出全部行。
 // 页面里既不含全部会话的 <li>，也不含 #ceobe-chat-catalog，删改会话才不会改写每一页。
 const rowTemplate=document.getElementById('ceobe-sidebar-chat-row'),staticRow=recent?.firstElementChild||null;
@@ -40,7 +40,7 @@ let pageChatId=currentChatId();
 let projects=JSON.parse(document.getElementById('ceobe-projects-data').textContent),projectGeneration=0;
 const labelTemplate=document.getElementById('ceobe-sidebar-project-label').content.firstElementChild;
 const pinKey='ceobe.pinned-expanded.v1';let pinnedExpanded=true;try{pinnedExpanded=localStorage.getItem(pinKey)!=='false'}catch{}
- function paintPinned(){if(!pinned)return;const button=pinned.querySelector('button'),svg=button.querySelector('svg');pinned.querySelector('ul').hidden=!pinnedExpanded;button.setAttribute('aria-expanded',String(pinnedExpanded));document.documentElement.dataset.ceobePinnedCollapsed=String(!pinnedExpanded);svg.querySelector('use').setAttribute('href',prefix+'cdn/assets/sprites-shell-097001e7.svg#'+(pinnedExpanded?'chevron-down-sm':'chevron-right-sm'));svg.setAttribute('class',pinnedExpanded?'invisible h-3 w-3 shrink-0 group-hover/sidebar-expando-section:visible':'h-3 w-3 shrink-0 group-hover/sidebar-expando-section:block');svg.toggleAttribute('data-rtl-flip',!pinnedExpanded)}
+ function paintPinned(){if(!pinned)return;const button=pinned.querySelector('button'),svg=button.querySelector('svg');pinned.querySelector('ul').hidden=!pinnedExpanded;button.setAttribute('aria-expanded',String(pinnedExpanded));document.documentElement.dataset.ceobePinnedCollapsed=String(!pinnedExpanded);svg.querySelector('use').setAttribute('href',new URL('cdn/assets/sprites-shell-097001e7.svg#'+(pinnedExpanded?'chevron-down-sm':'chevron-right-sm'),root).href);svg.setAttribute('class',pinnedExpanded?'invisible h-3 w-3 shrink-0 group-hover/sidebar-expando-section:visible':'h-3 w-3 shrink-0 group-hover/sidebar-expando-section:block');svg.toggleAttribute('data-rtl-flip',!pinnedExpanded)}
  window.addEventListener('storage',e=>{if(e.key===pinKey){pinnedExpanded=e.newValue!=='false';paintPinned()}});
  const overflow=new ResizeObserver(entries=>{for(const {target:e}of entries)e.toggleAttribute('data-marquee-overflowing',e.querySelector('._NCija_content').getBoundingClientRect().width>e.clientWidth+1)});
 async function loadProjects(){const token=++projectGeneration;try{const r=await fetch('/api/projects',{cache:'no-store'}),data=await r.json();if(r.ok&&Array.isArray(data.projects)&&token===projectGeneration){projects=data.projects;render()}}catch{}}
@@ -55,11 +55,11 @@ function render(){
  if(!recent||!catalogLoaded||editing||document.body.hasAttribute('data-project-editing'))return;overflow.disconnect();recent.replaceChildren();pinned.querySelector('ul').replaceChildren();
  if(!catalog.length){pinned.hidden=true;paintPinned();organizer.update(projects,catalog);return}
  const ordered=[...catalog].sort((a,b)=>String(b.pinned_at||'').localeCompare(String(a.pinned_at||'')));
- for(const [index,c] of ordered.entries()){const source=c.pinned_at?document.getElementById('ceobe-pinned-row').firstElementChild:(rowTemplate?.content?.firstElementChild||staticRow);if(!source)continue;const li=source.cloneNode(true),a=li.querySelector('a'),b=li.querySelector('[data-conversation-options-trigger]');if(!a||!b)continue;a.href=prefix+'conversations/'+c.id+'.html';a.setAttribute('aria-label',c.title+(c.pinned_at?'，已置顶对话':''));a.draggable=false;a.toggleAttribute('data-active',c.id===pageChatId);if(c.id===pageChatId)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
+ for(const [index,c] of ordered.entries()){const source=c.pinned_at?document.getElementById('ceobe-pinned-row').firstElementChild:(rowTemplate?.content?.firstElementChild||staticRow);if(!source)continue;const li=source.cloneNode(true),a=li.querySelector('a'),b=li.querySelector('[data-conversation-options-trigger]');if(!a||!b)continue;a.href=new URL('conversations/'+c.id+'.html',root).href;a.setAttribute('aria-label',c.title+(c.pinned_at?'，已置顶对话':''));a.draggable=false;a.toggleAttribute('data-active',c.id===pageChatId);if(c.id===pageChatId)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');
   for(const n of li.querySelectorAll('._NCija_content'))n.textContent=c.title;
   b.dataset.ceobeChatId=c.id;b.dataset.chatPinned=String(Boolean(c.pinned_at));b.dataset.conversationOptionsTrigger=c.id;b.id='chat-options-'+c.id;b.setAttribute('data-testid','history-item-'+index+'-options');b.setAttribute('aria-label',`打开“${c.title}”的对话选项`);b.setAttribute('aria-controls','ceobe-chat-menu');b.setAttribute('aria-expanded','false');b.dataset.state='closed';b.tabIndex=0;
   const unpin=[...li.querySelectorAll('button')].find(e=>e!==b);if(unpin){unpin.dataset.chatUnpin=c.id;unpin.setAttribute('aria-label',(c.pinned_at?'取消置顶 ':'置顶 ')+c.title)}
-  for(const use of li.querySelectorAll('use')){const h=use.getAttribute('href');if(h.includes('f705d3e2')||h.includes('e289d166'))use.setAttribute('href',prefix+'cdn/assets/'+(h.includes('sprites-shell')?'sprites-shell-097001e7.svg':'sprites-core-26c3f2d4.svg')+'#'+h.split('#')[1])}
+  for(const use of li.querySelectorAll('use')){const h=use.getAttribute('href');if(h.includes('f705d3e2')||h.includes('e289d166'))use.setAttribute('href',new URL('cdn/assets/'+(h.includes('sprites-shell')?'sprites-shell-097001e7.svg':'sprites-core-26c3f2d4.svg')+'#'+h.split('#')[1],root).href)}
   applyProjectLabel(li,c.title,projects.find(p=>p.conversation_ids?.includes(c.id)),labelTemplate);
    (c.pinned_at?pinned.querySelector('ul'):recent).append(li);
    if(li.querySelector('[data-sidebar-project-name]'))overflow.observe(li.querySelector('._NCija_viewport'));
@@ -70,7 +70,7 @@ function render(){
 }
 // 构建期写出的静态清单（replay/chats.json）先撑起侧栏；本地服务可用时 load() 会换成最新数据。
 function markSidebarReady(){clearTimeout(skeletonTimer);document.documentElement.dataset.ceobeSidebarChats='ready'}
-function seedCatalog(){fetch(new URL(prefix+'chats.json',location.href),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(data=>{if(catalogLoaded||!Array.isArray(data?.chats))return;catalog=data.chats;catalogLoaded=true;render();markSidebarReady()}).catch(()=>{})}
+function seedCatalog(){fetch(new URL('chats.json',root),{cache:'no-store'}).then(r=>r.ok?r.json():null).then(data=>{if(catalogLoaded||!Array.isArray(data?.chats))return;catalog=data.chats;catalogLoaded=true;render();markSidebarReady()}).catch(()=>{})}
 async function load(){loadProjects();try{const r=await fetch('/api/chats',{cache:'no-store'}),data=await r.json();if(!r.ok||!Array.isArray(data.conversations))throw new Error();catalog=data.conversations;catalogLoaded=true;writable=true;render();markSidebarReady()}catch{writable=false}}
 function update(c){catalog=catalog.map(x=>x.id===c.id?c:x);render();document.dispatchEvent(new Event('ceobe:chat-updated'))}
 function rename(c,opener){

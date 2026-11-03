@@ -131,11 +131,15 @@
 - 项目页组记忆摘要（组名、覆盖、快照日、主线、入口）；
 - 记忆页内搜索（组块、主线、会话 L1/L2/L4、L5、分册、全局项目/冲突）；
 - 时间线条目「记忆」入口；
-- 项目入口改名「组记忆」。
+- 项目入口改名「组记忆」；
+- 420/900/1440 多视口验收（记忆页、项目页、时间线、会话页无横向溢出）；
+- 窄屏会话页右下角「本会话记忆」浮动入口；
+- 修复 Turbo 跨层级后侧栏聊天链接重复 `/conversations/` 段。
 
 待做：
 
-1. **整体验收与版本**：跑全量、构建、38 页巡检和多视口检查后决定 1.3.0。
+1. **版本口径**：决定 1.3.0 还是继续 1.2.x；
+2. **最终发布**：版本、CHANGELOG、tag/push（不建 GitHub Release 页面）。
 
 参考项目：`getzep/graphiti`、`mem0ai/mem0`、`basicmachines-co/basic-memory`、
 `JerryZLiu/Dayflow`、`ActivityWatch/activitywatch`、`syncable-dev/memtrace-public`、

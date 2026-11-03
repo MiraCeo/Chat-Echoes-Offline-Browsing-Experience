@@ -92,8 +92,8 @@ npm run verify:archive      # 只读检查档案结构
   （gq 10 / g1 7 / g-early 11 / g-oct 3）的 L3.1 四块记忆库、主线清单、跨线主题、delta、
   coverage flags 和全局 L3 元数据；全局页可打开 31 个会话的 L1/L2/L4 详情、L5 树和
   12 份分册正文；L4/L5 的来源可跳到 `#bookmark=<message_id>` 并高亮原消息；会话页右上角
-  「本会话记忆」直接打开当前会话；项目详情的「组记忆」按 `User → g1`、`国庆 → gq` 跳转，
-  并显示所在组覆盖、快照日和主线摘要；记忆页搜索覆盖组块、主线、会话 L1/L2/L4、L5 节点和分册；
+  「本会话记忆」直接打开当前会话（窄屏为右下角浮动入口）；项目详情的「组记忆」按
+  `User → g1`、`国庆 → gq` 跳转，并显示所在组覆盖、快照日和主线摘要；记忆页搜索覆盖组块、主线、会话 L1/L2/L4、L5 节点和分册；
   时间线条目提供「记忆」入口；
   内核源在 `data/private/memory-kernel/source/`，重建见 `docs/memory-kernel-import.md`；
 - 本地页面之间（会话、导入、资料库、项目、时间、记忆）切换使用 vendored Turbo Drive 保持侧栏；

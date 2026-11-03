@@ -27,3 +27,25 @@ html[data-ceobe-accurate-turn-layout] section[data-testid^="conversation-turn-"]
 section[data-testid^="conversation-turn-"][data-bookmark-near] {
   content-visibility: visible;
 }
+.ceobe-reader-memory-mobile {
+  display: none;
+}
+@media (max-width: 640px) {
+  .ceobe-reader-memory-mobile {
+    position: fixed;
+    right: 14px;
+    bottom: 14px;
+    z-index: 45;
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border: 1px solid #d0d5dd;
+    border-radius: 999px;
+    background: #fff;
+    color: #344054;
+    font-size: 12px;
+    text-decoration: none;
+    box-shadow: 0 4px 14px rgba(16, 24, 40, .12);
+    pointer-events: auto !important;
+  }
+}

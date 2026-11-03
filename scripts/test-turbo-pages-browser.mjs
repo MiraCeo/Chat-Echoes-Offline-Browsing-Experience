@@ -41,9 +41,10 @@ try {
   const chat = page.locator('[data-chat-recent-list] a').first();
   await chat.click();
   await page.waitForFunction(() => location.pathname.includes('/conversations/'));
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => document.querySelectorAll('[data-chat-recent-list] a[aria-current="page"]').length === 1, { timeout: 5000 });
   assert.equal(await page.evaluate(() => document.getElementById('stage-slideover-sidebar')?.dataset.persistentMarker), 'keep-top');
   assert.equal(await page.locator('[data-chat-recent-list] a[aria-current="page"]').count(), 1);
+  assert.ok(await page.locator('[data-chat-recent-list] a[aria-current="page"]').first().getAttribute('href').then(href => !href.includes('/conversations/conversations/')), '侧栏链接不应重复 conversations 段');
   assert.deepEqual(errors, [], 'top-level Turbo navigation should not throw');
   console.log('PASS Turbo top-level navigation: import/assets/projects/timeline/memory keep sidebar and active state');
 } finally {
