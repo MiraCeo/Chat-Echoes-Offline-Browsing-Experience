@@ -1,3 +1,5 @@
+import { renderEventTree } from './memory-event-tree.js';
+
 (() => {
   const root = document.querySelector('[data-ceobe-memory]');
   if (!root) return;
@@ -409,46 +411,7 @@
     l2.append(prose);
     content.append(l2);
 
-    const l4 = make('section', 'ceobe-memory-session-section');
-    l4.id = 'memory-layer-l4';
-    l4.append(make('h3', '', `L4 事件树 · ${session.l4?.nodes?.length || 0} 节点`));
-    if (session.l4?.nodes?.length) {
-      const list = make('ol', 'ceobe-memory-event-list');
-      for (const node of session.l4.nodes) {
-        const item = make('li');
-        item.dataset.eventType = node.t || '';
-        item.dataset.eventStatus = node.s || '';
-        const range = Array.isArray(node.r) ? (node.r[0] === node.r[1] ? `第 ${node.r[0]} 轮` : `第 ${node.r[0]}–${node.r[1]} 轮`) : '';
-        item.append(
-          make('strong', '', `#${node.n} ${node.t || 'event'} · ${node.s || ''}`),
-          make('span', 'ceobe-memory-event-range', range),
-          make('p', '', node.x || ''),
-        );
-        const jump = messageHref(session, node.r?.[0]);
-        if (jump) {
-          const link = make('a', 'ceobe-memory-event-jump', '跳到原文');
-          link.href = jump;
-          link.dataset.memoryEventRound = String(node.r[0]);
-          item.append(link);
-        }
-        list.append(item);
-      }
-      l4.append(list);
-    } else {
-      l4.append(make('p', '', '没有 L4 事件树。'));
-    }
-    if (session.l4?.edges?.length) {
-      const edges = make('p', 'ceobe-memory-event-edges', `关系：${session.l4.edges.map(edge => `#${edge[0]} —${edge[2]}→ #${edge[1]}`).join('；')}`);
-      l4.append(edges);
-    }
-    if (session.l4?.open?.length) {
-      const open = make('details', 'ceobe-memory-flags');
-      open.append(make('summary', '', `未决问题 ${session.l4.open.length} 条`));
-      const list = make('ul');
-      for (const question of session.l4.open) list.append(make('li', '', question));
-      open.append(list);
-      l4.append(open);
-    }
+    const l4 = renderEventTree(session, { make, messageHref });
     content.append(l4);
   }
 

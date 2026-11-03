@@ -101,7 +101,8 @@ try {
     title: document.querySelector('.ceobe-memory-bank-head h2')?.textContent,
     l1: document.querySelector('.ceobe-memory-session-summary p')?.textContent,
     l2: document.querySelector('.ceobe-memory-session-section .ceobe-memory-prose h1')?.textContent,
-    l4: document.querySelectorAll('.ceobe-memory-event-list > li').length,
+    l4: document.querySelectorAll('.ceobe-event-node').length,
+    edges: document.querySelectorAll('.ceobe-event-edge').length,
     back: document.querySelector('.ceobe-memory-back')?.textContent,
   }));
   assert.match(session.path, /session=/);
@@ -109,9 +110,15 @@ try {
   assert.ok(session.l1?.length > 0);
   assert.ok(session.l2?.length > 0, 'L2 Markdown 应渲染出标题');
   assert.ok(session.l4 > 0, 'L4 应渲染事件节点');
+  assert.ok(session.edges > 0, 'L4 应渲染事件边');
   assert.match(session.back || '', /返回/);
-  const eventJump = await page.locator('.ceobe-memory-event-jump').first().getAttribute('href');
+  await page.locator('.ceobe-event-node').first().click();
+  const eventJump = await page.locator('.ceobe-event-tree-source').first().getAttribute('href');
   assert.match(eventJump || '', /#bookmark=/, 'L4 节点应能跳到原文');
+  const allNodes = await page.locator('.ceobe-event-node').count();
+  await page.locator('[data-event-status-filter]').selectOption('superseded');
+  await page.waitForFunction(count => document.querySelectorAll('.ceobe-event-node').length < count, allNodes);
+  assert.ok(await page.locator('.ceobe-event-node').count() > 0, 'L4 状态筛选应保留匹配节点');
 
   await page.goto(base + 'project.html?id=4a801995-cd88-4b62-9686-d21ed87e2980', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-project-memory]');

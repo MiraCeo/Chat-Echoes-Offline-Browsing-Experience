@@ -160,6 +160,7 @@ memory.html?group=g1&session=<id>
    - 点击节点跳原文；
    - 窄屏降级为缩进列表；
    - 独立模块，避免和整体 UI 重排耦合。
+   - 状态：已实现 `scripts/memory-event-tree.js`，待 1.3.1 发布。
 
 2. **`memory:status`**
    - 对比 archive / source / view；

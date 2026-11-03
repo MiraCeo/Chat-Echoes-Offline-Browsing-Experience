@@ -71,7 +71,12 @@ export async function buildMemoryPage(projectRoot = resolve(import.meta.dirname,
   };
   await writeFile(join(replay, 'public', 'memory-session-index.json'), JSON.stringify(sessionIndex), 'utf8');
 
-  const script = await readFile(join(projectRoot, 'scripts/memory.js'), 'utf8');
+  const eventTreeSource = await readFile(join(projectRoot, 'scripts/memory-event-tree.js'), 'utf8');
+  const eventTreeFile = 'memory-event-tree.' + hash(eventTreeSource) + '.js';
+  await writeFile(join(replay, eventTreeFile), eventTreeSource);
+
+  const script = (await readFile(join(projectRoot, 'scripts/memory.js'), 'utf8'))
+    .replace("'./memory-event-tree.js'", "'./" + eventTreeFile + "'");
   const scriptFile = 'memory.' + hash(script) + '.js';
   await writeFile(join(replay, scriptFile), script);
   placeScript(document, 'memory.', './' + scriptFile);

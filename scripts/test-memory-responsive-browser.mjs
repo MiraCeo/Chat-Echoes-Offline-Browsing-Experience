@@ -37,6 +37,16 @@ try {
     await page.waitForSelector(readerEntry);
     assert.equal(await overflow(), false, `${width}: 会话页不应横向溢出`);
     assert.ok(await page.locator(readerEntry).isVisible(), `${width}: 本会话记忆入口应可见`);
+
+    await page.goto(base + 'memory.html?group=g1&session=6ae4e806-327c-83ec-909b-022374081dc1', { waitUntil: 'networkidle' });
+    await page.waitForSelector('.ceobe-event-tree');
+    assert.equal(await overflow(), false, `${width}: L4 事件树不应横向溢出`);
+    if (width <= 720) {
+      assert.ok(await page.locator('.ceobe-event-tree-mobile').isVisible(), `${width}: 窄屏应显示事件列表`);
+      assert.equal(await page.locator('.ceobe-event-tree-graph').isVisible(), false, `${width}: 窄屏应隐藏图形`);
+    } else {
+      assert.ok(await page.locator('.ceobe-event-tree-graph').isVisible(), `${width}: 桌面应显示事件图`);
+    }
   }
 
   assert.deepEqual(errors, [], '多视口验收不应产生页面错误');
