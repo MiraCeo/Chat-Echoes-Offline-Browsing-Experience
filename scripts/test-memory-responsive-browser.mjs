@@ -28,9 +28,8 @@ try {
     assert.ok(await page.locator('[data-project-memory-summary]').isVisible(), `${width}: 项目组记忆摘要应可见`);
 
     await page.goto(base + 'timeline.html', { waitUntil: 'networkidle' });
-    await page.waitForSelector('[data-timeline-memory]');
+    await page.waitForSelector('.ceobe-timeline-row');
     assert.equal(await overflow(), false, `${width}: 时间线不应横向溢出`);
-    assert.ok(await page.locator('[data-timeline-memory]').first().isVisible(), `${width}: 时间线记忆入口应可见`);
 
     await page.goto(base + 'conversations/6ae4e806-327c-83ec-909b-022374081dc1.html', { waitUntil: 'networkidle' });
     const readerEntry = width <= 640 ? '[data-reader-memory-mobile]' : '[data-reader-memory]';

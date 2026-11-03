@@ -129,7 +129,7 @@ try {
   }));
   assert.equal(gq.href, './memory.html?group=gq');
   assert.equal(gq.hidden, false);
-  assert.equal(gq.label, '组记忆');
+  assert.equal(gq.label, '打开组记忆');
   await page.waitForSelector('[data-project-memory-summary]');
   const gqSummary = await page.evaluate(() => ({
     text: document.querySelector('[data-project-memory-summary]')?.textContent,
