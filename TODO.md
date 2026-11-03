@@ -43,6 +43,7 @@
 - 首屏 8 行（窄屏 6 行）sidebar skeleton，数据到达后替换；
 - 记忆覆盖层 v2 数据接入：四组 L3/L3.1、全局 L3、31 会话 L1/L2/L4 索引、12 分册和 L5 元数据；
 - 记忆页全局 + 四组视图（g1 已改为 01–07，未分组隐藏）；
+- 记忆页层级导航条（范围优先，L1–L5 作为详情层）；
 - 单一 `1.2.2` CHANGELOG（1.2.1 保留历史）与 stale 摘要清理：`npm run timeline:summaries:prune`；
 - 历史调试材料归档到 `data/private/_attic/2026-11-01`（187 个文件；含日志、截图、一次性脚本、fixture；恢复材料仍保留在 `data/private`）。
 

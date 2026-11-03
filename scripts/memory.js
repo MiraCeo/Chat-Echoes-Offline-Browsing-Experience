@@ -8,6 +8,7 @@
   const searchInput = root.querySelector('[data-memory-search]');
   const searchResults = root.querySelector('[data-memory-search-results]');
   const searchStatus = root.querySelector('[data-memory-search-status]');
+  const layerNav = root.querySelector('[data-memory-layer-nav]');
   let view = { groups: [], global: null, ungrouped: { count: 0, sessions: [] } };
   let searchIndex = [];
 
@@ -38,6 +39,25 @@
     next.searchParams.set('session', session.id);
     history.replaceState(null, '', next);
     render(session.group, session.id);
+  }
+
+  function renderLayerNav(items) {
+    if (!layerNav) return;
+    layerNav.replaceChildren();
+    layerNav.hidden = !items.length;
+    for (const item of items) {
+      const button = make('button', '', item.label);
+      button.type = 'button';
+      button.dataset.memoryLayerTarget = item.id;
+      button.addEventListener('click', () => {
+        const target = document.getElementById(item.id);
+        if (!target) return;
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        target.setAttribute('tabindex', '-1');
+        target.focus({ preventScroll: true });
+      });
+      layerNav.append(button);
+    }
   }
 
   function renderTabs(group) {
@@ -103,12 +123,20 @@
 
   function renderGroup(bank) {
     setStatus(`${bank.coverage?.sessions ?? '—'} 个会话 · ${bank.coverage?.rounds ?? '—'} 轮 · 截至 ${bank.as_of}`);
+    renderLayerNav([
+      { id: 'memory-layer-bank', label: 'L3.1 记忆库' },
+      { id: 'memory-layer-mainlines', label: 'L3 主线' },
+      { id: 'memory-layer-blocks', label: 'L3.1 四块' },
+      { id: 'memory-layer-flags', label: '覆盖说明' },
+    ]);
     const head = make('section', 'ceobe-memory-bank-head');
+    head.id = 'memory-layer-bank';
     head.append(make('h2', '', bank.name || bank.group), make('span', 'ceobe-memory-layer', 'L3.1 记忆库'), make('p', '', `${bank.as_of} 快照${bank.snapshot ? ' · 不代表之后状态' : ''}`));
     content.append(head);
 
     if (bank.mainlines?.length) {
       const mainlines = make('section', 'ceobe-memory-mainlines');
+      mainlines.id = 'memory-layer-mainlines';
       mainlines.append(make('h3', '', `L3 主线 · ${bank.mainlines.length} 条`));
       renderChips(mainlines, bank.mainlines);
       if (bank.themes?.length) {
@@ -121,6 +149,7 @@
     if (delta) content.append(delta);
 
     const grid = make('div', 'ceobe-memory-grid');
+    grid.id = 'memory-layer-blocks';
     for (const key of bank.block_order || ['who', 'doing', 'waiting', 'changes']) {
       const block = make('section', 'ceobe-memory-block');
       block.append(make('h3', '', bank.block_labels?.[key] || key));
@@ -136,7 +165,10 @@
     }
     content.append(grid);
     const flags = renderFlags(bank);
-    if (flags) content.append(flags);
+    if (flags) {
+      flags.id = 'memory-layer-flags';
+      content.append(flags);
+    }
   }
 
   function groupName(id) {
@@ -193,6 +225,7 @@
     const tree = global.tree_data;
     if (!tree?.nodes?.length) return null;
     const section = make('section', 'ceobe-memory-global-section ceobe-memory-tree');
+    section.id = 'memory-layer-tree';
     section.append(make('h3', '', `L5 跨会话树 · ${tree.nodes.length} 节点 / ${tree.edges.length} 边`));
     section.append(make('p', 'ceobe-memory-tree-note', '只读浏览；节点按时间编号，来源轮次可跳到对应会话。'));
 
@@ -300,6 +333,7 @@
     if (searchInput) searchInput.value = '';
     if (searchResults) searchResults.hidden = true;
     if (searchStatus) searchStatus.textContent = '';
+    if (layerNav) layerNav.hidden = false;
     content.hidden = false;
   }
 
@@ -313,6 +347,7 @@
     searchResults.replaceChildren();
     searchResults.hidden = false;
     content.hidden = true;
+    if (layerNav) layerNav.hidden = true;
     searchStatus.textContent = `${hits.length} 条结果`;
     if (!hits.length) {
       searchResults.append(make('p', 'ceobe-memory-search-empty', '没有匹配的记忆。'));
@@ -341,7 +376,14 @@
 
   function renderSession(session) {
     setStatus(`${groupName(session.group)} · ${session.rounds} 轮${session.staging ? ' · inbox staging' : ''}`);
+    renderLayerNav([
+      { id: 'memory-layer-session', label: '会话' },
+      { id: 'memory-layer-l1', label: 'L1 摘要' },
+      { id: 'memory-layer-l2', label: 'L2 记忆' },
+      { id: 'memory-layer-l4', label: 'L4 事件' },
+    ]);
     const head = make('section', 'ceobe-memory-bank-head');
+    head.id = 'memory-layer-session';
     head.append(make('h2', '', session.title));
     const meta = make('p', '', `${groupName(session.group)} · ${session.rounds} 轮${session.project_label ? ` · 项目 ${session.project_label}` : ''}`);
     head.append(meta);
@@ -353,12 +395,14 @@
     content.append(head);
 
     const l1 = make('section', 'ceobe-memory-session-summary');
+    l1.id = 'memory-layer-l1';
     l1.append(make('h3', '', 'L1 摘要'));
     l1.append(make('p', '', session.l1?.summary || '无摘要'));
     if (session.l1?.tags?.length) l1.append(make('p', 'ceobe-memory-tags', session.l1.tags.map(tag => `#${tag}`).join(' ')));
     content.append(l1);
 
     const l2 = make('section', 'ceobe-memory-session-section');
+    l2.id = 'memory-layer-l2';
     l2.append(make('h3', '', 'L2 记忆文档'));
     const prose = make('div', 'ceobe-memory-prose');
     prose.innerHTML = session.l2?.html || '<p>没有 L2 文档。</p>';
@@ -366,6 +410,7 @@
     content.append(l2);
 
     const l4 = make('section', 'ceobe-memory-session-section');
+    l4.id = 'memory-layer-l4';
     l4.append(make('h3', '', `L4 事件树 · ${session.l4?.nodes?.length || 0} 节点`));
     if (session.l4?.nodes?.length) {
       const list = make('ol', 'ceobe-memory-event-list');
@@ -408,7 +453,15 @@
   }
 
   function renderGlobal(global) {    setStatus(`${global.coverage?.sessions ?? '—'} 个会话 · ${global.coverage?.rounds ?? '—'} 轮 · 截至 ${global.as_of}`);
+    renderLayerNav([
+      { id: 'memory-layer-global', label: 'L3 全局' },
+      { id: 'memory-layer-mainlines', label: 'L3 主线' },
+      { id: 'memory-layer-sessions', label: '会话 L1/L2/L4' },
+      { id: 'memory-layer-tree', label: 'L5 树' },
+      { id: 'memory-layer-docs', label: 'L3 分册' },
+    ]);
     const head = make('section', 'ceobe-memory-bank-head');
+    head.id = 'memory-layer-global';
     head.append(make('h2', '', '全局记忆'), make('span', 'ceobe-memory-layer', 'L3 全局'), make('p', '', `${global.as_of} 快照 · 四组并集`));
     content.append(head);
 
@@ -429,6 +482,7 @@
 
     if (global.mainlines?.length) {
       const mainlines = make('section', 'ceobe-memory-mainlines');
+      mainlines.id = 'memory-layer-mainlines';
       mainlines.append(make('h3', '', `L3 全局主线 ${global.mainlines.length} 条`));
       renderChips(mainlines, global.mainlines);
       content.append(mainlines);
@@ -436,6 +490,7 @@
 
     if (global.overview?.html) {
       const overview = make('details', 'ceobe-memory-global-section ceobe-memory-overview');
+      overview.id = 'memory-layer-overview';
       overview.append(make('summary', '', `全局总览正文 · ${global.overview.chars} 字`));
       const prose = make('div', 'ceobe-memory-prose');
       prose.innerHTML = global.overview.html;
@@ -443,12 +498,15 @@
       content.append(overview);
     }
 
-    content.append(renderSessionIndex());
+    const sessions = renderSessionIndex();
+    sessions.id = 'memory-layer-sessions';
+    content.append(sessions);
     const tree = renderTree(global);
     if (tree) content.append(tree);
 
     if (global.thread_docs?.length) {
       const docs = make('section', 'ceobe-memory-global-section');
+      docs.id = 'memory-layer-docs';
       docs.append(make('h3', '', `L3 分册 ${global.thread_docs.length} 份`));
       for (const doc of global.thread_docs) {
         const details = make('details', 'ceobe-memory-thread');

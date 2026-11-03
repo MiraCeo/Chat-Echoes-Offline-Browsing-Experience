@@ -30,6 +30,7 @@ export async function buildMemoryPage(projectRoot = resolve(import.meta.dirname,
       <header class="ceobe-memory-header">
         <h1>记忆</h1>
         <p class="ceobe-memory-lede">按账号组与全局浏览；L1–L5 作为详情层级。只读；内容来自本地记忆内核。</p>
+        <p class="ceobe-memory-layer-note">浏览顺序：范围 → 记忆库 → 主线 → 会话 → 事件/树。</p>
       </header>
       <div class="ceobe-memory-toolbar">
         <div class="ceobe-memory-groups" data-memory-groups role="group" aria-label="记忆分组"></div>
@@ -39,6 +40,7 @@ export async function buildMemoryPage(projectRoot = resolve(import.meta.dirname,
         <input type="search" data-memory-search aria-label="搜索记忆、主线、L5 节点和分册" placeholder="搜索记忆、主线、L5 节点和分册…">
         <p data-memory-search-status role="status"></p>
       </div>
+      <nav class="ceobe-memory-layer-nav" data-memory-layer-nav aria-label="记忆层级"></nav>
       <div class="ceobe-memory-search-results" data-memory-search-results hidden></div>
       <div class="ceobe-memory-content" data-memory-content></div>
       <p class="ceobe-memory-empty" data-memory-empty hidden>没有可显示的项目记忆。</p>

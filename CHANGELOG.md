@@ -20,6 +20,7 @@
 - 修复 Turbo 跨层级后侧栏聊天链接重复 `/conversations/` 段：chat-actions 改用绝对 root URL；
 - 项目详情页新增组记忆摘要：组名、覆盖会话/轮次、快照日、主线和入口；
 - 记忆页新增页内搜索：覆盖组块、主线、会话 L1/L2/L4、L5 节点、12 份分册和全局项目/冲突；
+- 记忆页新增层级导航条：范围 tab 保持主导航，L3.1/L3/L1/L2/L4/L5 作为可跳转的详情层；
 - 时间线条目新增「记忆」入口，直接打开对应会话的 L1/L2/L4；
 - 修复 Turbo 跨目录脚本重写：用 `turbo:before-visit` 的目标 URL 解析新页脚本，
   避免从 `/conversations/` 进入根级页面时把 `memory.js` 解析成 `/conversations/memory.js`；

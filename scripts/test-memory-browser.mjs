@@ -27,6 +27,9 @@ try {
   assert.match(memory.status, /10 个会话/);
   assert.match(memory.status, /截至 2026-10-13/);
   assert.equal(memory.active, 'page', '侧栏记忆入口应标记当前页');
+  assert.equal(await page.locator('[data-memory-layer-nav] button').count(), 4, '组视图应有层级导航');
+  await page.locator('[data-memory-layer-target="memory-layer-mainlines"]').click();
+  assert.equal(await page.locator('#memory-layer-mainlines').count(), 1);
 
   await page.locator('[data-memory-group="g1"]').click();
   await page.waitForFunction(() => document.querySelector('[data-memory-status]')?.textContent.includes('7 个会话'));
@@ -82,6 +85,9 @@ try {
   assert.match(global.stats.join(' '), /183/);
   assert.equal(global.treeNodes, 381, 'L5 应渲染 381 个节点');
   assert.equal(global.treeEdges, 183, 'L5 应渲染 183 条边');
+  assert.equal(await page.locator('[data-memory-layer-nav] button').count(), 5, '全局视图应有层级导航');
+  await page.locator('[data-memory-layer-target="memory-layer-tree"]').click();
+  assert.equal(await page.locator('#memory-layer-tree').count(), 1);
   const sourceHref = await page.locator('.ceobe-memory-source-link').first().getAttribute('href');
   assert.match(sourceHref || '', /\/conversations\/[^/]+\.html#bookmark=/, 'L5 来源应指向具体消息锚点');
 
