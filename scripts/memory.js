@@ -80,15 +80,30 @@ import { renderEventTree } from './memory-event-tree.js';
     }
   }
 
+  function humanizeDeltaPath(path) {
+    const raw = String(path || '变更');
+    if (raw === 'threads') return '主线结构';
+    if (raw === 'threads[].nodes[].in_scope') return '主线节点归属';
+    if (raw === 'conflicts[].kind/status/owner') return '冲突字段';
+    if (raw.startsWith('who.')) return `我是谁 · ${raw.slice(4)}`;
+    const conflict = raw.match(/^conflicts\[([^\]]+)\]\.preferred$/);
+    if (conflict) return `冲突取舍 · ${conflict[1]}`;
+    const conflictField = raw.match(/^conflicts\[([^\]]+)\]\.(.+)$/);
+    if (conflictField) return `冲突 · ${conflictField[1]} · ${conflictField[2]}`;
+    return raw;
+  }
+
   function renderDelta(delta) {
     if (!delta?.changes?.length) return null;
     const box = make('details', 'ceobe-memory-delta');
+    box.open = false;
     box.append(make('summary', '', `相比上一版 ${delta.changes.length} 项变化`));
     const list = make('ul');
     for (const change of delta.changes) {
       const item = make('li');
-      const label = change.path || change.field || '变更';
-      item.append(make('strong', '', label));
+      const raw = change.path || change.field || '变更';
+      item.title = raw;
+      item.append(make('strong', '', humanizeDeltaPath(raw)));
       if (change.from || change.to) item.append(document.createTextNode(`：${change.from || '—'} → ${change.to || '—'}`));
       else if (change.note) item.append(document.createTextNode(`：${change.note}`));
       list.append(item);
@@ -133,7 +148,7 @@ import { renderEventTree } from './memory-event-tree.js';
     ]);
     const head = make('section', 'ceobe-memory-bank-head');
     head.id = 'memory-layer-bank';
-    head.append(make('h2', '', bank.name || bank.group), make('span', 'ceobe-memory-layer', 'L3.1 记忆库'), make('p', '', `${bank.as_of} 快照${bank.snapshot ? ' · 不代表之后状态' : ''}`));
+    head.append(make('h2', '', bank.name || bank.group), make('p', '', `${bank.as_of} 快照${bank.snapshot ? ' · 不代表之后状态' : ''}`));
     content.append(head);
 
     if (bank.mainlines?.length) {
@@ -425,7 +440,7 @@ import { renderEventTree } from './memory-event-tree.js';
     ]);
     const head = make('section', 'ceobe-memory-bank-head');
     head.id = 'memory-layer-global';
-    head.append(make('h2', '', '全局记忆'), make('span', 'ceobe-memory-layer', 'L3 全局'), make('p', '', `${global.as_of} 快照 · 四组并集`));
+    head.append(make('h2', '', '全局记忆'), make('p', '', `${global.as_of} 快照 · 四组并集`));
     content.append(head);
 
     const stats = make('div', 'ceobe-memory-global-stats');
