@@ -28,6 +28,12 @@ try {
   assert.match(memory.status, /截至 2026-10-13/);
   assert.equal(memory.active, 'page', '侧栏记忆入口应标记当前页');
 
+  await page.locator('[data-memory-group="g1"]').click();
+  await page.waitForFunction(() => document.querySelector('[data-memory-status]')?.textContent.includes('7 个会话'));
+  assert.match(await page.evaluate(() => location.search), /group=g1/);
+  await page.locator('[data-memory-group="global"]').click();
+  await page.waitForSelector('.ceobe-memory-global-stats');
+
   await page.goto(base + 'memory.html?group=g1', { waitUntil: 'networkidle' });
   await page.waitForSelector('.ceobe-memory-block');
   const g1memory = await page.evaluate(() => ({

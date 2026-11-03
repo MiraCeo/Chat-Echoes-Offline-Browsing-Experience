@@ -104,12 +104,12 @@
   function renderGroup(bank) {
     setStatus(`${bank.coverage?.sessions ?? '—'} 个会话 · ${bank.coverage?.rounds ?? '—'} 轮 · 截至 ${bank.as_of}`);
     const head = make('section', 'ceobe-memory-bank-head');
-    head.append(make('h2', '', bank.name || bank.group), make('p', '', `${bank.as_of} 快照${bank.snapshot ? ' · 不代表之后状态' : ''}`));
+    head.append(make('h2', '', bank.name || bank.group), make('span', 'ceobe-memory-layer', 'L3.1 记忆库'), make('p', '', `${bank.as_of} 快照${bank.snapshot ? ' · 不代表之后状态' : ''}`));
     content.append(head);
 
     if (bank.mainlines?.length) {
       const mainlines = make('section', 'ceobe-memory-mainlines');
-      mainlines.append(make('h3', '', `主线 ${bank.mainlines.length} 条`));
+      mainlines.append(make('h3', '', `L3 主线 · ${bank.mainlines.length} 条`));
       renderChips(mainlines, bank.mainlines);
       if (bank.themes?.length) {
         mainlines.append(make('p', 'ceobe-memory-theme', `跨线主题：${bank.themes.map(theme => theme.label).join('、')}`));
@@ -409,7 +409,7 @@
 
   function renderGlobal(global) {    setStatus(`${global.coverage?.sessions ?? '—'} 个会话 · ${global.coverage?.rounds ?? '—'} 轮 · 截至 ${global.as_of}`);
     const head = make('section', 'ceobe-memory-bank-head');
-    head.append(make('h2', '', '全局记忆'), make('p', '', `${global.as_of} 快照 · 四组并集`));
+    head.append(make('h2', '', '全局记忆'), make('span', 'ceobe-memory-layer', 'L3 全局'), make('p', '', `${global.as_of} 快照 · 四组并集`));
     content.append(head);
 
     const stats = make('div', 'ceobe-memory-global-stats');
@@ -429,7 +429,7 @@
 
     if (global.mainlines?.length) {
       const mainlines = make('section', 'ceobe-memory-mainlines');
-      mainlines.append(make('h3', '', `全局主线 ${global.mainlines.length} 条`));
+      mainlines.append(make('h3', '', `L3 全局主线 ${global.mainlines.length} 条`));
       renderChips(mainlines, global.mainlines);
       content.append(mainlines);
     }
@@ -449,7 +449,7 @@
 
     if (global.thread_docs?.length) {
       const docs = make('section', 'ceobe-memory-global-section');
-      docs.append(make('h3', '', `Markdown 分册 ${global.thread_docs.length} 份`));
+      docs.append(make('h3', '', `L3 分册 ${global.thread_docs.length} 份`));
       for (const doc of global.thread_docs) {
         const details = make('details', 'ceobe-memory-thread');
         details.append(make('summary', '', doc.name));
