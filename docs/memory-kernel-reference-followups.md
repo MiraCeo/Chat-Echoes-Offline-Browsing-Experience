@@ -1,4 +1,4 @@
-# 记忆内核对照跟进（Graphiti / GraphRAG / mem0）
+# 记忆内核对照跟进（Graphiti / GraphRAG / mem0 / cognee）
 
 > 来源一：`getzep/graphiti`（2026-11-04 浅克隆，`--depth 1`，读 README、`edges.py`、`nodes.py`、
 > `search_config_recipes.py`、`community_operations.py`、`prompts/dedupe_edges.py`、
@@ -7,10 +7,13 @@
 > default_dataflow / outputs 与 `docs/query/` 的 overview / global_search；未逐行读代码）。
 > 来源三：`mem0ai/mem0`（2026-11-05 浅克隆，读 `docs/core-concepts/` 的 how-it-works /
 > memory-operations/add / search / memory-evaluation；未逐行读 `main.py`）。
+> 来源四：`topoteretes/cognee`（2026-11-05 浅克隆，读 `cognee/memory/entries.py`、
+> `cognee/memify_pipelines/` 四个精修阶段、`cognee/modules/improve/` 的 stages / watermarks、
+> `global_context_index/build_document_index.py`；未逐行读全部代码）。
 > 目的：把值得跟进的点记下来，供 1.3.2 / 1.4 排期。**本文不代表已获实施授权。**
 > 结论一句话：值得抄的不是图数据库和向量检索，而是「事实有有效期、失效不删除」的数据模型，
 > 「重复与矛盾分开判」的判定纪律，「图 → 层次社区 → 社区报告」这条自动摘要链，
-> 以及「时间元数据 + 多路检索 + token 效率」这套评测口径。
+> 「时间元数据 + 多路检索 + token 效率」这套评测口径，以及「建图与改图分离 + 水位门控」的增量更新。
 
 ---
 
@@ -440,3 +443,65 @@ basic（普通向量 RAG）。
 - 向量库 / 图数据库 / SQL 三件套——同上；
 - ADD-only 不标失效——我们的 `superseded` 更显式，不退回；
 - 它的 benchmark 数字——语料和语言都不同，只借方法不借分数。
+
+---
+
+## 九、cognee 对照（2026-11-05）
+
+> 来源：`topoteretes/cognee`（浅克隆，读 `cognee/memory/entries.py`、
+> `cognee/memify_pipelines/` 的 global_context_index / consolidate_entities /
+> cross_connect_entities / review_conflicts、`cognee/modules/improve/` 的 stages / watermarks、
+> `cognee/tasks/memify/global_context_index/build_document_index.py`；未逐行读全部代码）。
+
+### 模型
+
+cognee 把「建图」和「改图」拆成两套流水线：
+
+| 流水线 | 做什么 |
+|---|---|
+| **cognify** | 从文本抽实体/关系，建图（对应我们的 L4） |
+| **memify** | 在已有图上做精修，幂等、可单独重跑 |
+| **improve** | 带门控的阶段编排：没有新写入就跳过（watermark） |
+
+memify 的四个精修阶段：
+
+| 阶段 | 做什么 | 对应我们的 |
+|---|---|---|
+| `consolidate_entities` | 按相似度 + 名称合并近重复实体，支持 `dry_run` | L5 归并 |
+| `cross_connect_entities` | 按相似度/重叠补边，限制每节点新增边数 | L5 跨会话边 |
+| `global_context_index` | **确定性**层次索引：每文档一个 bucket（tf-idf 独有实体）+ 一个 root（文档频率共享实体），**不用 LLM** | L3 / L5 摘要层 |
+| `review_conflicts` | 读事实 → 审实体 → 写冲突 | 冲突记录 |
+
+`improve` 的 watermark 机制：每个阶段记自己的时间戳，只认 `succeeded` 的操作；
+没有新写入就返回 `no_writes_since_last_improve` 跳过；时间戳缺失或损坏时**保守重跑**。
+
+### 对照
+
+| 维度 | CEOBE | cognee | 判断 |
+|---|---|---|---|
+| 建图与改图 | L4 抽取 + L5 归并，一次跑完 | cognify / memify 分离，memify 可单独重跑 | **真差距** |
+| 全局索引 | L3 人工写 + GraphRAG 式 LLM 报告 | **确定性** tf-idf / 文档频率索引，零 LLM | **互补** |
+| 增量更新 | 全量重跑 | watermark 门控，无新写入就跳过 | **真差距** |
+| 冲突处理 | 人工记录 + `outcome` 词表 | 独立 `review_conflicts` 阶段 | 可参考 |
+| 实体合并 | L5 归并时顺带做 | 独立阶段，带阈值 / dry_run / 保护类型 | 更可控 |
+
+### 值得跟进
+
+1. **把「精修」拆成独立阶段**（最贴合「衔接 L2-L5」）：
+   现在 L4 抽完直接进 L5 归并，中间没有可单独重跑的精修层。cognee 的做法是
+   `consolidate_entities` / `cross_connect_entities` / `review_conflicts` 各自幂等，
+   可以只重跑其中一个。对应到我们：L4 之后加一层「实体合并 + 补边 + 冲突复核」，
+   与 L5 归并解耦。
+2. **确定性全局索引**：`global_context_index` 用 tf-idf（每会话独有实体）+
+   文档频率（全局共享实体）建两层索引，**零 LLM**。这可以作为 GraphRAG 式 LLM 社区报告的
+   廉价替代或前置：先出确定性索引，再决定哪些 bucket 值得让 LLM 写报告。
+3. **watermark 门控的增量更新**：每个阶段记自己的水位，没有新写入就跳过；
+   时间戳缺失时保守重跑。这直接对应 1.4 的「自动更新任务队列」。
+4. **冲突复核独立成阶段**：读事实 → 审实体 → 写冲突，和我们的冲突记录结构接近，
+   但它是可重跑的阶段而不是一次性人工动作。
+
+### 不跟进
+
+- Postgres / 图库 / 向量库三件套——同上；
+- 实体为中心的图——CEOBE 是事件图；
+- 它的 session / trace / feedback 记忆条目——面向 agent 运行时，不是档案记忆。
