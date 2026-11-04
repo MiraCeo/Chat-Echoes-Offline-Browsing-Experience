@@ -171,6 +171,8 @@
    - **g1 L5 已接入页面**：`memory.html?group=g1` 底部新增「L5 跨会话树」，按主线分组
      （self-and-work 75 / yj-intern 60 / isaac 56 / 未归属 30 / sys-plan 15 / tourgrid 5），
      core 节点带紫色左边框；层级导航新增「L5 跨会话树」；
+   - `PROMPT-L5.md` 加两条硬规则：**先按类型分桶再合并**（`open` 只并 `open`、`decision` 只并
+     `decision`）、**合并后逐源核对时间范围 / 主体 / 条件**三个限定词；
    - **core 抽查（02 / 04）**：02 的 12 条 core 里 4 条不够格（含一对重复占位），建议 8；
      04 的 12 条里 1 条偏边缘，建议 11；
    - **「不要凑满 12 条」的约束重抽失败**：两篇 core 仍是 12，但 `superseded` 链从
