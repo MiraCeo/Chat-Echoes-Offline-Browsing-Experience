@@ -433,6 +433,7 @@
 }
 .ceobe-memory-tree-status { margin: 0 0 10px; color: #98a2b3; font-size: 11px; line-height: 1.6; }
 .ceobe-memory-tree-node[data-tree-node-invalid] { border-color: #f5c26b; background: #fffcf5; }
+.ceobe-memory-tree-node[data-tree-node-core] { border-left: 3px solid #7f56d9; }
 .ceobe-memory-tree-node .ceobe-memory-tree-window { margin: 6px 0 0; color: #b54708; font-size: 10px; }
 .ceobe-memory-tree-details summary { cursor: pointer; color: #344054; font-size: 12px; font-weight: 500; }
 .ceobe-memory-tree-nodes {

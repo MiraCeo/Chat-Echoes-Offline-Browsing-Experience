@@ -165,6 +165,67 @@ import { dayOf, filterTreeAt, parseAsOf } from './memory-tree-time.js';
     return details;
   }
 
+  function renderGroupL5(l5) {
+    const section = make('section', 'ceobe-memory-global-section ceobe-memory-tree');
+    section.id = 'memory-layer-group-l5';
+    section.append(make('h3', '', `L5 跨会话树 · ${l5.nodes.length} 节点 / ${l5.edges.length} 边`));
+    section.append(make('p', 'ceobe-memory-tree-note', '本组跨会话归并；按主线分组，节点来源可跳到对应会话。'));
+    const threads = new Map();
+    for (const node of l5.nodes) {
+      const key = node.thread || '未归属';
+      if (!threads.has(key)) threads.set(key, []);
+      threads.get(key).push(node);
+    }
+    for (const [thread, nodes] of [...threads.entries()].sort((a, b) => b[1].length - a[1].length)) {
+      const details = make('details', 'ceobe-memory-tree-details');
+      details.append(make('summary', '', `${thread} · ${nodes.length}`));
+      const list = make('div', 'ceobe-memory-tree-nodes');
+      for (const node of nodes) {
+        const item = make('article', 'ceobe-memory-tree-node');
+        item.dataset.treeNode = String(node.n);
+        if (node.w === 'core') item.dataset.treeNodeCore = '';
+        const head = make('div', 'ceobe-memory-tree-node-head');
+        head.append(
+          make('strong', '', `#${node.n}`),
+          make('span', 'ceobe-memory-tree-type', `${node.t || 'event'} · ${node.s || ''}${node.w === 'core' ? ' · core' : ''}`),
+        );
+        item.append(head, make('p', '', node.x || ''));
+        if (node.src?.length) {
+          const sources = make('div', 'ceobe-memory-tree-sources');
+          for (const source of node.src) {
+            const session = findSession(source.s);
+            const label = `${source.s}${source.r ? ` · ${source.r[0]}–${source.r[1]} 轮` : ''}`;
+            if (session && appendSourceLink(sources, session, source.r?.[0], label)) continue;
+            const chip = make(session ? 'button' : 'span', 'ceobe-memory-source');
+            if (session) {
+              chip.type = 'button';
+              chip.dataset.memorySourceSession = session.id;
+              chip.addEventListener('click', () => chooseSession(session));
+            }
+            chip.textContent = label;
+            sources.append(chip);
+          }
+          item.append(sources);
+        }
+        list.append(item);
+      }
+      details.append(list);
+      section.append(details);
+    }
+    if (l5.edges?.length) {
+      const edges = make('details', 'ceobe-memory-tree-details');
+      edges.append(make('summary', '', `关系 ${l5.edges.length}`));
+      const edgeList = make('ul', 'ceobe-memory-edge-list');
+      for (const edge of l5.edges) {
+        const [from, to, type] = edge;
+        edgeList.append(make('li', '', `#${from} —${type}→ #${to}`));
+      }
+      edges.append(edgeList);
+      section.append(edges);
+    }
+    return section;
+  }
+
   function renderGroup(bank) {
     setStatus(`${bank.coverage?.sessions ?? '—'} 个会话 · ${bank.coverage?.rounds ?? '—'} 轮 · 截至 ${bank.as_of}`);
     renderLayerNav([
@@ -172,6 +233,7 @@ import { dayOf, filterTreeAt, parseAsOf } from './memory-tree-time.js';
       { id: 'memory-layer-mainlines', label: 'L3 主线' },
       { id: 'memory-layer-blocks', label: 'L3.1 四块' },
       { id: 'memory-layer-flags', label: '覆盖说明' },
+      ...(bank.l5?.nodes?.length ? [{ id: 'memory-layer-group-l5', label: 'L5 跨会话树' }] : []),
     ]);
     const head = make('section', 'ceobe-memory-bank-head');
     head.id = 'memory-layer-bank';
@@ -213,6 +275,7 @@ import { dayOf, filterTreeAt, parseAsOf } from './memory-tree-time.js';
       flags.id = 'memory-layer-flags';
       content.append(flags);
     }
+    if (bank.l5?.nodes?.length) content.append(renderGroupL5(bank.l5));
   }
 
   function groupName(id) {

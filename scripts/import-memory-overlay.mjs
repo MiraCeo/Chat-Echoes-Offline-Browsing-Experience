@@ -76,6 +76,23 @@ for (const name of (await readdir(threadDir)).filter(name => name.endsWith('.md'
   });
 }
 const tree = await readJson(await requireFile(join(source, 'global/tree.json')));
+// Per-group L5 trees are produced by the kernel's L5 merge (one file per group).
+// They are optional: a group without one simply has no L5 section.
+const groupL5 = {};
+for (const group of groupIds) {
+  const path = join(source, `global/l5-${group}.json`);
+  if (!existsSync(path)) continue;
+  const doc = await readJson(path);
+  if (!doc?.nodes?.length) continue;
+  groupL5[group] = {
+    id: doc.id || `l5-${group}`,
+    label: doc.label || group,
+    sessions: doc.sessions || [],
+    nodes: doc.nodes,
+    edges: doc.edges || [],
+    open: doc.open || [],
+  };
+}
 // The kernel tree stores edges as [from, to, type]. Windows are derived here,
 // not hand-edited into the kernel artifact, so they survive every kernel
 // regeneration. A broken window fails the import instead of reaching the page.
@@ -112,6 +129,7 @@ for (const group of groupIds) {
     flags: bank.flags || [],
     coverage_gaps: l3.coverage_gaps || [],
     external_session_ids: l3.coverage?.external_session_ids || [],
+    l5: groupL5[group] || null,
   });
 }
 
