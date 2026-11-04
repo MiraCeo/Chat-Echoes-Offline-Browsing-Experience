@@ -1,4 +1,4 @@
-# 记忆内核对照跟进（Graphiti / GraphRAG / mem0 / cognee / MemOS）
+# 记忆内核对照跟进（Graphiti / GraphRAG / mem0 / cognee / MemOS / Hindsight）
 
 > 来源一：`getzep/graphiti`（2026-11-04 浅克隆，`--depth 1`，读 README、`edges.py`、`nodes.py`、
 > `search_config_recipes.py`、`community_operations.py`、`prompts/dedupe_edges.py`、
@@ -12,11 +12,14 @@
 > `global_context_index/build_document_index.py`；未逐行读全部代码）。
 > 来源五：`MemTensor/MemOS`（2026-11-05 浅克隆，读 `api/mcp_serve.py`、`mem_cube/`、
 > `mem_os/core.py` 的 dump/load、README；未逐行读全部代码）。**关注导出与互操作。**
+> 来源六：`vectorize-io/hindsight`（2026-11-05 浅克隆，读 README 的 Core Concepts /
+> Memory Types / Three Operations / Observations / Mental Models / Decision Models / Banks / MCP；
+> 未逐行读代码）。**五个参考里最综合的一个。**
 > 目的：把值得跟进的点记下来，供 1.3.2 / 1.4 排期。**本文不代表已获实施授权。**
 > 结论一句话：值得抄的不是图数据库和向量检索，而是「事实有有效期、失效不删除」的数据模型，
 > 「重复与矛盾分开判」的判定纪律，「图 → 层次社区 → 社区报告」这条自动摘要链，
 > 「时间元数据 + 多路检索 + token 效率」这套评测口径，「建图与改图分离 + 水位门控」的增量更新，
-> 以及「自描述 bundle + MCP 工具面」的导出方式。
+> 「自描述 bundle + MCP 工具面」的导出方式，以及「证据计数 + 常驻答案」的信念模型。
 
 ---
 
@@ -557,3 +560,59 @@ memify 的四个精修阶段：
 - activation / parametric 记忆（KV-cache / LoRA）——静态档案用不上；
 - 它的多库后端——同上；
 - 云端共享与用户体系——CEOBE 是本地单用户。
+
+---
+
+## 十一、Hindsight 对照（2026-11-05）
+
+> 来源：`vectorize-io/hindsight`（浅克隆，读 README 的 Core Concepts / Memory Types /
+> Three Operations / Observations / Mental Models / Decision Models / Banks / MCP；
+> 未逐行读代码）。**这是五个参考里最综合的一个**，五个面都有覆盖。
+> 另注：本机 DSH 的 🧠 记忆插件就是它的 coding-agents 集成。
+
+### 模型
+
+| 构件 | 内容 |
+|---|---|
+| 记忆类型 | **world facts**（世界事实）/ **experiences**（自身经历）/ **observations**（证据支撑的信念）/ **mental models**（从观察与事实合成的理解） |
+| 三个操作 | **retain**（写入，LLM 抽事实/时间/实体/关系）/ **recall**（四路检索）/ **reflect**（深度分析，形成新连接） |
+| observations | 后台把相关事实合并成去重信念，**带原文引用与证据计数**，新证据是「强化/削弱/扩展」而不是覆盖 |
+| mental models | 对某个问题的**常驻答案**：问题定义一次，系统写答案并在后台重写；读取是纯 DB 读，不检索、不调 LLM |
+| knowledge pages | mental models 的封装：像 wiki 一样分文件夹、可搜索、**可投影成 markdown** |
+| decision models | 小模型（0.8B）回答「这条是不是新的 / 哪些记忆相关 / 会不会改变知识页」这类**类型化判断**，不把文本丢给大模型 |
+| banks | 隔离的记忆库，一个用户/agent/项目一个；严格隔离；带 disposition traits |
+| MCP | 每个 bank 一个 MCP 端点，暴露 retain / recall / reflect |
+
+### 对照
+
+| 维度 | CEOBE | Hindsight | 判断 |
+|---|---|---|---|
+| 信念模型 | L5 节点有 `src`，无证据计数 | observations 带引用 + 证据计数 + 强化/削弱 | **真差距** |
+| 常驻答案 | L3.1 四块人工写 | mental models：定义问题，系统维护答案 | **真差距** |
+| 判断层 | 全 LLM | decision model（0.8B）做类型化判断 | **可参考** |
+| 检索 | 子串匹配 | 四路 + RRF + cross-encoder | 同 mem0 |
+| 深度分析 | 无 | reflect | 新能力 |
+| 导出 | 单文件 | knowledge pages 投影成 markdown | 可参考 |
+| 隔离 | 账号组 | banks | 概念对应 |
+
+### 值得跟进
+
+1. **observations 的证据计数与「强化/削弱」**（最贴合 L5）：
+   我们的 L5 节点只有 `src` 列表，没有「这条信念被几条来源支持」「新证据是加强还是削弱」。
+   加一个 `support` 计数和 `refined` 历史，L5 就从「合并后的节点」变成「可演化的信念」。
+2. **mental models 式的 L3.1**：现在 L3.1 的四块（我是谁 / 在手的事 / 等着的事 / 近期变化）
+   是人工写的。Hindsight 的做法是**把问题定义一次，系统维护答案**。对应到我们：
+   把四块变成四个「常驻问题」，由 L5 图自动生成并重写，人工只审。
+3. **decision model 式的判断层**：P1-1 的「重复/矛盾分开判」现在是 LLM 文本判断。
+   Hindsight 用小模型输出**类型化答案**（是/否/哪个），成本低、可复现。可以先用规则 + 小模型，
+   把大模型留给真正需要生成的地方。
+4. **reflect 作为独立操作**：不是检索，是「对已有记忆做深度分析、形成新连接」。
+   这可以成为记忆页的一个新入口（「让系统想想这件事」），也可以喂给 L5 的补边。
+5. **knowledge pages 投影成 markdown**：我们的 L3 分册本来就是 markdown，
+   可以借鉴「活文档 + 投影到磁盘」的形态，让分册可再生成（对应 P2-2）。
+
+### 不跟进
+
+- PostgreSQL + pgvector / Oracle 存储栈——同上；
+- 云端、租户、计费、Memory Defense——本地单用户用不上；
+- biomimetic 四分类整体照搬——我们是事件图，不是「世界事实 vs 自身经历」的二分。
