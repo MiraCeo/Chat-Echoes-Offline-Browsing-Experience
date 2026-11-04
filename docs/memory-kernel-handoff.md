@@ -149,7 +149,19 @@ memory.html?group=g1&session=<id>
 
 ---
 
-## 六、1.3.1 建议范围
+## 六、1.3.1 范围与进度
+
+### 已提交（未发布）
+
+```text
+20b8932 feat(memory): visualize the L4 event tree
+3a33a83 refactor(memory): consolidate memory entry points
+58907c0 fix(memory): simplify the memory page layout
+```
+
+- L4 事件树已实现：节点/边、状态颜色、详情、筛选、窄屏列表；
+- 入口已收敛：项目页只保留组记忆摘要，时间线移除逐条记忆 chip；
+- 记忆页布局已清理：去重复 badge/说明行，变更块默认收起并人类可读。
 
 ### 必做
 
@@ -273,6 +285,8 @@ npm run check  38 页
 ```text
 main 与 origin/main 一致
 1.3.0 已 tag/push
+1.3.1 已提交但未发布
+最新提交 58907c0
 tracked 工作树干净
 ```
 
