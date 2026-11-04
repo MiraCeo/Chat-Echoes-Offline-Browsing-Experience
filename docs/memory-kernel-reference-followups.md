@@ -1,4 +1,4 @@
-# 记忆内核对照跟进（Graphiti / GraphRAG / mem0 / cognee）
+# 记忆内核对照跟进（Graphiti / GraphRAG / mem0 / cognee / MemOS）
 
 > 来源一：`getzep/graphiti`（2026-11-04 浅克隆，`--depth 1`，读 README、`edges.py`、`nodes.py`、
 > `search_config_recipes.py`、`community_operations.py`、`prompts/dedupe_edges.py`、
@@ -10,10 +10,13 @@
 > 来源四：`topoteretes/cognee`（2026-11-05 浅克隆，读 `cognee/memory/entries.py`、
 > `cognee/memify_pipelines/` 四个精修阶段、`cognee/modules/improve/` 的 stages / watermarks、
 > `global_context_index/build_document_index.py`；未逐行读全部代码）。
+> 来源五：`MemTensor/MemOS`（2026-11-05 浅克隆，读 `api/mcp_serve.py`、`mem_cube/`、
+> `mem_os/core.py` 的 dump/load、README；未逐行读全部代码）。**关注导出与互操作。**
 > 目的：把值得跟进的点记下来，供 1.3.2 / 1.4 排期。**本文不代表已获实施授权。**
 > 结论一句话：值得抄的不是图数据库和向量检索，而是「事实有有效期、失效不删除」的数据模型，
 > 「重复与矛盾分开判」的判定纪律，「图 → 层次社区 → 社区报告」这条自动摘要链，
-> 「时间元数据 + 多路检索 + token 效率」这套评测口径，以及「建图与改图分离 + 水位门控」的增量更新。
+> 「时间元数据 + 多路检索 + token 效率」这套评测口径，「建图与改图分离 + 水位门控」的增量更新，
+> 以及「自描述 bundle + MCP 工具面」的导出方式。
 
 ---
 
@@ -505,3 +508,52 @@ memify 的四个精修阶段：
 - Postgres / 图库 / 向量库三件套——同上；
 - 实体为中心的图——CEOBE 是事件图；
 - 它的 session / trace / feedback 记忆条目——面向 agent 运行时，不是档案记忆。
+
+---
+
+## 十、MemOS 对照（2026-11-05）
+
+> 来源：`MemTensor/MemOS`（浅克隆，读 `src/memos/api/mcp_serve.py`、
+> `src/memos/mem_cube/base.py` / `general.py`、`src/memos/mem_os/core.py` 的 dump/load、
+> README；未逐行读全部代码）。**关注点：导出与互操作，不是可视化。**
+
+### 模型
+
+| 构件 | 内容 |
+|---|---|
+| **MemCube** | 可组合的记忆容器：`text_mem` / `act_mem`（KV-cache）/ `para_mem`（LoRA）/ `pref_mem` |
+| `dump(dir)` / `load(dir, memory_types)` | 导出/导入一个 cube 到目录；`memory_types` 可只导某一类 |
+| `share_cube` / `register_cube` / `unregister_cube` | 共享、挂载、卸载 cube |
+| **MCP server** | 把上述操作暴露成工具：`search_memories` / `add_memory` / `get_memory` / `update_memory` / `delete_memory` / `dump_cube` / `share_cube` / `get_user_info` |
+| 导出格式 | 目录 + `config.json`（含 `model_schema` 版本）+ 每类记忆各自的 dump 文件 |
+
+### 对照
+
+| 维度 | CEOBE | MemOS | 判断 |
+|---|---|---|---|
+| 导出单位 | `export:json` / `export:md` 单文件 | **目录 bundle**：manifest + 分层文件 | **真差距** |
+| 版本校验 | `source-manifest.json` 有哈希 | `config.json` 带 `model_schema`，load 时校验 | 可参考 |
+| 选择性导出 | 全量 | `memory_types` 只导某一类 | **真差距** |
+| 互操作面 | 无（只有页面） | **MCP server**，工具齐全 | **真差距** |
+| 分组 | 账号组 gq/g1/… | cube 可注册/共享/组合 | 概念对应 |
+| 运行时记忆 | 无 | activation / parametric 记忆 | 不适用 |
+
+### 值得跟进
+
+1. **导出做成自描述 bundle**（最贴合「如何导出」）：
+   一个目录，含 `manifest.json`（schema 版本、层清单、计数、哈希）+ 每层一个文件
+   （L1/L2/L3/L4/L5）。现在我们的 `export:json` 是单文件、`source-manifest.json` 只覆盖
+   内核源，两者没有合成一个可移植的包。
+2. **选择性导出**：`memory_types` 那种「只导 L4」「只导 L5」的开关。对下游（MCP、别的模型）
+   很有用——不是每个消费者都需要全部五层。
+3. **MCP 工具面**：MemOS 的工具集可以直接作为我们 MCP 适配层的清单：
+   `search` / `get` / `list` / `dump`，只读优先。这正好接上 TODO §四里那条
+   「档案 MCP server 只读薄适配层」。
+4. **cube 概念对应账号组**：我们的 gq/g1/g-early/g-oct 就是天然的 cube，
+   可以按组导出、按组共享。
+
+### 不跟进
+
+- activation / parametric 记忆（KV-cache / LoRA）——静态档案用不上；
+- 它的多库后端——同上；
+- 云端共享与用户体系——CEOBE 是本地单用户。
