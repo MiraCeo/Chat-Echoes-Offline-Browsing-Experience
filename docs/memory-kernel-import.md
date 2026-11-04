@@ -71,6 +71,21 @@ npm run memory:checklist   # 待补的 L1/L2/L4、L3/L3.1、L5、索引、分册
 关键文件哈希 + source 文件 mtime 判断 view 是否过期，view 与
 `replay/public/memory-data.json` 的 mtime 判断页面是否需要重新发布。
 
+## L5 时间窗
+
+`global/tree.json` 的边是 `[from, to, type]`，节点带 `ts`。导入时由
+`scripts/memory-tree-time.js` 推导时间窗，**不写回内核产物**（内核重新生成后仍然有效）：
+
+```text
+节点：valid_at = ts，invalid_at = 推翻它的节点 ts（沿 superseded 出边），superseded_by = 该节点号
+边：  [from, to, type, valid_at, invalid_at]
+      superseded 的 invalid_at = 目标节点 ts；其余类型为 null
+```
+
+推导结果过 6 条不变量（窗口顺序、superseded 节点必须有出边、非 superseded 节点不得带窗口、
+superseded 边必须有窗口、非 superseded 边不得带窗口、一个节点不得有多条 superseded 出边），
+不通过则 `npm run memory:import` 直接失败。页面用同一份模块做 `?as_of=` 过滤。
+
 校验、生成 view 并重建页面：
 
 ```powershell

@@ -212,7 +212,7 @@ fc2bec5 feat(memory): add memory status and update checklist
 
 ### 1.3.2
 
-- L5 跨会话图；
+- L5 跨会话图（时间窗 + `?as_of=` 点时间查看已落地）；
 - 项目专属记忆；
 - 时间轴详情里的记忆入口；
 - 记忆搜索键盘导航；
