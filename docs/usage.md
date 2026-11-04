@@ -160,10 +160,15 @@ npm run preview
 - L4 节点的“跳到原文”和 L5 节点的来源轮次会跳到对应会话消息并高亮；
 - 项目详情页只给已绑定项目显示「组记忆」（不是项目专属记忆）：“国庆”跳到 gq，“User”跳到 g1；
   项目页同时显示所在组的覆盖、快照日和主线摘要；
+- 记忆页顶部显示数据生成时间和页面构建时间；内核 source 在 view 之后有更新时，
+  显示「记忆可能过期」并给出修复命令，不静默展示旧数据；
 - 数据源在 CEOBE 私有目录 `data/private/memory-kernel/source/`（不提交）；先运行
   `npm run memory:import` 校验并生成 `data/private/memory-kernel/memory-view.json`，
   `npm run library` 再发布为 `replay/public/memory-data.json`。流程见
   [记忆内核本地导入](memory-kernel-import.md)。L1/L2/L4 详情、L5 树和 12 份分册正文均已接入。
+- 更新前先看状态：`npm run memory:status` 对比 archive / source / view / 页面，
+  `npm run memory:checklist` 列出待补的 L1/L2/L4、L3/L3.1、L5、索引和分册；
+  两者都只读，`--json` 给机器读，`--strict` 在过期时以退出码 1 结束。
 
 ### 搜索、置顶与项目
 

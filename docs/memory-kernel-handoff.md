@@ -157,6 +157,9 @@ memory.html?group=g1&session=<id>
 20b8932 feat(memory): visualize the L4 event tree
 3a33a83 refactor(memory): consolidate memory entry points
 58907c0 fix(memory): simplify the memory page layout
+fc2bec5 feat(memory): add memory status and update checklist
+6f16c30 feat(memory): show memory freshness on the memory page
+1fbbdbd fix(build): retry ENOENT when syncing public/previews
 ```
 
 - L4 事件树已实现：节点/边、状态颜色、详情、筛选、窄屏列表；
@@ -174,23 +177,26 @@ memory.html?group=g1&session=<id>
    - 独立模块，避免和整体 UI 重排耦合。
    - 状态：已实现 `scripts/memory-event-tree.js`，待 1.3.1 发布。
 
-2. **`memory:status`**
-   - 对比 archive / source / view；
-   - 报告新会话；
-   - 报告 source 是否比 view 新。
+2. **`memory:status`** — 已完成
+   - `npm run memory:status` 对比 archive / source / view / 已发布页面；
+   - 报告新会话、已不在 archive 的会话、source 是否比 view 新、页面是否需要重新发布；
+   - `--json` 机器可读，`--strict` 过期时退出码 1；
+   - 实现：`scripts/memory-status.mjs` + `scripts/memory-freshness.mjs`。
 
-3. **页面过期提示**
-   - 显示 view 生成时间；
-   - source 变化时提示“记忆可能过期”。
+3. **页面过期提示** — 已完成
+   - 记忆页顶部显示 view 生成时间和页面构建时间；
+   - source 在 view 之后有更新时显示「记忆可能过期」并给出修复命令；
+   - 页面只报告 source 是否比 view 新，不报告“页面比 view 旧”（页面本身就是发布物）。
 
-4. **更新清单**
-   - 列出需要补 L1/L2/L4 的会话；
-   - 列出需要更新 L3/L3.1/L5/分册的项。
+4. **更新清单** — 已完成
+   - `npm run memory:checklist` 列出待补 L1/L2/L4 的会话（新会话 / 缺层 / 轮次变化）、
+     需要更新的 L3/L3.1、缺 L5 节点的会话、`ceobe-index` 计数和分册正文；
+   - `--stage` 把新会话写成 `data/private/memory-kernel/inbox-staging.json` 待办。
 
 ### 可选
 
-- 自动 inbox staging（只生成待办，不生成内容）；
-- L5 边生成辅助。
+- 自动 inbox staging：已完成最小版本（只生成待办，不生成内容，不自动并入 `input/`）；
+- L5 边生成辅助：未做。
 
 ### 不做
 
@@ -226,6 +232,8 @@ memory.html?group=g1&session=<id>
 ### 内核 source 更新
 
 ```powershell
+npm run memory:status      # 先看差在哪
+npm run memory:checklist   # 再看要补什么
 npm run memory:import
 npm run library
 ```
@@ -323,9 +331,9 @@ data/private/_attic/2026-11-04/MOVED.txt
 ## 十一、当前工作树
 
 ```text
-main 比 origin/main 领先 5 个提交
+main 比 origin/main 领先 10 个提交
 1.3.0 已 tag/push
-1.3.1 已提交但未发布
+1.3.1 已提交但未发布（memory:status / 页面过期提示 / 更新清单 / inbox staging 已完成）
 最新提交以 `git log -1` 为准
 tracked 工作树干净
 ```

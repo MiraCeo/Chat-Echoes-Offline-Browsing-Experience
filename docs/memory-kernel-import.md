@@ -53,6 +53,24 @@ ceobe-index
 node scripts/import-memory-kernel.mjs --check-only
 ```
 
+## 先看状态
+
+```powershell
+npm run memory:status      # archive / source / view / 页面 四段对比
+npm run memory:checklist   # 待补的 L1/L2/L4、L3/L3.1、L5、索引、分册
+```
+
+- `memory:status` 报告新会话、已不在 archive 的会话、source 是否比 view 新、
+  页面是否需要重新发布；`--json` 输出机器可读结果，`--strict` 在过期时退出码 1；
+- `memory:checklist` 按会话层 / L3 / L5 / 索引与分册分组列出待办；
+  `--stage` 把新会话写成 `data/private/memory-kernel/inbox-staging.json` 待办，
+  只生成待办，不生成内容，也不自动并入 `input/`；
+- 两者都只读；`npm run check` 里会跑一次 `memory:status`（只告警，不改变退出码）。
+
+新鲜度口径在 `scripts/memory-freshness.mjs`，CLI 和记忆页共用：
+关键文件哈希 + source 文件 mtime 判断 view 是否过期，view 与
+`replay/public/memory-data.json` 的 mtime 判断页面是否需要重新发布。
+
 校验、生成 view 并重建页面：
 
 ```powershell

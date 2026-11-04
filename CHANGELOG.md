@@ -10,7 +10,22 @@
 - 窄屏自动降级为缩进列表，保留节点详情和原文跳转；
 - 事件树做成独立模块 `scripts/memory-event-tree.js`，后续 UI 重排可复用；
 - 入口收敛：项目页只保留组记忆摘要，移除头部重复按钮；时间线移除逐条记忆 chip；
-- 记忆页布局清理：去掉重复的 L3.1 badge 和多余说明行；变更块默认收起，技术字段改为人类可读文案。
+- 记忆页布局清理：去掉重复的 L3.1 badge 和多余说明行；变更块默认收起，技术字段改为人类可读文案；
+- 新增 `npm run memory:status`：对比 archive / 内核 source / 派生 view / 已发布页面，
+  报告新会话、已不在 archive 的会话、source 是否比 view 新、页面是否需要重新发布；
+  `--json` 输出机器可读结果，`--strict` 在过期时以退出码 1 结束；
+- 新增 `npm run memory:checklist`：列出待补的 L1/L2/L4（新会话、缺层、轮次变化）、
+  需要更新的 L3/L3.1、缺 L5 节点的会话、`ceobe-index` 计数和分册正文；
+  `--stage` 把新会话写成 `data/private/memory-kernel/inbox-staging.json` 待办（只生成待办，不生成内容）；
+- 记忆页顶部显示数据生成时间和页面构建时间；内核 source 在 view 之后有更新时，
+  显示「记忆可能过期」提示并给出 `memory:import` / `library` 的修复命令；
+- 新鲜度判断抽成 `scripts/memory-freshness.mjs`，CLI 与页面共用同一套口径；
+- `npm run check` 追加 `memory:status`（只告警，不改变退出码）。
+
+### 构建
+
+- 修复并行渲染时 `public/previews` 同步偶发 `ENOENT`（`cp` 的 chmod 撞上另一个进程替换文件）：
+  与已有的 EBUSY/EPERM 重试同一路径，最多重试 4 次。
 
 ## 1.3.0（2026-11-03）
 

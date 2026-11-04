@@ -96,6 +96,8 @@ npm run verify:archive      # 只读检查档案结构
   `User → g1`、`国庆 → gq` 跳转，并显示所在组覆盖、快照日和主线摘要；记忆页搜索覆盖组块、主线、会话 L1/L2/L4、L5 节点和分册；
   时间线条目提供「记忆」入口；
   内核源在 `data/private/memory-kernel/source/`，重建见 `docs/memory-kernel-import.md`；
+  `npm run memory:status` 对比 archive / source / view / 页面，`npm run memory:checklist`
+  列出待补的 L1/L2/L4、L3/L3.1、L5、索引和分册；记忆页顶部显示数据生成时间，source 变化时提示可能过期；
 - 本地页面之间（会话、导入、资料库、项目、时间、记忆）切换使用 vendored Turbo Drive 保持侧栏；
   侧栏/搜索/聊天菜单/删除弹层标记 `data-turbo-permanent`，页面级脚本用 `?turbo=N` 重新初始化，
   顶层导航活动项在 `turbo:load` 更新；

@@ -79,7 +79,8 @@
   导入后的整库重建在暖缓存下约 14.2s，剩余成本是资源解析、页面装饰和索引；
 - **备份运维**：保留策略、定期异盘复制、恢复后校验；
 - **摘要自动 prune**：删除/导入后清理不再存在的会话摘要；
-- **记忆 overlay 新鲜度**：把 `memory:overlay` 纳入检查，overlay 比 view 新时给出告警。
+- **记忆 overlay 新鲜度**：已由 `npm run memory:status` 覆盖（1.3.1），
+  source 比 view 新时告警，并已接入 `npm run check`（只告警，不改变退出码）。
 
 ## 四、已评估、暂不做
 
@@ -142,33 +143,38 @@
 - 项目入口改名「组记忆」；
 - 420/900/1440 多视口验收（记忆页、项目页、时间线、会话页无横向溢出）；
 - 窄屏会话页右下角「本会话记忆」浮动入口；
-- 修复 Turbo 跨层级后侧栏聊天链接重复 `/conversations/` 段。
+- 修复 Turbo 跨层级后侧栏聊天链接重复 `/conversations/` 段；
+- `npm run memory:status`（archive / source / view / 页面四段对比，`--json` / `--strict`）；
+- `npm run memory:checklist`（待补 L1/L2/L4、L3/L3.1、L5、索引、分册；`--stage` 生成 inbox 待办）；
+- 记忆页顶部数据生成时间与「记忆可能过期」提示；
+- 新鲜度口径抽成 `scripts/memory-freshness.mjs`，CLI 与页面共用。
 
 ## 九、记忆更新自动化（1.3.x）
 
 当前更新仍是“内核侧模型/子代理更新 source → CEOBE 导入”，以下按优先级排列：
 
-1. **`memory:status`**
-   - 对比 archive 会话数与 source manifest；
-   - 报告“有 N 个新会话未进入记忆”；
-   - 报告 source 是否比 view 新。
+1. **`memory:status`** — 已完成（1.3.1）
+   - `npm run memory:status` 对比 archive / source / view / 已发布页面；
+   - 报告新会话、已不在 archive 的会话、source 是否比 view 新、页面是否需要重新发布；
+   - `--json` 机器可读，`--strict` 过期时退出码 1；`npm run check` 里只告警。
 
-2. **页面过期提示**
-   - 记忆页显示 view 生成时间；
-   - source 变化时提示“记忆可能过期”。
+2. **页面过期提示** — 已完成（1.3.1）
+   - 记忆页顶部显示 view 生成时间和页面构建时间；
+   - source 在 view 之后有更新时显示「记忆可能过期」并给出修复命令。
 
-3. **更新清单**
-   - 列出本次需要补 L1/L2/L4 的会话；
-   - 列出需要更新 L3/L3.1/L5/分册的项。
+3. **更新清单** — 已完成（1.3.1）
+   - `npm run memory:checklist` 列出待补 L1/L2/L4 的会话、需要更新的 L3/L3.1、
+     缺 L5 节点的会话、`ceobe-index` 计数和分册正文；
+   - `--stage` 把新会话写成 `data/private/memory-kernel/inbox-staging.json` 待办。
 
-4. **自动 inbox staging**
-   - 新会话自动进入 `inbox/` 候选；
-   - 不自动生成内容，只生成待办。
+4. **自动 inbox staging** — 已完成最小版本（1.3.1，可选）
+   - 只生成待办清单，不生成内容，不自动并入 `input/`；
+   - 仍需人工按 RUNBOOK 走 `inbox/` staging。
 
 5. **模型/子代理编排**
    - 由 CEOBE 发起内核更新任务；
    - 需要模型调用、任务队列、校验门和人工复核；
-   - 不放进 1.3.0，作为后续独立阶段。
+   - 不放进 1.3.0，作为后续独立阶段（1.4）。
 
 6. **L5 边生成辅助**
    - 同一棵树跑 2–3 遍取并集；
