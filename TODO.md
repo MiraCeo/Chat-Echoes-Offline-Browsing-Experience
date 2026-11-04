@@ -184,6 +184,42 @@
 `JerryZLiu/Dayflow`、`ActivityWatch/activitywatch`、`syncable-dev/memtrace-public`、
 `cyresearch/chatgpt-memory-extraction`。
 
+## 十、记忆内核对照跟进（Graphiti）
+
+2026-11-04 对照 `getzep/graphiti` 后的跟进清单，完整分析（含对照表、做法、验收、成本、
+不跟进项和不能动的契约）见 [记忆内核对照跟进](docs/memory-kernel-graphiti-followups.md)。
+**以下不代表已获实施授权。**
+
+**结论**：值得抄的不是图数据库和向量检索，而是「事实有有效期、失效不删除」的数据模型，
+和「重复与矛盾分开判」的判定纪律。
+
+- [ ] **P0-1 给 L5 边补双时态窗口**（1.3.2）
+  - 边从 `[from,to,type]` 扩为带 `valid_at` / `invalid_at`；`superseded` 的 `invalid_at` = 目标节点 `ts`；
+  - `validate-tree` 加 4 条不变量；L5 视图按窗口着色；
+  - 87 条 `superseded` 边的时间窗是白送的，零模型调用。
+- [ ] **P0-2 点时间查询 `?as_of=`**（1.3.2）
+  - 显示 `ts <= T` 的节点、窗口覆盖 T 的边；之后被推翻的标「当时成立、后来被推翻」；
+  - 与 `l3-*.v2.json` 的 `as_of` 口径一致。
+- [ ] **P1-1 去重/矛盾两步判定**（1.4）
+  - 机械候选（tier1 实体 + ±3 天）→ 重复/矛盾分开问 → 记票 + confidence → 人工只复核分歧；
+  - 替代现在「跑 2–3 遍取并集」的降方差做法。
+- [ ] **P1-2 社区检测 → 候选主线/主题**（1.3.2 末）
+  - `scripts/memory-communities.mjs` 对 `tree.json` 跑标签传播，输出 `global/communities.json`；
+  - 纯图算法、无 API key；只出候选，不自动改 `l3-*.v2.json`。
+- [ ] **P1-3 记忆检索 BM25 + 图扩展 + RRF**（1.3.2）
+  - 构建期倒排（中文 bigram + 拉丁词）+ BM25；命中 L5 节点后 1 跳扩展；RRF 融合；
+  - 替代现在记忆页的 `String.includes` 平铺过滤。
+- [ ] **P2-1 Episode 反向索引**（1.4）
+  - 构建期 `cited_by`：`<short>:<round>` → L5 节点；会话页显示被引用数，删除会话时能列出受影响节点。
+- [ ] **P2-2 分册可再生成（Saga 化）**（1.4）
+  - 分册正文 = 成员节点时间轴 + 摘要，人工编辑作为 overlay，重新生成不覆盖。
+
+**不跟进**：图数据库、摄入期向量化、查询期调 LLM、无人工复核的自动失效、
+Telemetry / MCP server / REST server（理由见对照文档第四节）。
+
+**不能动**：`outcome` 四值、`preferred` 只表事实版本、双观察保留、冲突不自动关闭、
+L1 契约一行不改、任何自动产出都要过人工复核门。
+
 ---
 
 所有新增写入测试继续使用隔离数据。`archive/` 是只增不改的原始档案；删除项目保留聊天，
