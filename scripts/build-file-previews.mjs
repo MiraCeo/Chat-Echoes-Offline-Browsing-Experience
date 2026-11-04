@@ -267,10 +267,11 @@ export async function buildFilePreviews(document, projectRoot, outputRoot, conve
   const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = './file-previews.css'; document.head.append(css);
   // public/previews 逐页同步（每页都会把自己准备好的预览数据补进去）。并行渲染时多个进程
   // 会同时写这个目录，Windows 上偶发 EBUSY/EPERM：短暂重试即可，内容是按页累加的。
+  // ENOENT 也重试：另一个进程正在同一目录里 rename/替换文件时，cp 的 chmod 会短暂看不到目标。
   for (let attempt = 0; ; attempt += 1) {
     try { await cp(assets, join(outputRoot, 'public/previews'), { recursive: true }); break; }
     catch (error) {
-      if (!['EBUSY', 'EPERM', 'EACCES', 'ENOTEMPTY'].includes(error.code) || attempt >= 4) throw error;
+      if (!['EBUSY', 'EPERM', 'EACCES', 'ENOTEMPTY', 'ENOENT'].includes(error.code) || attempt >= 4) throw error;
       await new Promise(done => setTimeout(done, 120 * (attempt + 1)));
     }
   }
