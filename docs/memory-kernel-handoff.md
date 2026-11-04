@@ -267,7 +267,47 @@ npm run check  38 页
 
 ---
 
-## 九、接手注意事项
+## 九、历史产物归档
+
+2026-11-04 已把旧调试/导出/原型产物移到：
+
+```text
+data/private/_attic/2026-11-04/
+```
+
+包括：
+
+```text
+verify/ dom-adapt/ test-archive-share/ pdf/ web-capture/
+pdf-mobile/ html-export/ pdf-document/ timeline-prototypes/
+timeline-card-concepts/ memory-kernel-inbox/ md-export/
+live-compare/ asset-baseline/ npm-cache/ memory-kernel-handover/
+official-dom/（除 6ad4e7d4 外的旧快照）
+参考文件清理评估.md
+```
+
+保留：
+
+```text
+data/private/archive-backups/
+data/private/memory-kernel/
+data/private/official-dom/6ad4e7d4/
+data/private/import-jobs/
+data/private/delete-jobs/
+data/private/import-packages/
+data/private/_attic/
+```
+
+归档说明和文件清单在：
+
+```text
+data/private/_attic/2026-11-04/README.md
+data/private/_attic/2026-11-04/MOVED.txt
+```
+
+---
+
+## 十、接手注意事项
 
 1. 不要提交 `data/private`、`replay`、`dist`；
 2. 不要删除 `archive/`；
@@ -280,13 +320,13 @@ npm run check  38 页
 
 ---
 
-## 十、当前工作树
+## 十一、当前工作树
 
 ```text
-main 与 origin/main 一致
+main 比 origin/main 领先 5 个提交
 1.3.0 已 tag/push
 1.3.1 已提交但未发布
-最新提交 58907c0
+最新提交以 `git log -1` 为准
 tracked 工作树干净
 ```
 

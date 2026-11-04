@@ -47,7 +47,8 @@
 - 入口收敛：项目页只保留组记忆摘要，时间线移除逐条记忆 chip；
 - 记忆页布局清理：去重复 badge/说明行，变更块默认收起并人类可读；
 - 单一 `1.2.2` CHANGELOG（1.2.1 保留历史）与 stale 摘要清理：`npm run timeline:summaries:prune`；
-- 历史调试材料归档到 `data/private/_attic/2026-11-01`（187 个文件；含日志、截图、一次性脚本、fixture；恢复材料仍保留在 `data/private`）。
+- 历史调试材料归档到 `data/private/_attic/2026-11-01`（187 个文件；含日志、截图、一次性脚本、fixture；恢复材料仍保留在 `data/private`）；
+- 旧调试/导出/原型产物归档到 `data/private/_attic/2026-11-04`（23 项；`official-dom/6ad4e7d4` 测试快照保留）。
 
 ## 二、1.2 发布后待确认
 
