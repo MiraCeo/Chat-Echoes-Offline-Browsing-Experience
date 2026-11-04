@@ -167,8 +167,10 @@
    - 工具：`npm run memory:eval -- --session <short>`，标注在
      `data/private/memory-kernel/eval/`（不提交）。
 2. **类型约束与动态上限**（进行中）
-   - **已改 `PROMPT-L4.md` 0.3.0**：删掉「约每 8 轮 1 个、上限 16」，改为**动态上限**——
-     `core` 全留、`supporting` 按体积取舍、`optional` 不进 L4，单篇 ≤4 KB（约 25–30 节点）；
+   - **准则：动态上限优先于硬上限。** 任何预算都要挂在内容信号上，不挂在轮次或固定字节上；
+   - **已改 `PROMPT-L4.md` 0.3.0**：删掉「约每 8 轮 1 个、上限 16」和 4 KB 硬上限，
+     改为 `core ≤ 12`、`supporting ≤ 2 × core`、`optional` 不进 L4；体积是结果不是闸门；
+   - `r` 允许同轮多节点（起点不倒退即可），脊柱顺序由 `n` 保证；
    - 节点新增 `w`（core / supporting / optional）；§6 改为「L2 定路径，原文定全集」；
    - 五类各定必填字段：`decision` 必须有「定了什么 / 替代了什么 / 依据哪轮」，
      `problem` 必须有「暴露了什么 / 影响什么」，`artifact` 必须有「产出物 / 归属」，
