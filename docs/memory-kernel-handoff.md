@@ -226,9 +226,11 @@ fc2bec5 feat(memory): add memory status and update checklist
 - 校验门和人工复核；
 - 自动 L5 边生成辅助。
 
-> 2026-11-04 对照 `getzep/graphiti`、2026-11-05 对照 `microsoft/graphrag` 后的具体跟进项
-> （P1-0 抽取质量闭环，P1-1 去重矛盾两步判定 / P1-2 社区报告层 / P1-3 BM25 检索，
-> P2 episode 反向索引 / 分册可再生成；P0 边双时态与 `?as_of=` 已完成）
+> 2026-11-04 至 11-05 对照了六个项目（`getzep/graphiti`、`microsoft/graphrag`、
+> `mem0ai/mem0`、`topoteretes/cognee`、`MemTensor/MemOS`、`vectorize-io/hindsight`）后的
+> 具体跟进项：P1-4 精修层 / P1-2 社区报告层 / P1-3 多路检索 / L5 信念化 / L3.1 常驻答案 /
+> P2-3 导出与 MCP / P2-1 episode 反向索引 / P2-2 分册可再生成；
+> P0 边双时态、`?as_of=`、P1-0 抽取质量闭环、g1 L5 已完成。
 > 见 [记忆内核对照跟进](memory-kernel-reference-followups.md)，排期以那份文档为准。
 
 ---
