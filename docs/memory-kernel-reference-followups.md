@@ -1,13 +1,16 @@
-# 记忆内核对照跟进（Graphiti / GraphRAG）
+# 记忆内核对照跟进（Graphiti / GraphRAG / mem0）
 
 > 来源一：`getzep/graphiti`（2026-11-04 浅克隆，`--depth 1`，读 README、`edges.py`、`nodes.py`、
 > `search_config_recipes.py`、`community_operations.py`、`prompts/dedupe_edges.py`、
 > `temporal_edge_utils.py` 与 `graphiti.py` 的方法骨架；未逐行读 `graphiti.py` / `search_utils.py`）。
 > 来源二：`microsoft/graphrag`（2026-11-05 浅克隆，读 `docs/index/` 的 overview / methods /
 > default_dataflow / outputs 与 `docs/query/` 的 overview / global_search；未逐行读代码）。
+> 来源三：`mem0ai/mem0`（2026-11-05 浅克隆，读 `docs/core-concepts/` 的 how-it-works /
+> memory-operations/add / search / memory-evaluation；未逐行读 `main.py`）。
 > 目的：把值得跟进的点记下来，供 1.3.2 / 1.4 排期。**本文不代表已获实施授权。**
 > 结论一句话：值得抄的不是图数据库和向量检索，而是「事实有有效期、失效不删除」的数据模型，
-> 「重复与矛盾分开判」的判定纪律，以及「图 → 层次社区 → 社区报告」这条自动摘要链。
+> 「重复与矛盾分开判」的判定纪律，「图 → 层次社区 → 社区报告」这条自动摘要链，
+> 以及「时间元数据 + 多路检索 + token 效率」这套评测口径。
 
 ---
 
@@ -389,3 +392,51 @@ basic（普通向量 RAG）。
 - 实体图——CEOBE 是事件图，换过去等于重写；
 - claim 的 LLM 判定——我们的时间窗是机械推导的，更可靠；
 - FastGraphRAG 的 NLP 抽取——英文名词短语抽取，中文事件抽取用不上。
+
+---
+
+## 八、mem0 对照（2026-11-05）
+
+> 来源：`mem0ai/mem0`（浅克隆，读 `docs/core-concepts/how-it-works.mdx`、
+> `memory-operations/add.mdx`、`search.mdx`、`memory-evaluation.mdx`；未逐行读 `main.py`）。
+
+### 模型
+
+| 构件 | 内容 |
+|---|---|
+| 抽取 | 单遍 LLM 从「输入 + 上下文」抽 ADD-only 事实；先查相关旧记忆避免重复 |
+| 去重 | 哈希去重 + 向量化 |
+| 实体链接 | 专有名词 / 引号文本 / 复合名词短语 → 实体图，跨记忆连接 |
+| 时间推理 | 独立一遍，抽「何时发生 / 进行中还是已完成 / 时间精度 / 记忆类型」 |
+| 记忆类型 | `event` / `state` / `plan` / `preference` / `relationship` / `absence` |
+| 检索 | 语义 + BM25 + 实体 + 时间四路信号，按 rank 融合 |
+| 评测 | LoCoMo 92.5 / LongMemEval 94.4 / BEAM 64.1（1M）、48.6（10M），**平均 ~7K token/查询** |
+
+### 对照
+
+| 维度 | CEOBE | mem0 | 判断 |
+|---|---|---|---|
+| 定位 | 个人档案记忆（事件/判断） | Agent 记忆层（事实/偏好） | 不同任务 |
+| 失效处理 | `superseded` + 时间窗，显式标推翻 | ADD-only，旧事实保留但不标失效 | **CEOBE 更显式** |
+| 时间元数据 | `valid_at` / `invalid_at`（机械推导） | 何时发生 / 进行中 / 精度 / 类型（LLM 抽） | **互补** |
+| 检索信号 | 子串匹配 | 语义 + BM25 + 实体 + 时间 | **真差距** |
+| 评测 | 召回 / 精确 / 类型准确 | 准确率 + **token 效率** + top-k 截断 | **缺 token 维度** |
+| 记忆类型 | event / decision / problem / artifact / open | event / state / plan / preference / relationship / **absence** | `absence` 值得补 |
+
+### 值得跟进
+
+1. **时间元数据补两个字段**：`state`（ongoing / completed）和 `precision`（day / month / unknown）。
+   我们现在只有窗口起止，没有「这件事还在进行还是已经结束」「时间精度到哪一级」。
+   这两个字段直接影响「截至某日这件事是什么状态」的查询质量。
+2. **检索加实体与时间两路信号**：P1-3 原计划是 BM25 + 图扩展，mem0 的做法是四路融合
+   （语义 / BM25 / 实体 / 时间）。实体信号可以用我们的 `entities.json`，时间信号用 `valid_at`。
+3. **评测加 token 效率**：我们的 eval 只看召回/精确，没看「检索出来的上下文有多大」。
+   对页面浏览影响小，但对将来的 MCP 只读适配层是硬指标。
+4. **`absence` 记忆类型**：mem0 把「没发生的事」单独列一类（没投递、没看到实习）。
+   我们的 `open` 只覆盖「未解决」，不覆盖「否定事实」。这类判断在语料里不少。
+
+### 不跟进
+
+- 向量库 / 图数据库 / SQL 三件套——同上；
+- ADD-only 不标失效——我们的 `superseded` 更显式，不退回；
+- 它的 benchmark 数字——语料和语言都不同，只借方法不借分数。
