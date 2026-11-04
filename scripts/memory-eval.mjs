@@ -231,12 +231,13 @@ export function scoreLabels(labels, l4) {
   };
 }
 
-export async function evaluateSession(short, { labelsPath = null } = {}) {
+export async function evaluateSession(short, { labelsPath = null, eventsDir = null } = {}) {
   const map = await readJson(join(sourceRoot, 'overlay/archive-map.json'), { sessions: [] });
   const session = (map.sessions || []).find(item => item.short === short || item.id.startsWith(short));
   if (!session) throw new Error(`找不到会话：${short}`);
-  const l4 = await readJson(join(sourceRoot, session.l4.path));
-  if (!l4) throw new Error(`缺少 L4：${session.l4.path}`);
+  const l4Path = eventsDir ? join(eventsDir, `${session.id}.json`) : join(sourceRoot, session.l4.path);
+  const l4 = await readJson(l4Path);
+  if (!l4) throw new Error(`缺少 L4：${l4Path}`);
   const l2Text = await readFile(join(sourceRoot, session.l2.path), 'utf8').catch(() => '');
   const path = labelsPath || join(evalRoot, `${session.short}.json`);
   const labels = existsSync(path) ? await readJson(path) : null;
@@ -304,7 +305,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.error('用法：node scripts/memory-eval.mjs --session <short> [--labels <path>] [--json]');
     process.exit(1);
   }
-  const result = await evaluateSession(short, { labelsPath: option('--labels') });
+  const result = await evaluateSession(short, {
+    labelsPath: option('--labels'),
+    eventsDir: option('--events') ? resolve(option('--events')) : null,
+  });
   if (has('--json')) console.log(JSON.stringify(result, null, 2));
   else console.log(formatReport(result));
 }
