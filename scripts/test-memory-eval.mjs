@@ -11,11 +11,12 @@ const l4 = {
 };
 
 const labels = {
+  budget: { min: 1, max: 5 },
   nodes: [
-    { id: 'e1', type: 'decision', status: 'superseded', rounds: [1, 2], must_include: ['内推人'] },
-    { id: 'e2', type: 'decision', status: 'decided', rounds: [3, 3], must_include: ['不问'] },
-    { id: 'e3', type: 'problem', status: 'pending', rounds: [4, 5], must_include: ['简历画像'] },
-    { id: 'e4', type: 'decision', status: 'decided', rounds: [4, 5], must_include: ['不存在的关键词'] },
+    { id: 'e1', type: 'decision', status: 'superseded', importance: 'core', rounds: [1, 2], must_include: ['内推人'] },
+    { id: 'e2', type: 'decision', status: 'decided', importance: 'core', rounds: [3, 3], must_include: ['不问'] },
+    { id: 'e3', type: 'problem', status: 'pending', importance: 'supporting', rounds: [4, 5], must_include: ['简历画像'] },
+    { id: 'e4', type: 'decision', status: 'decided', importance: 'optional', rounds: [4, 5], must_include: ['不存在的关键词'] },
   ],
   edges: [{ from: 'e1', to: 'e2', type: 'superseded' }],
 };
@@ -42,9 +43,15 @@ assert.equal(new Set(matched.matched.map(pair => pair.prediction.n)).size, 3, '�
 // Semantic scoring.
 const score = scoreLabels(labels, l4);
 assert.equal(score.recall, 0.75);
+assert.equal(score.recall_core, 1);
+assert.equal(score.recall_supporting, 1);
+assert.equal(score.recall_optional, 0);
 assert.equal(score.precision, 1);
 assert.equal(score.type_accuracy, 1);
 assert.equal(score.status_accuracy, 1);
+assert.equal(score.budget.fit, true);
+assert.equal(score.budget.actual, 3);
+assert.deepEqual(score.missed_core, []);
 assert.equal(score.superseded_edges.precision, 1);
 assert.equal(score.superseded_edges.recall, 1);
 assert.deepEqual(score.missed_labels.map(item => item.id), ['e4']);

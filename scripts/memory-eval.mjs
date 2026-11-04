@@ -89,11 +89,28 @@ export function autoMetrics(l4, l2Text = '') {
   };
 }
 
+/** Character-bigram Jaccard, used to break keyword ties. */
+const bigrams = text => {
+  const clean = String(text || '').replace(/[\s\p{P}\p{S}]/gu, '');
+  const set = new Set();
+  for (let index = 0; index < clean.length - 1; index += 1) set.add(clean.slice(index, index + 2));
+  return set;
+};
+const similarity = (a, b) => {
+  const left = bigrams(a);
+  const right = bigrams(b);
+  if (!left.size || !right.size) return 0;
+  let shared = 0;
+  for (const gram of left) if (right.has(gram)) shared += 1;
+  return shared / (left.size + right.size - shared);
+};
+
 /**
  * Greedy global matching: a prediction matches a label when their round ranges
  * overlap and the prediction text contains at least one `must_include` keyword.
- * Score = overlap * 10 + keyword hits * 5, assigned highest-first so the result
- * does not depend on label order.
+ * Score = overlap * 10 + keyword hits * 5 + text similarity * 30, assigned
+ * highest-first so the result does not depend on label order. Similarity is
+ * what separates "底气＝项目积累" from "底气＝7.24 视频" when both share a keyword.
  */
 export function matchNodes(labels, predictions) {
   const pairs = [];
@@ -104,7 +121,8 @@ export function matchNodes(labels, predictions) {
       const text = String(prediction.x || '');
       const hits = (label.must_include || []).filter(keyword => text.includes(keyword)).length;
       if (!hits) continue;
-      pairs.push({ label, prediction, score: rounds * 10 + hits * 5 });
+      const score = rounds * 10 + hits * 5 + similarity(text, label.text) * 30;
+      pairs.push({ label, prediction, score });
     }
   }
   pairs.sort((a, b) => b.score - a.score);
@@ -152,24 +170,49 @@ export function scoreLabels(labels, l4) {
 
   const labelTotal = (labels.nodes || []).length || 1;
   const predictionTotal = predictions.length || 1;
+  const matchedIds = new Set(matched.map(pair => pair.label.id));
+  const byImportance = { core: [], supporting: [], optional: [] };
+  for (const label of labels.nodes || []) {
+    const key = byImportance[label.importance] ? label.importance : 'supporting';
+    byImportance[key].push(label);
+  }
+  const recallFor = list => (list.length
+    ? Number((list.filter(label => matchedIds.has(label.id)).length / list.length).toFixed(3))
+    : null);
+  const budgetMin = Number(labels.budget?.min ?? 8);
+  const budgetMax = Number(labels.budget?.max ?? 15);
   return {
     labels: labelTotal,
     predictions: predictionTotal,
     matched: matched.length,
     recall: Number((matched.length / labelTotal).toFixed(3)),
+    recall_core: recallFor(byImportance.core),
+    recall_supporting: recallFor(byImportance.supporting),
+    recall_optional: recallFor(byImportance.optional),
     precision: Number((matched.length / predictionTotal).toFixed(3)),
+    budget: {
+      min: budgetMin,
+      max: budgetMax,
+      actual: predictionTotal,
+      fit: predictionTotal >= budgetMin && predictionTotal <= budgetMax,
+    },
     type_accuracy: matched.length ? Number(((matched.length - typeMismatches.length) / matched.length).toFixed(3)) : null,
     status_accuracy: matched.length ? Number(((matched.length - statusMismatches.length) / matched.length).toFixed(3)) : null,
     superseded_edges: {
       expected: expectedPairs.size,
       predicted: predictedSuperseded.length,
       matched: edgeHits,
-      precision: predictedSuperseded.length ? Number((edgeHits / predictedSuperseded.length).toFixed(3)) : null,
+      // With few matched endpoints there is nothing to compare against; report
+      // null instead of a misleading 0%.
+      precision: expectedPairs.size ? Number((edgeHits / predictedSuperseded.length).toFixed(3)) : null,
       recall: expectedPairs.size ? Number((edgeHits / expectedPairs.size).toFixed(3)) : null,
     },
     type_mismatches: typeMismatches,
     status_mismatches: statusMismatches,
-    missed_labels: unmatchedLabels.map(label => ({ id: label.id, type: label.type, text: label.text })),
+    missed_core: byImportance.core
+      .filter(label => !matchedIds.has(label.id))
+      .map(label => ({ id: label.id, type: label.type, text: label.text })),
+    missed_labels: unmatchedLabels.map(label => ({ id: label.id, type: label.type, importance: label.importance || 'supporting', text: label.text })),
     extra_predictions: unmatchedPredictions.map(node => ({ n: node.n, type: node.t, text: node.x })),
     labelById: [...labelById.keys()],
     predictionByNumber: [...predictionByNumber.keys()],
@@ -213,17 +256,26 @@ export function formatReport(result) {
   }
   lines.push('');
   lines.push(`  语义指标（标注 ${semantic.labels} 条 / 抽取 ${semantic.predictions} 条）`);
-  lines.push(`    召回 ${percent(semantic.recall)} · 精确 ${percent(semantic.precision)} · 类型准确 ${percent(semantic.type_accuracy)} · 状态准确 ${percent(semantic.status_accuracy)}`);
+  lines.push(`    核心召回 ${percent(semantic.recall_core)} · 支撑召回 ${percent(semantic.recall_supporting)} · 可选召回 ${percent(semantic.recall_optional)}`);
+  lines.push(`    总召回 ${percent(semantic.recall)} · 精确 ${percent(semantic.precision)} · 类型准确 ${percent(semantic.type_accuracy)} · 状态准确 ${percent(semantic.status_accuracy)}`);
+  lines.push(`    预算 ${semantic.budget.actual} 条（${semantic.budget.min}–${semantic.budget.max}）${semantic.budget.fit ? '✓' : '✗'}`);
   lines.push(`    superseded 边 精确 ${percent(semantic.superseded_edges.precision)} · 召回 ${percent(semantic.superseded_edges.recall)}（期望 ${semantic.superseded_edges.expected} / 实际 ${semantic.superseded_edges.predicted}）`);
+  if (semantic.missed_core.length) {
+    lines.push('');
+    lines.push('  漏掉的核心判断');
+    for (const item of semantic.missed_core) lines.push(`    ${item.id} ${item.type}：${item.text}`);
+  }
   if (semantic.type_mismatches.length) {
     lines.push('');
     lines.push('  类型分歧');
     for (const item of semantic.type_mismatches) lines.push(`    ${item.label} 期望 ${item.expected}，实际 ${item.actual}：${item.text}`);
   }
   if (semantic.missed_labels.length) {
+    const supporting = semantic.missed_labels.filter(item => item.importance !== 'core');
     lines.push('');
-    lines.push('  漏抽（标注有、抽取无）');
-    for (const item of semantic.missed_labels) lines.push(`    ${item.id} ${item.type}：${item.text}`);
+    lines.push(`  漏抽 ${semantic.missed_labels.length} 条（核心见上；其余 ${supporting.length} 条支撑/可选，用 --json 看全量）`);
+    for (const item of supporting.slice(0, 8)) lines.push(`    ${item.id} ${item.importance} ${item.type}：${item.text}`);
+    if (supporting.length > 8) lines.push(`    … 另有 ${supporting.length - 8} 条`);
   }
   if (semantic.extra_predictions.length) {
     lines.push('');
