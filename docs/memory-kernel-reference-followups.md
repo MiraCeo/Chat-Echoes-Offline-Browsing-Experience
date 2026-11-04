@@ -62,9 +62,23 @@
 
 ### 不跟进的共性
 
-六个项目都建在「图库 + 向量库 + 服务端」上，CEOBE 是「静态页面 + 本地文件 + 无服务」。
-所以一律不跟：图数据库、向量库、Postgres、云端租户、计费、遥测。
-只借**数据模型、判定程序、评测口径、导出格式**这四类东西。
+六个项目的技术栈并不相同，但共同点是**都要跑一个服务 + 一个数据库**：
+
+| 项目 | 图库 | 向量库 | 关系库 | 服务端 |
+|---|---|---|---|---|
+| Graphiti | Neo4j / FalkorDB / Neptune | 存在图库里（`fact_embedding`） | 无 | 参考 MCP + FastAPI REST |
+| GraphRAG | **无图库**（NetworkX + GraphML） | LanceDB（默认） | 无（Parquet） | 无服务端（CLI/库） |
+| mem0 | Neo4j（可选） | 25+ 种（Qdrant / Chroma / pgvector / Milvus …） | SQLite / Postgres | FastAPI + 托管 Platform |
+| cognee | Kuzu（默认）/ Neo4j / Neptune / Postgres | LanceDB（默认）/ pgvector | SQLAlchemy（SQLite / Postgres） | FastAPI + 前端 |
+| MemOS | Neo4j / PolarDB / Postgres | Milvus / Qdrant | 无 | FastAPI + MCP |
+| Hindsight | 无独立图库（存 Postgres） | pgvector | PostgreSQL / Oracle 23ai | FastAPI + UI + 每 bank 一个 MCP |
+
+CEOBE 是「静态页面 + 本地文件 + 无服务」，所以一律不跟：图数据库、向量库、Postgres、
+云端租户、计费、遥测。只借**数据模型、判定程序、评测口径、导出格式**这四类东西。
+
+> 注意：GraphRAG 和 Hindsight 其实不是「三件套」——前者是纯文件（Parquet + NetworkX + LanceDB），
+> 后者是单库（Postgres + pgvector）。真正需要「图库 + 向量库 + 服务端」的是 Graphiti / mem0 /
+> cognee / MemOS 四个。
 
 ---
 
