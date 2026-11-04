@@ -76,12 +76,15 @@ export async function buildMemoryPage(projectRoot = resolve(import.meta.dirname,
   };
   await writeFile(join(replay, 'public', 'memory-session-index.json'), JSON.stringify(sessionIndex), 'utf8');
 
-  const eventTreeSource = await readFile(join(projectRoot, 'scripts/memory-event-tree.js'), 'utf8');
-  const eventTreeFile = 'memory-event-tree.' + hash(eventTreeSource) + '.js';
-  await writeFile(join(replay, eventTreeFile), eventTreeSource);
-
-  const script = (await readFile(join(projectRoot, 'scripts/memory.js'), 'utf8'))
-    .replace("'./memory-event-tree.js'", "'./" + eventTreeFile + "'");
+  // Page modules are copied with a content hash and the import specifiers in
+  // memory.js are rewritten to match, so the page never serves a stale module.
+  let script = await readFile(join(projectRoot, 'scripts/memory.js'), 'utf8');
+  for (const name of ['memory-event-tree.js', 'memory-tree-time.js']) {
+    const source = await readFile(join(projectRoot, 'scripts', name), 'utf8');
+    const file = name.replace(/\.js$/, '') + '.' + hash(source) + '.js';
+    await writeFile(join(replay, file), source);
+    script = script.replace(`'./${name}'`, `'./${file}'`);
+  }
   const scriptFile = 'memory.' + hash(script) + '.js';
   await writeFile(join(replay, scriptFile), script);
   placeScript(document, 'memory.', './' + scriptFile);

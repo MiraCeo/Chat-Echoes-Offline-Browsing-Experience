@@ -1,4 +1,5 @@
 import { renderEventTree } from './memory-event-tree.js';
+import { dayOf, filterTreeAt, parseAsOf } from './memory-tree-time.js';
 
 (() => {
   const root = document.querySelector('[data-ceobe-memory]');
@@ -267,17 +268,57 @@ import { renderEventTree } from './memory-event-tree.js';
   function renderTree(global) {
     const tree = global.tree_data;
     if (!tree?.nodes?.length) return null;
+    const asOf = parseAsOf(new URLSearchParams(location.search).get('as_of'));
+    const view = filterTreeAt(tree, asOf);
     const section = make('section', 'ceobe-memory-global-section ceobe-memory-tree');
     section.id = 'memory-layer-tree';
-    section.append(make('h3', '', `L5 跨会话树 · ${tree.nodes.length} 节点 / ${tree.edges.length} 边`));
+    section.append(make('h3', '', asOf
+      ? `L5 跨会话树 · 截至 ${asOf} · ${view.nodes.length} 节点 / ${view.edges.length} 边`
+      : `L5 跨会话树 · ${tree.nodes.length} 节点 / ${tree.edges.length} 边`));
     section.append(make('p', 'ceobe-memory-tree-note', '只读浏览；节点按时间编号，来源轮次可跳到对应会话。'));
 
+    const bar = make('div', 'ceobe-memory-tree-toolbar');
+    const label = make('label', 'ceobe-memory-tree-asof');
+    label.append(make('span', '', '查看指定日期'));
+    const input = make('input');
+    input.type = 'date';
+    input.value = asOf || '';
+    input.setAttribute('data-memory-asof', '');
+    input.setAttribute('aria-label', '查看指定日期的记忆状态');
+    input.addEventListener('change', () => {
+      const next = new URL(location.href);
+      const value = parseAsOf(input.value);
+      if (value) next.searchParams.set('as_of', value);
+      else next.searchParams.delete('as_of');
+      history.replaceState(null, '', next);
+      render('global');
+    });
+    label.append(input);
+    bar.append(label);
+    if (asOf) {
+      const clear = make('button', 'ceobe-memory-tree-clear', '回到当前');
+      clear.type = 'button';
+      clear.addEventListener('click', () => {
+        const next = new URL(location.href);
+        next.searchParams.delete('as_of');
+        history.replaceState(null, '', next);
+        render('global');
+      });
+      bar.append(clear);
+    }
+    section.append(bar);
+    if (asOf) {
+      section.append(make('p', 'ceobe-memory-tree-status',
+        `${view.hidden} 个节点在此之后；其中 ${view.laterSuperseded} 个当时成立、后来被推翻。`));
+    }
+
     const nodes = make('details', 'ceobe-memory-tree-details');
-    nodes.append(make('summary', '', `节点 ${tree.nodes.length}`));
+    nodes.append(make('summary', '', `节点 ${view.nodes.length}`));
     const list = make('div', 'ceobe-memory-tree-nodes');
-    for (const node of tree.nodes) {
+    for (const node of view.nodes) {
       const item = make('article', 'ceobe-memory-tree-node');
       item.dataset.treeNode = String(node.n);
+      if (node.invalid_at) item.dataset.treeNodeInvalid = String(node.invalid_at);
       const head = make('div', 'ceobe-memory-tree-node-head');
       head.append(
         make('strong', '', `#${node.n}`),
@@ -286,6 +327,13 @@ import { renderEventTree } from './memory-event-tree.js';
       const date = formatDate(node.ts);
       if (date) head.append(make('time', 'ceobe-memory-tree-date', date));
       item.append(head, make('p', '', node.x || ''));
+      if (node.invalid_at) {
+        const later = Boolean(asOf) && dayOf(node.invalid_at) > asOf;
+        const target = node.superseded_by ? ` · #${node.superseded_by}` : '';
+        item.append(make('p', 'ceobe-memory-tree-window', later
+          ? `当时成立，后来被推翻 · ${dayOf(node.invalid_at)}${target}`
+          : `已被推翻 · ${dayOf(node.invalid_at)}${target}`));
+      }
       if (node.src?.length) {
         const sources = make('div', 'ceobe-memory-tree-sources');
         for (const source of node.src) {
@@ -309,12 +357,15 @@ import { renderEventTree } from './memory-event-tree.js';
     nodes.append(list);
     section.append(nodes);
 
-    if (tree.edges?.length) {
+    if (view.edges?.length) {
       const edges = make('details', 'ceobe-memory-tree-details');
-      edges.append(make('summary', '', `关系 ${tree.edges.length}`));
+      edges.append(make('summary', '', `关系 ${view.edges.length}`));
       const edgeList = make('ul', 'ceobe-memory-edge-list');
-      for (const edge of tree.edges) {
-        edgeList.append(make('li', '', `#${edge[0]} —${edge[2]}→ #${edge[1]}`));
+      for (const edge of view.edges) {
+        const [from, to, type, validAt, invalidAt] = edge;
+        const item = make('li', '', `#${from} —${type}→ #${to}`);
+        if (invalidAt) item.title = `成立 ${dayOf(validAt)} · 失效 ${dayOf(invalidAt)}`;
+        edgeList.append(item);
       }
       edges.append(edgeList);
       section.append(edges);

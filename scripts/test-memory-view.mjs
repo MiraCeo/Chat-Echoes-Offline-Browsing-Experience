@@ -28,5 +28,18 @@ assert.equal(view.global.tree.nodes, 381);
 assert.equal(view.global.tree.edges, 183);
 assert.equal(view.global.tree_data.nodes.length, 381);
 assert.equal(view.global.tree_data.edges.length, 183);
+// L5 time windows: every edge carries [from, to, type, valid_at, invalid_at];
+// superseded nodes carry the ts of the node that overturned them.
+assert.ok(view.global.tree_data.edges.every(edge => edge.length === 5));
+assert.ok(view.global.tree_data.edges.every(edge => Number.isFinite(edge[3])));
+const supersededEdges = view.global.tree_data.edges.filter(edge => edge[2] === 'superseded');
+assert.equal(supersededEdges.length, 87);
+assert.ok(supersededEdges.every(edge => Number.isFinite(edge[4]) && edge[4] >= edge[3]));
+assert.ok(view.global.tree_data.edges.filter(edge => edge[2] !== 'superseded').every(edge => edge[4] === null));
+const supersededNodes = view.global.tree_data.nodes.filter(node => node.s === 'superseded');
+assert.equal(supersededNodes.length, 87);
+assert.ok(supersededNodes.every(node => Number.isFinite(node.invalid_at) && node.invalid_at > node.valid_at));
+assert.ok(supersededNodes.every(node => Number.isInteger(node.superseded_by)));
+assert.ok(view.global.tree_data.nodes.filter(node => node.s !== 'superseded').every(node => node.invalid_at === null));
 assert.ok(view.global.thread_docs.every(doc => doc.html.length > 100));
 console.log('PASS memory view: four groups, 31 sessions, global/L5 metadata, no ungrouped');

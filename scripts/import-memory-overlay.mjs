@@ -9,6 +9,7 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { marked } from 'marked';
 import { bookmarkTargets } from './bookmark-targets.mjs';
+import { deriveTreeWindows, validateTreeWindows } from './memory-tree-time.js';
 
 const projectRoot = resolve(import.meta.dirname, '..');
 const option = name => {
@@ -75,6 +76,12 @@ for (const name of (await readdir(threadDir)).filter(name => name.endsWith('.md'
   });
 }
 const tree = await readJson(await requireFile(join(source, 'global/tree.json')));
+// The kernel tree stores edges as [from, to, type]. Windows are derived here,
+// not hand-edited into the kernel artifact, so they survive every kernel
+// regeneration. A broken window fails the import instead of reaching the page.
+const treeWindows = deriveTreeWindows(tree);
+const treeIssues = validateTreeWindows(tree, treeWindows);
+if (treeIssues.length) throw new Error(`L5 时间窗校验失败：${treeIssues.slice(0, 5).join('；')}`);
 const treeStats = { path: 'global/tree.json', nodes: tree.nodes?.length || 0, edges: tree.edges?.length || 0, sessions: l3Global.coverage?.sessions || 0 };
 const threadMap = await readJson(await requireFile(join(source, 'overlay/thread-map.json')));
 
@@ -181,8 +188,8 @@ const view = {
     thread_docs: threadDocs,
     tree: treeStats,
     tree_data: {
-      nodes: tree.nodes || [],
-      edges: tree.edges || [],
+      nodes: treeWindows.nodes,
+      edges: treeWindows.edges,
       open: tree.open || [],
       pruned: tree.pruned || [],
     },

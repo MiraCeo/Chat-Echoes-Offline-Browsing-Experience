@@ -91,6 +91,38 @@ try {
   const sourceHref = await page.locator('.ceobe-memory-source-link').first().getAttribute('href');
   assert.match(sourceHref || '', /\/conversations\/[^/]+\.html#bookmark=/, 'L5 来源应指向具体消息锚点');
 
+  // L5 time windows: superseded nodes show when they were overturned, and the
+  // tree can be read at a point in time. The node list lives in a collapsed
+  // <details>, so read textContent instead of innerText.
+  const windowBadges = await page.evaluate(() => [...document.querySelectorAll('.ceobe-memory-tree-window')]
+    .map(node => node.textContent));
+  assert.ok(windowBadges.some(text => text.includes('已被推翻')), 'L5 节点应显示推翻时间');
+
+  await page.goto(base + 'memory.html?group=global&as_of=2026-10-22', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.ceobe-memory-tree');
+  const asOf = await page.evaluate(() => ({
+    title: document.querySelector('#memory-layer-tree h3')?.textContent,
+    status: document.querySelector('.ceobe-memory-tree-status')?.textContent,
+    nodes: document.querySelectorAll('[data-tree-node]').length,
+    edges: document.querySelectorAll('.ceobe-memory-edge-list > li').length,
+    input: document.querySelector('[data-memory-asof]')?.value,
+  }));
+  assert.match(asOf.title || '', /截至 2026-10-22/);
+  assert.ok(asOf.nodes > 0 && asOf.nodes < 381, 'as_of 应过滤掉之后的节点');
+  assert.ok(asOf.edges > 0 && asOf.edges < 183, 'as_of 应过滤掉之后的边');
+  assert.match(asOf.status || '', /个节点在此之后/);
+  assert.equal(asOf.input, '2026-10-22');
+
+  await page.goto(base + 'memory.html?group=global&as_of=2026-10-15', { waitUntil: 'networkidle' });
+  await page.waitForSelector('.ceobe-memory-tree');
+  const laterText = await page.evaluate(() => [...document.querySelectorAll('.ceobe-memory-tree-window')]
+    .map(node => node.textContent));
+  assert.ok(laterText.some(text => text.includes('当时成立，后来被推翻')), 'as_of 应标出当时成立、后来被推翻的节点');
+
+  await page.locator('.ceobe-memory-tree-clear').click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-tree-node]').length === 381);
+  assert.doesNotMatch(await page.evaluate(() => location.search), /as_of=/);
+
   await page.locator('.ceobe-memory-thread').first().locator('summary').click();
   assert.ok(await page.locator('.ceobe-memory-thread').first().locator('.ceobe-memory-prose h1').count(), '分册正文应可展开');
 
