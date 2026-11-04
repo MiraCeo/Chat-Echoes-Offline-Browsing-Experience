@@ -184,10 +184,11 @@
 `JerryZLiu/Dayflow`、`ActivityWatch/activitywatch`、`syncable-dev/memtrace-public`、
 `cyresearch/chatgpt-memory-extraction`。
 
-## 十、记忆内核对照跟进（Graphiti）
+## 十、记忆内核对照跟进（Graphiti / GraphRAG）
 
-2026-11-04 对照 `getzep/graphiti` 后的跟进清单，完整分析（含对照表、做法、验收、成本、
-不跟进项和不能动的契约）见 [记忆内核对照跟进](docs/memory-kernel-graphiti-followups.md)。
+2026-11-04 对照 `getzep/graphiti`、2026-11-05 对照 `microsoft/graphrag` 后的跟进清单，
+完整分析（含对照表、做法、验收、成本、不跟进项和不能动的契约）见
+[记忆内核对照跟进](docs/memory-kernel-reference-followups.md)。
 **以下不代表已获实施授权。**
 
 **结论**：值得抄的不是图数据库和向量检索，而是「事实有有效期、失效不删除」的数据模型，
@@ -217,9 +218,11 @@
 - [ ] **P1-1 去重/矛盾两步判定**（并入 P1-0 第 3 步）
   - 机械候选（tier1 实体 + ±3 天）→ 重复/矛盾分开问 → 记票 + confidence → 人工只复核分歧；
   - 替代现在「跑 2–3 遍取并集」的降方差做法。
-- [ ] **P1-2 社区检测 → 候选主线/主题**（P1-0 之后）
-  - `scripts/memory-communities.mjs` 对 `tree.json` 跑标签传播，输出 `global/communities.json`；
-  - 纯图算法、无 API key；只出候选，不自动改 `l3-*.v2.json`。
+- [ ] **P1-2 社区报告层**（P1-0 之后，参考 GraphRAG）
+  - 对 L5 图跑层次聚类（Leiden / 标签传播），每个社区生成报告：
+    `title` / `summary` / `findings` / `rank`；
+  - 报告作为 L3.1 候选，人工只做「采纳 / 改写 / 丢弃」；
+  - 页面默认显示报告（10–20 块），点开才看节点；241 节点收敛成可读块。
 - [ ] **P1-3 记忆检索 BM25 + 图扩展 + RRF**（P1-0 之后）
   - 构建期倒排（中文 bigram + 拉丁词）+ BM25；命中 L5 节点后 1 跳扩展；RRF 融合；
   - 替代现在记忆页的 `String.includes` 平铺过滤。

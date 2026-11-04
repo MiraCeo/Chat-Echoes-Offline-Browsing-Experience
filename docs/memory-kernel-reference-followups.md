@@ -1,11 +1,13 @@
-# 记忆内核对照跟进（Graphiti）
+# 记忆内核对照跟进（Graphiti / GraphRAG）
 
-> 来源：`getzep/graphiti`（2026-11-04 浅克隆，`--depth 1`，读 README、`edges.py`、`nodes.py`、
+> 来源一：`getzep/graphiti`（2026-11-04 浅克隆，`--depth 1`，读 README、`edges.py`、`nodes.py`、
 > `search_config_recipes.py`、`community_operations.py`、`prompts/dedupe_edges.py`、
 > `temporal_edge_utils.py` 与 `graphiti.py` 的方法骨架；未逐行读 `graphiti.py` / `search_utils.py`）。
+> 来源二：`microsoft/graphrag`（2026-11-05 浅克隆，读 `docs/index/` 的 overview / methods /
+> default_dataflow / outputs 与 `docs/query/` 的 overview / global_search；未逐行读代码）。
 > 目的：把值得跟进的点记下来，供 1.3.2 / 1.4 排期。**本文不代表已获实施授权。**
 > 结论一句话：值得抄的不是图数据库和向量检索，而是「事实有有效期、失效不删除」的数据模型，
-> 和「重复与矛盾分开判」的判定纪律。
+> 「重复与矛盾分开判」的判定纪律，以及「图 → 层次社区 → 社区报告」这条自动摘要链。
 
 ---
 
@@ -240,17 +242,24 @@
 
 ---
 
-### P1-2 · 社区检测 → 候选主线/主题
+### P1-2 · 社区报告层（原「社区检测 → 候选主线」）
 
-**现状**：L3 主线纯人工（13 主线 / 15 thread / 12 分册），L5 图里可能有没被任何主线覆盖的簇。
+**现状**：L3 主线纯人工（13 主线 / 15 thread / 12 分册），L5 图里可能有没被任何主线覆盖的簇；
+g1 的 L5 已有 241 节点，平铺列表读不动。
 
-**做法**：`scripts/memory-communities.mjs` 对 `tree.json` 跑标签传播（381 节点，毫秒级），
-输出 `global/communities.json`：簇 → 节点 id → 主导实体 → 建议归属主线。
-人工复核后决定是否新增主线/主题。
+**做法**（参考 GraphRAG 的 `CommunityReport`）：
 
-**验收**：能指出未被任何主线覆盖的簇；复核表可勾选；不自动改 `l3-*.v2.json`。
+1. 对 L5 图跑层次聚类（Leiden 或标签传播），得到 `parent` / `children` / `level`；
+2. 每个社区生成报告：`title` / `summary` / `findings`（3–5 条要点）/ `rank`；
+3. 报告作为 **L3.1 候选**，人工只做「采纳 / 改写 / 丢弃」，不再从零写；
+4. 页面按社区层级展示：默认显示报告（10–20 块），点开才看节点。
 
-**成本**：1 天，纯图算法、无 API key。**落点**：1.3.2 末（服务「L5 跨会话图」）。
+**验收**：241 节点收敛成 10–20 个可读块；人工复核表可勾选；不自动改 `l3-*.v2.json`。
+
+**成本**：2–3 天（聚类 1 天 + 报告生成 1–2 天）。**落点**：P1-0 之后。
+
+> 2026-11-05 升级：原计划只做「聚类 → 候选主线」，看完 GraphRAG 后扩成「聚类 → 社区报告」。
+> 只聚类的话，人工还得从簇里自己读；有了报告，人工只做采纳/改写，价值大得多。
 
 ---
 
@@ -335,3 +344,48 @@
 > 2026-11-04 调整：原顺序把 P1-3 / P1-2 排在前面，理由是「纯机械、风险低」。
 > 但抽取质量决定这棵树值不值得读，属于核心框架；P0 两项是数据模型层，已完成且不占位。
 > 因此 P1-0 提到最前，P1-2 / P1-3 顺延到它之后。
+
+---
+
+## 七、GraphRAG 对照（2026-11-05）
+
+### 知识模型
+
+| 构件 | 内容 |
+|---|---|
+| `TextUnit` | 文本块（默认 1200 token），带出处 |
+| `Entity` | `title` / `type` / `description` / `frequency` / `degree` |
+| `Relationship` | `source` / `target` / `description` / `weight` |
+| `Covariate`（claim） | `subject` / `object` / `status`（TRUE/FALSE/SUSPECTED）/ `start_date` / `end_date` |
+| `Community` | Leiden 层次聚类，`parent` / `children` / `level` |
+| `CommunityReport` | 每个社区的 LLM 报告：`title` / `summary` / `full_content` / `rank` / `findings` |
+
+流水线六阶段：切块 → 建文档表 → 抽实体/关系/claim → Leiden 层次聚类 → 生成社区报告 → 向量化。
+查询四种：local（实体为中心）、global（对社区报告做 map-reduce）、drift（用社区信息扩展 local）、
+basic（普通向量 RAG）。
+
+### 对照
+
+| 维度 | CEOBE | GraphRAG | 判断 |
+|---|---|---|---|
+| 图的性质 | **事件图**（decision/problem/artifact） | **实体图**（人/组织/地点/事件） | 不同任务，不换 |
+| 聚类 | L3 主线人工（每组 5 条） | Leiden 层次聚类，自动 | **真差距** |
+| 摘要层 | L3 分册人工写 | 每个社区自动生成报告 + findings + rank | **真差距** |
+| 时间 | L5 边有 `valid_at`/`invalid_at`（机械推导） | claim 有 `start_date`/`end_date`（LLM 判） | **CEOBE 更严谨** |
+| 检索 | 页面浏览 + 子串搜索 | local / global / drift / basic 四种 | **真差距** |
+| 增量更新 | 全量重跑 | `update_*` 系列工作流 | 差距，优先级低 |
+| 抽取成本 | 全 LLM | 有 FastGraphRAG（NLP 抽实体，省 75% 成本） | 可参考，中文难 |
+
+### 值得跟进
+
+1. **层次化社区报告**（已并入 P1-2）——补上 L5 图与 L3 主线之间缺的自动摘要层；
+2. **社区报告作为检索单元**——页面默认显示报告（10–20 块），点开才看节点；
+3. **drift search 的思路**——用社区信息扩展查询，等 P1-3 检索做完再考虑；
+4. **增量更新工作流**——只重算受影响的社区，对 1.4 的自动更新队列有参考价值。
+
+### 不跟进
+
+- Parquet / 向量库 / 图数据库——破坏静态页面模型；
+- 实体图——CEOBE 是事件图，换过去等于重写；
+- claim 的 LLM 判定——我们的时间窗是机械推导的，更可靠；
+- FastGraphRAG 的 NLP 抽取——英文名词短语抽取，中文事件抽取用不上。
