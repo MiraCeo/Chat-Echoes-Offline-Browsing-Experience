@@ -25,6 +25,23 @@
   color: #98a2b3;
   font-size: 11px;
 }
+.ceobe-memory-freshness {
+  margin: 10px 0 0;
+  color: #98a2b3;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.ceobe-memory-freshness.is-stale {
+  padding: 8px 12px;
+  border: 1px solid #f5c26b;
+  border-radius: 8px;
+  background: #fffaeb;
+  color: #93370d;
+}
+.ceobe-memory-freshness.is-stale strong {
+  margin-right: 4px;
+  font-weight: 600;
+}
 .ceobe-memory-toolbar {
   display: flex;
   align-items: center;

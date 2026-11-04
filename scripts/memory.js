@@ -11,10 +11,36 @@ import { renderEventTree } from './memory-event-tree.js';
   const searchResults = root.querySelector('[data-memory-search-results]');
   const searchStatus = root.querySelector('[data-memory-search-status]');
   const layerNav = root.querySelector('[data-memory-layer-nav]');
+  const freshness = root.querySelector('[data-memory-freshness]');
   let view = { groups: [], global: null, ungrouped: { count: 0, sessions: [] } };
   let searchIndex = [];
 
   const setStatus = text => { if (status) status.textContent = text; };
+  const stamp = value => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const pad = number => String(number).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
+  function renderFreshness(info) {
+    if (!freshness) return;
+    freshness.replaceChildren();
+    if (!info) { freshness.hidden = true; return; }
+    freshness.hidden = false;
+    const generated = stamp(info.view_generated_at) || '未知时间';
+    if (info.stale) {
+      freshness.classList.add('is-stale');
+      const detail = info.reasons?.length ? `：${info.reasons.join('；')}` : '';
+      freshness.append(
+        make('strong', '', '记忆可能过期'),
+        document.createTextNode(`${detail}。当前数据生成于 ${generated}；运行 npm run memory:import 后 npm run library 重新生成。`),
+      );
+      return;
+    }
+    freshness.classList.remove('is-stale');
+    const built = stamp(info.built_at);
+    freshness.append(document.createTextNode(`记忆数据生成于 ${generated}${built ? ` · 页面构建于 ${built}` : ''}`));
+  }
   const groupFromUrl = () => new URLSearchParams(location.search).get('group');
   const sessionFromUrl = () => new URLSearchParams(location.search).get('session');
   const make = (tag, className, text) => {
@@ -545,6 +571,7 @@ import { renderEventTree } from './memory-event-tree.js';
         ungrouped: data?.ungrouped || { count: 0, sessions: [] },
       };
       buildSearchIndex();
+      renderFreshness(data?.freshness);
       render(groupFromUrl(), sessionFromUrl());
     })
     .catch(error => {

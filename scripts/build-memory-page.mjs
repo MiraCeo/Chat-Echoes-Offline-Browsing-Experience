@@ -6,6 +6,7 @@ import { parseHTML } from 'linkedom';
 import { htmlSafeSvg } from './serialize-html.mjs';
 import { prepareLocalSidebar } from './local-sidebar.mjs';
 import { placeScript, placeStylesheet } from './page-decoration.mjs';
+import { collectMemoryStatus, freshnessForPage } from './memory-freshness.mjs';
 
 const hash = value => createHash('sha256').update(value).digest('hex').slice(0, 12);
 
@@ -30,6 +31,7 @@ export async function buildMemoryPage(projectRoot = resolve(import.meta.dirname,
       <header class="ceobe-memory-header">
         <h1>记忆</h1>
         <p class="ceobe-memory-lede">按账号组与全局浏览；L1–L5 作为详情层级。只读；内容来自本地记忆内核。</p>
+        <p class="ceobe-memory-freshness" data-memory-freshness role="status"></p>
       </header>
       <div class="ceobe-memory-toolbar">
         <div class="ceobe-memory-groups" data-memory-groups role="group" aria-label="记忆分组"></div>
@@ -49,8 +51,12 @@ export async function buildMemoryPage(projectRoot = resolve(import.meta.dirname,
   const source = join(projectRoot, 'data/private/memory-kernel/memory-view.json');
   let doc = { schema: 'ceobe.memory-view/2', groups: [], global: null, ungrouped: { count: 0, sessions: [] } };
   try { doc = JSON.parse(await readFile(source, 'utf8')); } catch { /* optional until overlay is adapted */ }
+  // Freshness is computed at build time: the page is static, so it can only
+  // report the state it was built from. It never claims "page is stale" —
+  // rebuilding the page is what makes it current.
+  const freshness = freshnessForPage(await collectMemoryStatus(projectRoot));
   await mkdir(join(replay, 'public'), { recursive: true });
-  await writeFile(join(replay, 'public', 'memory-data.json'), JSON.stringify(doc), 'utf8');
+  await writeFile(join(replay, 'public', 'memory-data.json'), JSON.stringify({ ...doc, freshness }), 'utf8');
   const projectIndex = {
     schema: 'ceobe.memory-project-index/1',
     groups: Object.fromEntries((doc.groups || []).map(group => [group.group, {
