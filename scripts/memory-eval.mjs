@@ -59,6 +59,11 @@ export function autoMetrics(l4, l2Text = '') {
   const edges = Array.isArray(l4?.edges) ? l4.edges : [];
   const typeCounts = Object.fromEntries(TYPES.map(type => [type, 0]));
   for (const node of nodes) if (typeCounts[node.t] !== undefined) typeCounts[node.t] += 1;
+  const importanceCounts = { core: 0, supporting: 0, optional: 0 };
+  for (const node of nodes) {
+    const key = importanceCounts[node.w] !== undefined ? node.w : 'supporting';
+    importanceCounts[key] += 1;
+  }
   const total = nodes.length || 1;
   const entropy = -TYPES.reduce((sum, type) => {
     const share = typeCounts[type] / total;
@@ -78,6 +83,7 @@ export function autoMetrics(l4, l2Text = '') {
     nodes: nodes.length,
     edges: edges.length,
     type_counts: typeCounts,
+    importance_counts: importanceCounts,
     decision_share: Number((typeCounts.decision / total).toFixed(3)),
     type_entropy: Number(entropy.toFixed(3)),
     type_entropy_normalized: Number((entropy / Math.log2(TYPES.length)).toFixed(3)),
@@ -153,6 +159,9 @@ export function scoreLabels(labels, l4) {
   const statusMismatches = matched
     .filter(pair => pair.label.status && pair.label.status !== pair.prediction.s)
     .map(pair => ({ label: pair.label.id, expected: pair.label.status, actual: pair.prediction.s, text: pair.prediction.x }));
+  const importanceMismatches = matched
+    .filter(pair => pair.prediction.w && pair.label.importance && pair.prediction.w !== pair.label.importance)
+    .map(pair => ({ label: pair.label.id, expected: pair.label.importance, actual: pair.prediction.w, text: pair.prediction.x }));
 
   const labelById = new Map((labels.nodes || []).map(node => [node.id, node]));
   const predictionByNumber = new Map(predictions.map(node => [node.n, node]));
@@ -198,6 +207,9 @@ export function scoreLabels(labels, l4) {
     },
     type_accuracy: matched.length ? Number(((matched.length - typeMismatches.length) / matched.length).toFixed(3)) : null,
     status_accuracy: matched.length ? Number(((matched.length - statusMismatches.length) / matched.length).toFixed(3)) : null,
+    importance_accuracy: matched.some(pair => pair.prediction.w)
+      ? Number(((matched.length - importanceMismatches.length) / matched.length).toFixed(3))
+      : null,
     superseded_edges: {
       expected: expectedPairs.size,
       predicted: predictedSuperseded.length,
@@ -258,6 +270,7 @@ export function formatReport(result) {
   lines.push(`  语义指标（标注 ${semantic.labels} 条 / 抽取 ${semantic.predictions} 条）`);
   lines.push(`    核心召回 ${percent(semantic.recall_core)} · 支撑召回 ${percent(semantic.recall_supporting)} · 可选召回 ${percent(semantic.recall_optional)}`);
   lines.push(`    总召回 ${percent(semantic.recall)} · 精确 ${percent(semantic.precision)} · 类型准确 ${percent(semantic.type_accuracy)} · 状态准确 ${percent(semantic.status_accuracy)}`);
+  if (semantic.importance_accuracy !== null) lines.push(`    重要度准确 ${percent(semantic.importance_accuracy)}`);
   lines.push(`    预算 ${semantic.budget.actual} 条（${semantic.budget.min}–${semantic.budget.max}）${semantic.budget.fit ? '✓' : '✗'}`);
   lines.push(`    superseded 边 精确 ${percent(semantic.superseded_edges.precision)} · 召回 ${percent(semantic.superseded_edges.recall)}（期望 ${semantic.superseded_edges.expected} / 实际 ${semantic.superseded_edges.predicted}）`);
   if (semantic.missed_core.length) {

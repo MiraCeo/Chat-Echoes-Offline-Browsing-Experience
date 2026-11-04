@@ -3,9 +3,9 @@ import { autoMetrics, matchNodes, scoreLabels } from './memory-eval.mjs';
 
 const l4 = {
   nodes: [
-    { n: 1, t: 'decision', s: 'superseded', r: [1, 2], x: '旧方案：先问内推人' },
-    { n: 2, t: 'decision', s: 'decided', r: [3, 3], x: '改判不问' },
-    { n: 3, t: 'problem', s: 'pending', r: [4, 5], x: '简历画像差距' },
+    { n: 1, t: 'decision', s: 'superseded', w: 'core', r: [1, 2], x: '旧方案：先问内推人' },
+    { n: 2, t: 'decision', s: 'decided', w: 'core', r: [3, 3], x: '改判不问' },
+    { n: 3, t: 'problem', s: 'pending', w: 'supporting', r: [4, 5], x: '简历画像差距' },
   ],
   edges: [[1, 2, 'superseded']],
 };
@@ -27,6 +27,7 @@ assert.equal(auto.nodes, 3);
 assert.equal(auto.edges, 1);
 assert.equal(auto.decision_share, 0.667);
 assert.equal(auto.type_counts.problem, 1);
+assert.deepEqual(auto.importance_counts, { core: 2, supporting: 1, optional: 0 });
 assert.equal(auto.superseded_nodes, 1);
 assert.equal(auto.superseded_broken, 0);
 assert.equal(auto.provenance_coverage, 1);
@@ -49,6 +50,7 @@ assert.equal(score.recall_optional, 0);
 assert.equal(score.precision, 1);
 assert.equal(score.type_accuracy, 1);
 assert.equal(score.status_accuracy, 1);
+assert.equal(score.importance_accuracy, 1);
 assert.equal(score.budget.fit, true);
 assert.equal(score.budget.actual, 3);
 assert.deepEqual(score.missed_core, []);
