@@ -95,7 +95,9 @@ export function planMerges(registry, { threshold = 0.85, allowCrossKind = false 
   for (const [key, members] of byName) {
     if (members.size < 2) continue;
     const group = [...members];
-    if (!allowCrossKind && new Set(group.map(entity => entity.kind)).size > 1) continue;
+    // An exact name/alias collision is the same entity regardless of `kind`:
+    // "秋" as an alias of 内推人 (role) and "秋" as its own `other` entry are
+    // one person. The kind guard only applies to fuzzy matches below.
     groups.push({ reason: `同名/别名冲突：${key}`, confidence: 'high', entities: group });
     for (const entity of group) assigned.add(entity.canonical);
   }
