@@ -8,6 +8,7 @@
 .ceobe-asset-details {min-width:0;display:flex;flex-direction:column;gap:4px}
 .ceobe-asset-name {white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;max-width:100%;font-size:14px;cursor:pointer;background:none;border:0;color:inherit}
 .ceobe-asset-state {font-size:11px;color:var(--text-secondary,#888)}
+.ceobe-asset-description {font-size:11px;color:var(--text-secondary,#777);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .ceobe-asset-icon {width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-default,#ddd);border-radius:8px;font-size:9px;color:var(--text-secondary,#777);overflow:hidden}
 .ceobe-asset-icon img {width:100%;height:100%;object-fit:cover}
 .ceobe-asset-actions {display:flex;flex-wrap:wrap;gap:6px;max-height:110px;overflow:auto;font-size:12px}

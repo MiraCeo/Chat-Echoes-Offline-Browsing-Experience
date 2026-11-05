@@ -52,6 +52,7 @@
     "memory:communities": "node scripts/memory-communities.mjs",
     "memory:profile": "node scripts/memory-profile.mjs",
     "memory:search": "node scripts/memory-search-index.mjs",
+    "memory:describe-images": "node scripts/memory-image-describe.mjs",
     "kernel:snapshot": "node scripts/kernel-snapshot.mjs"
   },
   "dependencies": {

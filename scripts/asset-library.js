@@ -70,6 +70,7 @@ function makeCard(item) {
   name.type = 'button'; name.dataset.assetOpen = item.id; name.title = item.name;
   const state = item.download ? (item.preview ? '' : '已保存 · 不支持预览') : '未保存 · 暂不可下载';
   card.append(icon, name);
+  if (item.description) card.append(make('span', item.description, 'ceobe-asset-description'));
   if (state) card.append(make('span', state, 'ceobe-asset-state'));
   card.append(make('div', `${fmtDate(item.date)} · ${fmtSize(item.size)}`, 'ceobe-asset-card-meta'));
   const actions = document.createElement('div');
@@ -111,6 +112,7 @@ function render() {
     if (item.kind === 'image' && item.download) { const img = document.createElement('img'); img.src = item.download; img.alt = ''; img.loading = 'lazy'; img.onerror = () => { img.remove(); icon.textContent = 'IMG'; }; icon.replaceChildren(img); }
     const name = make('button', item.name, 'ceobe-asset-name'); name.type = 'button'; name.dataset.assetOpen = item.id; name.title = item.name;
     const detail = make('div', '', 'ceobe-asset-details'); detail.append(name);
+    if (item.description) detail.append(make('span', item.description, 'ceobe-asset-description'));
     const status = item.download ? (!item.preview ? '已保存 · 此类型暂不支持预览' : '') : '未保存 · 暂不可下载';
     if (status) detail.append(make('span', status, 'ceobe-asset-state'));
     nameCell.append(icon, detail); dateCell.textContent = fmtDate(item.date); dateCell.title = `归档时间：${item.date}`; sizeCell.textContent = fmtSize(item.size);

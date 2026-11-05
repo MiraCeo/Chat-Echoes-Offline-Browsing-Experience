@@ -197,6 +197,21 @@ export async function buildAssetLibrary(root, library) {
     if (!text) continue;
     assetDocs.push({ kind: '文件', title: record.name, text, target: { type: 'asset', id: record.id } });
   }
+  // 图片描述：sidecar 按 sha256 存，构建时 join 进资源记录和检索索引。
+  const descriptions = JSON.parse(await readFile(join(root, 'data/private/memory-kernel/image-descriptions.json'), 'utf8').catch(() => '{"images":{}}'));
+  const shaOf = value => basename(String(value || '')).replace(/\.[a-z0-9]+$/i, '');
+  for (const record of records) {
+    const entry = descriptions.images?.[shaOf(record.download)];
+    if (!entry) continue;
+    record.description = String(entry.summary || '').slice(0, 120);
+    record.key_text = String(entry.ocr || '').slice(0, 300);
+    assetDocs.push({
+      kind: '图片',
+      title: record.name,
+      text: `${entry.summary || ''} ${entry.ocr || ''}`,
+      target: { type: 'asset', id: record.id },
+    });
+  }
   const assetIndex = buildIndex(assetDocs, []);
   await writeFile(join(pub, 'library-search.json'), JSON.stringify(assetIndex), 'utf8');
   await cp(join(root, 'scripts/memory-search-core.mjs'), join(replay, 'memory-search-core.mjs'));
