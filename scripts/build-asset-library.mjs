@@ -7,6 +7,8 @@ import { readArchivedResource } from './archive-resources.mjs';
 import { createLibraryStore } from './library-store.mjs';
 import { htmlSafeSvg } from './serialize-html.mjs';
 import { prepareLocalSidebar } from './local-sidebar.mjs';
+import { buildIndex } from './memory-search-core.mjs';
+import { extractText } from './asset-content.mjs';
 const hash = value => createHash('sha256').update(value).digest('hex').slice(0, 24);
 
 // 资源库每一步都要扫全部会话。缓存的键是“渲染输入”（library-stamps.json 里的 sourceHash:renderer）：
@@ -183,6 +185,22 @@ export async function buildAssetLibrary(root, library) {
       preview: upload.kind === 'image' ? { kind: 'image', url: download } : upload.kind === 'text' ? { kind: 'text', url: download } : null,
     });
   }
+  // 文件内容索引：文本类附件在构建期抽正文，供资料库按内容搜索。
+  // 只索引文本扩展名、单文件上限 200 KB；HTML/SVG 去标签后再索引。
+  const assetDocs = [];
+  for (const record of records) {
+    const rel = String(record.download || '').replace(/^\.\//, '');
+    if (!rel) continue;
+    let text = null;
+    try { text = extractText(record.name, await readFile(join(pub, rel))); }
+    catch { continue; }
+    if (!text) continue;
+    assetDocs.push({ kind: '文件', title: record.name, text, target: { type: 'asset', id: record.id } });
+  }
+  const assetIndex = buildIndex(assetDocs, []);
+  await writeFile(join(pub, 'library-search.json'), JSON.stringify(assetIndex), 'utf8');
+  await cp(join(root, 'scripts/memory-search-core.mjs'), join(replay, 'memory-search-core.mjs'));
+
   const json = document.createElement('script'); json.type = 'application/json'; json.id = 'ceobe-assets-data';
   json.textContent = JSON.stringify(records).replaceAll('<', '\\u003c'); document.body.append(json);
   const personalJson = document.createElement('script'); personalJson.type = 'application/json'; personalJson.id = 'ceobe-library-data';

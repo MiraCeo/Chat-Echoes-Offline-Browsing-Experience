@@ -1,4 +1,5 @@
 import { enhanceSheetGrids } from './sheet-grid.js';
+import { search as searchAssets } from './memory-search-core.mjs';
 
 const pageAbort=window.__ceobeTopPageAbort&&!window.__ceobeTopPageAbort.signal.aborted?window.__ceobeTopPageAbort:(window.__ceobeTopPageAbort=new AbortController()),pageSignal=pageAbort.signal;
 
@@ -10,6 +11,11 @@ const search = document.querySelector('[data-asset-search]');
 const dialog = document.querySelector('.ceobe-assets-dialog');
 let filter = 'all', sort = 'date', direction = -1, previousFocus, requestVersion = 0;
 let view = 'list', sourceFilter = 'all', savedFilter = 'all';
+let searchModel = null;
+fetch(new URL('library-search.json', location.href), { cache: 'no-store' })
+  .then(response => (response.ok ? response.json() : null))
+  .then(index => { searchModel = index; if (search.value.trim()) render(); })
+  .catch(() => { /* 没有内容索引时退回文件名匹配 */ });
 try { if (localStorage.getItem('ceobe.asset.view') === 'grid') view = 'grid'; } catch {}
 
 // —— 文件夹（当标签用）与上传 ——
@@ -75,12 +81,18 @@ function makeCard(item) {
 
 function render() {
   const term = search.value.trim().toLocaleLowerCase();
+  // 文件名/来源匹配优先；内容索引命中作为补充，两者都算匹配。
+  const contentIds = term && searchModel
+    ? new Set(searchAssets(searchModel, term, { limit: 300 }).map(hit => hit.target?.id).filter(Boolean))
+    : null;
+  const nameMatch = x => `${x.name} ${x.names.join(' ')} ${x.sources.map(s => s.title).join(' ')} ${(x.folders || []).map(id => folders.find(f => f.id === id)?.name || '').join(' ')}`.toLocaleLowerCase().includes(term);
   const shown = data.filter(x => (filter === 'all' || x.kind === filter)
     && (sourceFilter === 'all' || x.sources.some(s => s.title === sourceFilter))
     && (savedFilter === 'all' || (savedFilter === 'saved' ? !!x.download : !x.download))
     && (folderFilter === 'all' || tags.get(x.id)?.has(folderFilter))
-    && `${x.name} ${x.names.join(' ')} ${x.sources.map(s => s.title).join(' ')} ${(x.folders || []).map(id => folders.find(f => f.id === id)?.name || '').join(' ')}`.toLocaleLowerCase().includes(term));
-  shown.sort((a, b) => direction * (sort === 'name' ? a.name.localeCompare(b.name, 'zh-CN', { numeric: true }) : sort === 'size' ? (a.size ?? -1) - (b.size ?? -1) : String(a.date).localeCompare(String(b.date))) || a.id.localeCompare(b.id));
+    && (nameMatch(x) || (contentIds && contentIds.has(x.id))));
+  shown.sort((a, b) => (nameMatch(b) - nameMatch(a))
+    || direction * (sort === 'name' ? a.name.localeCompare(b.name, 'zh-CN', { numeric: true }) : sort === 'size' ? (a.size ?? -1) - (b.size ?? -1) : String(a.date).localeCompare(String(b.date))) || a.id.localeCompare(b.id));
   grid.classList.toggle('ceobe-asset-grid', view === 'grid');
   // 表头（名称/归档时间/大小）只在列表模式有意义；用文本定位，避免依赖具体类名。
   document.body.classList.toggle('ceobe-grid-mode', view === 'grid');
