@@ -233,8 +233,9 @@
   （连通分量 + 主线 + 时间，g1 239 节点 → 26 个社区）；27 份社区报告由子代理写成；
   `npm run memory:profile` 汇总成 `memory-profile.md`（四块 + 主线 + 未决 + 社区报告，
   每条带出处），`--check` 校验结构。
-- [ ] **P1-3 检索**（mem0 + Hindsight，2 天）：BM25 + 实体 + 时间三路，RRF 融合；
-  支持**叙事型**查询（「为什么放弃那个方案」），不只是关键词；加 token 效率指标。
+- [x] **P1-3 检索**：`npm run memory:search` 构建期生成 `memory-search.json`
+  （BM25 倒排 + 实体索引 + 时间信号），记忆页按三路 RRF 融合排序；
+  g1 实测 941 条文档 / 11.5k 词 / 189 个实体，索引 783 KB；索引缺失时回退子串匹配。
 - [ ] **P2-3 导出 / MCP**（MemOS，2–3 天）：自描述 bundle（manifest + 分层文件 + schema 版本，
   支持 `--layers`）+ 只读 MCP 工具（`search` / `get` / `list` / `dump`）。
 - [ ] **L5 信念化**（Hindsight，1–2 天）：节点加 `support` 证据计数 + `refined` 历史，

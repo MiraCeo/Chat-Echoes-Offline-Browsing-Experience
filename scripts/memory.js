@@ -1,5 +1,6 @@
 import { renderEventTree } from './memory-event-tree.js';
 import { dayOf, filterTreeAt, parseAsOf } from './memory-tree-time.js';
+import { search as searchMemory } from './memory-search-core.mjs';
 
 (() => {
   const root = document.querySelector('[data-ceobe-memory]');
@@ -15,6 +16,7 @@ import { dayOf, filterTreeAt, parseAsOf } from './memory-tree-time.js';
   const freshness = root.querySelector('[data-memory-freshness]');
   let view = { groups: [], global: null, ungrouped: { count: 0, sessions: [] } };
   let searchIndex = [];
+  let searchModel = null;
 
   const setStatus = text => { if (status) status.textContent = text; };
   const stamp = value => {
@@ -495,12 +497,19 @@ import { dayOf, filterTreeAt, parseAsOf } from './memory-tree-time.js';
   }
 
   function renderSearch() {
-    const query = searchInput?.value.trim().toLowerCase() || '';
+    const query = searchInput?.value.trim() || '';
     if (!query) {
       clearSearch();
       return;
     }
-    const hits = searchIndex.filter(entry => `${entry.title} ${entry.text}`.toLowerCase().includes(query)).slice(0, 60);
+    // BM25 + entity + time when the static index is available; substring as a
+    // fallback so the page still works if the index was not built.
+    const hits = searchModel
+      ? searchMemory(searchModel, query, { limit: 60 })
+      : searchIndex
+        .filter(entry => `${entry.title} ${entry.text}`.toLowerCase().includes(query.toLowerCase()))
+        .slice(0, 60)
+        .map(entry => ({ ...entry, score: 0 }));
     searchResults.replaceChildren();
     searchResults.hidden = false;
     content.hidden = true;
@@ -516,10 +525,12 @@ import { dayOf, filterTreeAt, parseAsOf } from './memory-tree-time.js';
       button.append(make('strong', '', `${hit.kind} · ${hit.title}`), make('span', '', hit.text.slice(0, 180)));
       button.addEventListener('click', () => {
         clearSearch();
-        if (hit.target.type === 'session') chooseSession(hit.target.session);
-        else if (hit.target.type === 'group') choose(hit.target.group);
-        else if (hit.target.type === 'doc') openThreadDoc(hit.target.name);
-        else if (hit.target.type === 'href' && hit.target.href) location.href = hit.target.href;
+        if (hit.target?.type === 'session') {
+          const session = view.sessions.find(item => item.id === hit.target.id);
+          if (session) chooseSession(session);
+        } else if (hit.target?.type === 'group') choose(hit.target.group);
+        else if (hit.target?.type === 'doc') openThreadDoc(hit.target.name);
+        else if (hit.target?.type === 'href' && hit.target.href) location.href = hit.target.href;
         else choose('global');
       });
       searchResults.append(button);
@@ -672,18 +683,24 @@ import { dayOf, filterTreeAt, parseAsOf } from './memory-tree-time.js';
     else renderGroup(current);
   }
 
-  fetch(new URL('memory-data.json', location.href), { cache: 'no-store' })
-    .then(response => {
+  const searchModelPromise = fetch(new URL('memory-search.json', location.href), { cache: 'no-store' })
+    .then(response => (response.ok ? response.json() : null))
+    .catch(() => null);
+  Promise.all([
+    fetch(new URL('memory-data.json', location.href), { cache: 'no-store' }).then(response => {
       if (!response.ok) throw new Error('本地记忆数据不可用');
       return response.json();
-    })
-    .then(data => {
+    }),
+    searchModelPromise,
+  ])
+    .then(([data, index]) => {
       view = {
         groups: Array.isArray(data?.groups) ? data.groups : [],
         global: data?.global || null,
         sessions: Array.isArray(data?.sessions) ? data.sessions : [],
         ungrouped: data?.ungrouped || { count: 0, sessions: [] },
       };
+      searchModel = index;
       buildSearchIndex();
       renderFreshness(data?.freshness);
       render(groupFromUrl(), sessionFromUrl());

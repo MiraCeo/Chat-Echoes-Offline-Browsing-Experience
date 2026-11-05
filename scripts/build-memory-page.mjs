@@ -7,6 +7,7 @@ import { htmlSafeSvg } from './serialize-html.mjs';
 import { prepareLocalSidebar } from './local-sidebar.mjs';
 import { placeScript, placeStylesheet } from './page-decoration.mjs';
 import { collectMemoryStatus, freshnessForPage } from './memory-freshness.mjs';
+import { buildIndex } from './memory-search-core.mjs';
 
 const hash = value => createHash('sha256').update(value).digest('hex').slice(0, 12);
 
@@ -76,12 +77,41 @@ export async function buildMemoryPage(projectRoot = resolve(import.meta.dirname,
   };
   await writeFile(join(replay, 'public', 'memory-session-index.json'), JSON.stringify(sessionIndex), 'utf8');
 
+  // Static search index: BM25 + entity + time, scored in the browser.
+  const searchDocs = [];
+  const addDoc = (kind, title, text, target, extra = {}) => {
+    const body = String(text || '').replace(/\s+/g, ' ').trim();
+    if (body) searchDocs.push({ kind, title, text: body, target, ...extra });
+  };
+  for (const group of doc.groups || []) {
+    addDoc('组', group.name, `${group.name} ${group.as_of}`, { type: 'group', group: group.group }, { group: group.group });
+    for (const key of group.block_order || []) {
+      for (const entry of group.blocks?.[key] || []) {
+        addDoc('记忆', `${group.name} · ${group.block_labels?.[key] || key}`, `${entry.key || ''} ${entry.text || ''}`, { type: 'group', group: group.group }, { group: group.group });
+      }
+    }
+    for (const mainline of group.mainlines || []) addDoc('主线', `${group.name} · ${mainline.label}`, mainline.label, { type: 'group', group: group.group }, { group: group.group });
+  }
+  for (const session of doc.sessions || []) {
+    addDoc('会话', session.title, `${session.title} ${session.l1?.summary || ''} ${(session.l1?.tags || []).join(' ')}`, { type: 'session', id: session.id }, { group: session.group });
+    for (const node of session.l4?.nodes || []) addDoc('L4', `${session.title} · #${node.n}`, node.x, { type: 'session', id: session.id }, { group: session.group });
+  }
+  for (const node of doc.global?.tree_data?.nodes || []) {
+    addDoc('L5', `L5 #${node.n}`, node.x, { type: 'global' }, { valid_at: node.valid_at || null, invalid_at: node.invalid_at || null });
+  }
+  for (const threadDoc of doc.global?.thread_docs || []) addDoc('分册', threadDoc.name, String(threadDoc.html || '').replace(/<[^>]*>/g, ' '), { type: 'doc', name: threadDoc.name });
+  for (const mainline of doc.global?.mainlines || []) addDoc('全局主线', mainline.label, mainline.label, { type: 'global' });
+  for (const project of doc.global?.projects || []) addDoc('项目', project.label, project.label, { type: 'global' });
+  const entities = JSON.parse(await readFile(join(projectRoot, 'data/private/memory-kernel/source/entities.json'), 'utf8').catch(() => '{"entities":[]}'));
+  const searchIndex = buildIndex(searchDocs, entities.entities || []);
+  await writeFile(join(replay, 'public', 'memory-search.json'), JSON.stringify(searchIndex), 'utf8');
+
   // Page modules are copied with a content hash and the import specifiers in
   // memory.js are rewritten to match, so the page never serves a stale module.
   let script = await readFile(join(projectRoot, 'scripts/memory.js'), 'utf8');
-  for (const name of ['memory-event-tree.js', 'memory-tree-time.js']) {
+  for (const name of ['memory-event-tree.js', 'memory-tree-time.js', 'memory-search-core.mjs']) {
     const source = await readFile(join(projectRoot, 'scripts', name), 'utf8');
-    const file = name.replace(/\.js$/, '') + '.' + hash(source) + '.js';
+    const file = name.replace(/\.(js|mjs)$/, '') + '.' + hash(source) + (name.endsWith('.mjs') ? '.mjs' : '.js');
     await writeFile(join(replay, file), source);
     script = script.replace(`'./${name}'`, `'./${file}'`);
   }
