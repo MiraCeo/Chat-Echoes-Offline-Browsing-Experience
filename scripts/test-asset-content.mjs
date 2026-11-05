@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { extractText, MAX_BYTES, TEXT_FILE } from './asset-content.mjs';
+import { deflateRawSync } from 'node:zlib';
+import { extractDocxText, extractText, MAX_BYTES, TEXT_FILE } from './asset-content.mjs';
 
 // Text extensions are indexed; binaries are not.
 assert.ok(TEXT_FILE.test('项目介绍.md'));
@@ -28,4 +29,55 @@ assert.ok(extractText('ok.txt', Buffer.alloc(MAX_BYTES, 0x61)));
 // Empty content is not indexable.
 assert.equal(extractText('empty.md', Buffer.from('   \n  ')), '');
 
-console.log('PASS asset content: extension filter, HTML stripping, size cap, whitespace collapse');
+// A minimal .docx: a zip whose word/document.xml holds the body text.
+function makeZip(files) {
+  const locals = [];
+  const centrals = [];
+  let offset = 0;
+  for (const { name, text } of files) {
+    const nameBuf = Buffer.from(name, 'utf8');
+    const data = Buffer.from(text, 'utf8');
+    const compressed = deflateRawSync(data);
+    const head = Buffer.alloc(30);
+    head.writeUInt32LE(0x04034b50, 0);
+    head.writeUInt16LE(20, 4);
+    head.writeUInt16LE(8, 8);
+    head.writeUInt32LE(compressed.length, 18);
+    head.writeUInt32LE(data.length, 22);
+    head.writeUInt16LE(nameBuf.length, 26);
+    const local = Buffer.concat([head, nameBuf, compressed]);
+    const entry = Buffer.alloc(46);
+    entry.writeUInt32LE(0x02014b50, 0);
+    entry.writeUInt16LE(20, 4);
+    entry.writeUInt16LE(20, 6);
+    entry.writeUInt16LE(8, 10);
+    entry.writeUInt32LE(compressed.length, 20);
+    entry.writeUInt32LE(data.length, 24);
+    entry.writeUInt16LE(nameBuf.length, 28);
+    entry.writeUInt32LE(offset, 42);
+    centrals.push(Buffer.concat([entry, nameBuf]));
+    locals.push(local);
+    offset += local.length;
+  }
+  const directory = Buffer.concat(centrals);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0);
+  end.writeUInt16LE(files.length, 8);
+  end.writeUInt16LE(files.length, 10);
+  end.writeUInt32LE(directory.length, 12);
+  end.writeUInt32LE(offset, 16);
+  return Buffer.concat([...locals, directory, end]);
+}
+
+const docx = makeZip([{
+  name: 'word/document.xml',
+  text: '<w:document><w:body><w:p><w:r><w:t>你好</w:t></w:r></w:p><w:p><w:r><w:t>世界 &amp; 朋友</w:t></w:r></w:p></w:body></w:document>',
+}]);
+assert.equal(extractDocxText(docx), '你好 世界 & 朋友');
+assert.equal(extractText('项目介绍.docx', docx), '你好 世界 & 朋友');
+
+// A zip without word/document.xml is not a docx.
+assert.equal(extractDocxText(makeZip([{ name: 'other.xml', text: '<x/>' }])), null);
+assert.equal(extractDocxText(Buffer.from('not a zip')), null);
+
+console.log('PASS asset content: extension filter, HTML stripping, size cap, docx unpacking');
