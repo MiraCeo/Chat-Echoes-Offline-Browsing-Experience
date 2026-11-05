@@ -229,10 +229,10 @@
 - [x] **P1-4d 补边 + 冲突复核**：`npm run memory:apply` 把判定写回 L5——合并节点
   （`src` 并集、重要度取最高）、补 `superseded` 边、存疑项写进 `review.json`；
   g1 实测 241 → 239 节点、112 → 111 边，校验 PASS；幂等（已合并的对跳过）。
-- [ ] **P1-2 社区报告 + L3.1 常驻答案**（GraphRAG + Hindsight，3–4 天）：
-  按**事件**聚类（不是按实体）→ 每个社区生成报告（`title` / `summary` / `findings` / `rank`）
-  → 合成 **`memory-profile.md`**（我是谁 / 在手的事 / 等着的事 / 近期变化 + 当前主线 + 未决清单，
-  每条带出处）。这是模型接手的第一入口。
+- [x] **P1-2 社区报告 + L3.1 常驻答案**：`npm run memory:communities` 按事件切社区
+  （连通分量 + 主线 + 时间，g1 239 节点 → 26 个社区）；27 份社区报告由子代理写成；
+  `npm run memory:profile` 汇总成 `memory-profile.md`（四块 + 主线 + 未决 + 社区报告，
+  每条带出处），`--check` 校验结构。
 - [ ] **P1-3 检索**（mem0 + Hindsight，2 天）：BM25 + 实体 + 时间三路，RRF 融合；
   支持**叙事型**查询（「为什么放弃那个方案」），不只是关键词；加 token 效率指标。
 - [ ] **P2-3 导出 / MCP**（MemOS，2–3 天）：自描述 bundle（manifest + 分层文件 + schema 版本，
