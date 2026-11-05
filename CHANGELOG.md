@@ -21,7 +21,10 @@
   状态准确、`superseded` 边）对标注文件评分；试点会话核心召回 45.5%、总召回 14.3%、精确 80.0%；
 - 新增 `npm run kernel:snapshot`：把内核源（`data/private/memory-kernel/source/`）快照到
   `data/private/archive-backups/kernel-<时间戳>/`，带 manifest（文件数、字节数、关键文件哈希）；
-  支持 `--list`、`--restore <name>`（恢复前自动留 pre-restore）、`--keep <n>` 保留策略。
+  支持 `--list`、`--restore <name>`（恢复前自动留 pre-restore）、`--keep <n>` 保留策略；
+- 新增 `npm run memory:entities`：实体合并与对齐。注册表内按同名/别名冲突 + 近似候选合并；
+  `--events <dir>` 把 L4 的 `ents` 对齐到注册表（相似度 + 包含关系，纯数字名不参与包含匹配），
+  未注册的按会话数定 tier 自动登记；`--apply` / `--register` 写入前自动备份。
 
 ## 未发布（1.3.1）
 
