@@ -58,6 +58,7 @@ export function buildIndex(docs, entities = []) {
       // Only a display excerpt is stored; the full text is tokenized above.
       text: String(doc.text || '').slice(0, 200),
       group: doc.group || null,
+      source: doc.source || null,
       target: doc.target || null,
       valid_at: doc.valid_at || null,
       invalid_at: doc.invalid_at || null,
