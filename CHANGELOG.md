@@ -24,7 +24,10 @@
   支持 `--list`、`--restore <name>`（恢复前自动留 pre-restore）、`--keep <n>` 保留策略；
 - 新增 `npm run memory:entities`：实体合并与对齐。注册表内按同名/别名冲突 + 近似候选合并；
   `--events <dir>` 把 L4 的 `ents` 对齐到注册表（相似度 + 包含关系，纯数字名不参与包含匹配），
-  未注册的按会话数定 tier 自动登记；`--apply` / `--register` 写入前自动备份。
+  未注册的按会话数定 tier 自动登记；`--apply` / `--register` 写入前自动备份；
+- 新增 `npm run memory:candidates`：L5 事件候选生成，纯机械、不调 LLM。跨会话节点共享
+  tier1/2 实体且时间差在窗口内即成为候选，按实体 IDF 排序；已合并的对会标记。
+  g1 实测：249 节点 → 1123 对候选（strong 389），覆盖已知 12 对合并中的 10 对。
 
 ## 未发布（1.3.1）
 
