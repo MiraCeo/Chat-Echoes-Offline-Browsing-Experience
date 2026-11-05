@@ -46,9 +46,9 @@ assert.ok(hits.length >= 2);
 assert.ok(hits[0].text.includes('TourGrid'));
 assert.ok(hits.every(hit => typeof hit.score === 'number'));
 
-// A query with no matching term still returns time-ranked docs (RRF includes
-// the time signal), but the top hit is not a term match.
+// A query with no matching term returns nothing: the time signal only
+// reorders matches, it must not introduce docs.
 const empty = search(index, '完全不存在的词', { limit: 4 });
-assert.ok(empty.length > 0);
+assert.equal(empty.length, 0);
 
 console.log('PASS memory search: tokenize, entity match, BM25, entity/time signals, RRF');

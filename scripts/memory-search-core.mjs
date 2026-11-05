@@ -125,9 +125,15 @@ export function timeRanking(index) {
 
 /** Reciprocal rank fusion over the three signals. */
 export function search(index, query, { limit = 60, k = 60 } = {}) {
-  const signals = [bm25(index, query), entityHits(index, query), timeRanking(index)];
+  const term = bm25(index, query);
+  const entity = entityHits(index, query);
+  // Only docs that matched a content signal are candidates; the time signal
+  // reorders them (it ranks every doc, so it must not introduce new ones).
+  const matched = new Set([...term.map(([id]) => id), ...entity.map(([id]) => id)]);
+  if (!matched.size) return [];
+  const time = timeRanking(index).filter(([id]) => matched.has(id));
   const fused = new Map();
-  for (const ranking of signals) {
+  for (const ranking of [term, entity, time]) {
     ranking.forEach(([id], rank) => {
       fused.set(id, (fused.get(id) || 0) + 1 / (k + rank + 1));
     });
