@@ -214,6 +214,9 @@
   - g1 全组重抽：249 节点 / 46 条 superseded / core 84。
 - [x] **g1 L5 归并 + 页面接入**：249 → 241 节点（97%）、112 条边、5 条跨会话 superseded；
   `memory.html?group=g1` 按主线分组显示。
+- [x] **内核快照机制**：`npm run kernel:snapshot` 把内核源快照到
+  `data/private/archive-backups/kernel-<时间戳>/`，带 manifest（文件数 / 字节数 / 关键文件哈希）；
+  支持 `--list` / `--restore <name>`（恢复前自动留 pre-restore）/ `--keep <n>`。
 
 ### 待做（按目的重排，2026-11-05）
 

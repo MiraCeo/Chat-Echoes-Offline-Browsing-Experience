@@ -18,7 +18,10 @@
   按主线分组显示节点、来源和关系，`core` 节点带紫色左边框；没有该文件的组不显示这一节；
 - 新增 `npm run memory:eval`：抽取质量评测，自动指标（类型分布/熵、正文长度、节点密度、
   `superseded` 一致性、来源覆盖）无需标注，语义指标（核心/支撑/可选召回、精确、类型准确、
-  状态准确、`superseded` 边）对标注文件评分；试点会话核心召回 45.5%、总召回 14.3%、精确 80.0%。
+  状态准确、`superseded` 边）对标注文件评分；试点会话核心召回 45.5%、总召回 14.3%、精确 80.0%；
+- 新增 `npm run kernel:snapshot`：把内核源（`data/private/memory-kernel/source/`）快照到
+  `data/private/archive-backups/kernel-<时间戳>/`，带 manifest（文件数、字节数、关键文件哈希）；
+  支持 `--list`、`--restore <name>`（恢复前自动留 pre-restore）、`--keep <n>` 保留策略。
 
 ## 未发布（1.3.1）
 
