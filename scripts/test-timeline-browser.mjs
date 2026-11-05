@@ -32,7 +32,8 @@ try {
       href: row?.getAttribute('href'),
       previousIsProjects: Boolean(previous?.matches('[data-ceobe-projects-link]')),
       nextHasMore: Boolean(next && (next.textContent.trim().startsWith('更多')
-        || (next.matches('[data-ceobe-memory-row]') && next.nextElementSibling?.textContent.trim().startsWith('更多')))),
+        || (next.matches('[data-ceobe-memory-row]') && (next.nextElementSibling?.textContent.trim().startsWith('更多')
+          || (next.nextElementSibling?.matches('[data-ceobe-search-row]') && next.nextElementSibling?.nextElementSibling?.textContent.trim().startsWith('更多')))))),
       months: [...document.querySelectorAll('.ceobe-timeline-month h2')].map(node => node.textContent),
       monthCounts: [...document.querySelectorAll('.ceobe-timeline-month-count')].map(node => node.textContent.trim()),
       entries: rows.length,
