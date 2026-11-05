@@ -64,6 +64,8 @@ try {
   if (source) {
     await page.goto(new URL(source.page, origin + '/').href, { waitUntil:'networkidle' });
     await Promise.all([page.waitForURL('**/assets.html'), page.locator('[data-ceobe-asset-library-link]').filter({visible:true}).first().click()]);
+    // Turbo 导航后模块重新执行，等行渲染完再断言。
+    await page.waitForFunction(expected => document.querySelectorAll('[data-asset-id]').length === expected, data.length, { timeout: 10000 });
     assert.equal(await page.locator('[data-asset-id]').count(),data.length);
   }
   console.log('RESULT', JSON.stringify({rows:data.length,previews:data.filter(x=>x.preview).length,errors,failures}));
