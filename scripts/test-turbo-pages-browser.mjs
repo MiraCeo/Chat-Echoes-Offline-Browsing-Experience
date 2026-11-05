@@ -17,6 +17,15 @@ try {
     await page.locator(selector + ':visible').first().click();
     await page.waitForFunction(value => location.pathname.endsWith(value), path, { timeout: 10000 });
     await page.waitForFunction(() => (document.querySelector('main')?.textContent.trim().length || 0) > 40, { timeout: 5000 });
+    // The active top-level item is set on turbo:load; wait for it to settle
+    // instead of asserting on the first frame (the memory page renders its L5
+    // section after a fetch, which can delay the nav update under load).
+    await page.waitForFunction(expected => {
+      const active = [...document.querySelectorAll('[data-ceobe-import-share],[data-ceobe-asset-library-link],[data-ceobe-projects-link],[data-ceobe-timeline-row],[data-ceobe-memory-row]')]
+        .filter(node => node.hasAttribute('data-active'))
+        .map(node => node.getAttribute('aria-label') || node.textContent.trim());
+      return active.length > 0 && active.every(value => value === expected);
+    }, label, { timeout: 5000 });
     const state = await page.evaluate(() => ({
       path: location.pathname,
       marker: document.getElementById('stage-slideover-sidebar')?.dataset.persistentMarker || null,
