@@ -15,6 +15,7 @@ export async function buildMemoryNav(root, pageCache = null, selected = null) {
     const document = pageCache ? await pageCache.load(page) : parseHTML(await readFile(join(base, page), 'utf8')).document;
     const prefix = page.startsWith('conversations/') ? '../' : './';
     for (const node of document.querySelectorAll('[data-ceobe-memory-row]')) node.remove();
+    for (const node of document.querySelectorAll('[data-ceobe-search-row]')) node.remove();
     const projects = document.querySelector('[data-ceobe-projects-link]');
     if (!projects?.parentElement) continue;
     const row = projects.cloneNode(true);
@@ -39,6 +40,24 @@ export async function buildMemoryNav(root, pageCache = null, selected = null) {
     const timeline = document.querySelector('[data-ceobe-timeline-row]');
     if (timeline?.parentElement) timeline.after(row);
     else projects.after(row);
+    // 统一搜索入口：克隆同一行，放在「记忆」之后。
+    const searchRow = row.cloneNode(true);
+    searchRow.removeAttribute('data-ceobe-memory-row');
+    searchRow.removeAttribute('data-active');
+    searchRow.removeAttribute('aria-current');
+    searchRow.dataset.ceobeSearchRow = '';
+    searchRow.setAttribute('href', prefix + 'search.html');
+    searchRow.setAttribute('aria-label', '搜索');
+    searchRow.setAttribute('title', '搜索');
+    searchRow.style.setProperty('pointer-events', 'auto', 'important');
+    const searchLabel = searchRow.querySelector('.truncate');
+    if (searchLabel) searchLabel.textContent = '搜索';
+    for (const use of searchRow.querySelectorAll('use')) use.setAttribute('href', prefix + 'cdn/assets/sprites-shell-097001e7.svg#search');
+    if (page === 'search.html') {
+      searchRow.dataset.active = '';
+      searchRow.setAttribute('aria-current', 'page');
+    }
+    row.after(searchRow);
     if (pageCache) pageCache.markDirty(page);
     else await writeFile(join(base, page), '<!DOCTYPE html>\n' + htmlSafeSvg(document.documentElement.outerHTML));
   }

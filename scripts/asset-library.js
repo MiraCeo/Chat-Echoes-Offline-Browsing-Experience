@@ -459,6 +459,13 @@ document.addEventListener('click', event => {
 dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
 if(grid)render();
 
+// 统一搜索的深链：assets.html?asset=<id> 直接打开该资源的预览。
+const deepAsset = new URLSearchParams(location.search).get('asset');
+if (deepAsset) {
+  const item = data.find(x => x.id === deepAsset);
+  if (item) requestAnimationFrame(() => open(item, null));
+}
+
 // 选中表格区域后复制，按 TSV 输出，粘到 Excel / Sheets 能直接分列。
 document.addEventListener('copy', event => {
   const selection = document.getSelection();

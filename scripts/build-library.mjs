@@ -19,6 +19,8 @@ import { buildTimelinePage } from './build-timeline-page.mjs';
 import { buildTimelineNav } from './build-timeline-nav.mjs';
 import { buildMemoryPage } from './build-memory-page.mjs';
 import { buildMemoryNav } from './build-memory-nav.mjs';
+import { buildUnifiedIndex } from './build-unified-search.mjs';
+import { buildSearchPage } from './build-search-page.mjs';
 import { writeTimelineIndex } from './timeline-index.mjs';
 import { buildChatMenu } from './build-chat-menu.mjs';
 import { createPageCache } from './page-cache.mjs';
@@ -260,11 +262,14 @@ async function buildReader(library, selectedId, onlyIds = null) {
   await step('project-detail', async () => buildProjectDetail(projectRoot, library));
   await step('timeline-page', async () => buildTimelinePage(projectRoot));
   await step('memory-page', async () => buildMemoryPage(projectRoot));
+  // 搜索页要在 decoratePages 之前建好，才能拿到侧栏控件与导航行。
+  await step('search-page', async () => buildSearchPage(projectRoot));
   // 页面装饰指纹：渲染器 + 项目清单 + 这一页自己的会话条目 + 页面字节。
   // 删除/重命名/置顶一个会话时，其余页面指纹不变，于是不解析、不写盘——这正是删除的主要开销。
   const plan = await decorationPlan(projectRoot, { renderer, library, homeId: selected?.id || 'empty' });
   await decoratePages(library, plan.changed);
   await step('search-index', async () => writeSearchIndex(projectRoot, library));
+  await step('unified-search', async () => buildUnifiedIndex(projectRoot));
   await step('timeline-index', async () => writeTimelineIndex(projectRoot, library));
   await step('timeline-summaries', async () => {
     const source = join(projectRoot, 'data/private/timeline-summaries.json');
