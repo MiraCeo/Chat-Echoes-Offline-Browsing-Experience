@@ -273,8 +273,12 @@
     detail.append(detailBar, detailScroll);
     detailHost.append(detail);
 
-    const maxScroll = () => Math.max(0, detailWidth - detailScroll.clientWidth);
+    // 用实际 scrollWidth 而不是理论宽度：卡片可能比一天更宽，理论值会少算。
+    const maxScroll = () => Math.max(0, detailScroll.scrollWidth - detailScroll.clientWidth);
     const clamp = value => Math.max(0, Math.min(maxScroll(), value));
+    // 默认停在最新；用户一旦自己滚动就解除吸附，避免抢回位置。
+    let pinned = true;
+    const pinLatest = () => { if (pinned) detailScroll.scrollLeft = maxScroll(); };
     const updateWindow = () => {
       const left = detailScroll.scrollLeft;
       const width = detailScroll.clientWidth;
@@ -331,18 +335,25 @@
       if (event.key === 'Home') { event.preventDefault(); detailScroll.scrollLeft = 0; }
       if (event.key === 'End') { event.preventDefault(); detailScroll.scrollLeft = maxScroll(); }
     });
-    latestButton.addEventListener('click', () => { detailScroll.scrollLeft = maxScroll(); });
+    latestButton.addEventListener('click', () => { pinned = true; detailScroll.scrollLeft = maxScroll(); });
 
     detailScroll.addEventListener('scroll', updateWindow, { passive: true });
+    // 用户主动滚动/拖拽/按键后不再吸附到最新。
+    for (const type of ['wheel', 'pointerdown', 'touchstart']) detailScroll.addEventListener(type, () => { pinned = false; }, { passive: true });
+    detailScroll.addEventListener('keydown', () => { pinned = false; });
     if (typeof ResizeObserver !== 'undefined') {
-      const observer = new ResizeObserver(updateWindow);
+      const observer = new ResizeObserver(() => { updateWindow(); pinLatest(); });
       observer.observe(detailScroll);
+      observer.observe(detailChart);
       observer.observe(overviewScroll);
     } else {
-      window.addEventListener('resize', updateWindow);
+      window.addEventListener('resize', () => { updateWindow(); pinLatest(); });
     }
     detailScroll.scrollLeft = maxScroll();
     requestAnimationFrame(updateWindow);
+    // 图片/字体加载会改变宽度，加载完再贴一次最新。
+    window.addEventListener('load', pinLatest, { once: true });
+    setTimeout(pinLatest, 600);
     status(`${items.length} 个会话 · ${totalDays} 天 · ${totalRounds} 轮对话 · ${lanes.length} 条泳道 · 本地时间`);
   };
 

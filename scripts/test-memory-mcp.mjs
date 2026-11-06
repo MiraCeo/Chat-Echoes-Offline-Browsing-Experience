@@ -34,8 +34,8 @@ try {
   assert.equal(init.result.protocolVersion, '2024-11-05');
 
   const list = await handleMessage(reader, { jsonrpc: '2.0', id: 2, method: 'tools/list' });
-  assert.deepEqual(list.result.tools.map(tool => tool.name), ['search', 'get', 'list', 'dump']);
-  assert.equal(TOOLS.length, 4);
+  assert.deepEqual(list.result.tools.map(tool => tool.name), ['search', 'get', 'list', 'entity', 'dump']);
+  assert.equal(TOOLS.length, 5);
 
   const search = await handleMessage(reader, { jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'search', arguments: { query: '甲' } } });
   const hits = JSON.parse(search.result.content[0].text);
