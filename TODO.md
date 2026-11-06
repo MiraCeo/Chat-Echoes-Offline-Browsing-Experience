@@ -236,10 +236,13 @@
 - [x] **P1-3 检索**：`npm run memory:search` 构建期生成 `memory-search.json`
   （BM25 倒排 + 实体索引 + 时间信号），记忆页按三路 RRF 融合排序；
   g1 实测 941 条文档 / 11.5k 词 / 189 个实体，索引 783 KB；索引缺失时回退子串匹配。
-- [ ] **P2-3 导出 / MCP**（MemOS，2–3 天）：自描述 bundle（manifest + 分层文件 + schema 版本，
-  支持 `--layers`）+ 只读 MCP 工具（`search` / `get` / `list` / `dump`）。
-- [ ] **L5 信念化**（Hindsight，1–2 天）：节点加 `support` 证据计数 + `refined` 历史，
-  新证据是「强化/削弱/扩展」而不是覆盖。
+- [x] **P2-3 导出 / MCP**：`npm run memory:export` 导出自描述记忆包（manifest + README +
+  profile / l5 / communities / entities / search / images 六层，`--layers` 可选）；
+  `npm run memory:mcp` 起只读 MCP 服务（stdio JSON-RPC），四个工具
+  `search` / `get` / `list` / `dump`。
+- [x] **L5 信念化**：节点加 `support`（来源数 / 会话数）和 `refined`（证据时间线），
+  导入时从 `src` 和 `superseded` 边推导；组内 L5 无 `ts` 时用「会话首条时间 + 轮次偏移 +
+  L4 节点号」补出；记忆页显示「支持：N 个来源 · M 个会话」。
 - [ ] **P2-1 实体反向索引**（1.4）：从实体查到它出现在哪些事件里（「关于 TourGrid 我知道什么」）；
   与 episode 反向索引（`cited_by`）同批做。
 - [ ] **P2-2 分册可再生成**（1.4）：分册正文 = 成员节点时间轴 + 摘要，人工编辑作 overlay。

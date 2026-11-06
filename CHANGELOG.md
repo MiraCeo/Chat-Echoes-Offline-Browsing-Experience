@@ -56,7 +56,11 @@
   文件哈希）+ `README.md`（怎么读）+ 分层文件（profile / l5 / communities / entities /
   search / images），`--layers` 可选层；
 - 新增 `npm run memory:mcp`：记忆包的**只读 MCP 服务**（stdio JSON-RPC），四个工具
-  `search` / `get` / `list` / `dump`，不写、不联网。
+  `search` / `get` / `list` / `dump`，不写、不联网；
+- L5 节点加**信念模型**：`support`（来源数 / 会话数）和 `refined`（证据时间线：每个来源 +
+  推翻事件），导入时从 `src` 和 `superseded` 边推导，不写进内核产物；
+  组内 L5 没有 `ts` 时用「会话首条时间 + 轮次偏移 + L4 节点号」补出，同轮次按节点号分先后；
+  记忆页在节点下显示「支持：N 个来源 · M 个会话」。
 
 ## 未发布（1.3.1）
 

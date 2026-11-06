@@ -41,10 +41,31 @@ export function parseAsOf(value) {
  * Edges stay arrays so older readers that only look at `[from, to, type]`
  * keep working.
  */
-export function deriveTreeWindows(tree) {
+const ROUND_MS = 5 * 60 * 1000;
+const NODE_MS = 1000;
+
+/**
+ * Earliest source timestamp of a node. The global tree carries `ts`, but the
+ * per-group trees do not, so fall back to the first source's session date plus
+ * its round offset. The L4 node number breaks ties inside one round, so a
+ * supersede edge between two nodes of the same round still points forward.
+ */
+export function sourceTime(node, times) {
+  let best = null;
+  for (const source of node?.src || []) {
+    const first = times?.get?.(source.s);
+    if (!Number.isFinite(first)) continue;
+    const time = first + (source.r?.[0] || 0) * ROUND_MS + (source.n || 0) * NODE_MS;
+    if (best === null || time < best) best = time;
+  }
+  return best;
+}
+
+export function deriveTreeWindows(tree, times = null) {
   const nodes = Array.isArray(tree?.nodes) ? tree.nodes : [];
   const edges = Array.isArray(tree?.edges) ? tree.edges : [];
   const byNumber = new Map(nodes.map(node => [node.n, node]));
+  const tsOf = new Map(nodes.map(node => [node.n, Number.isFinite(node.ts) ? node.ts : sourceTime(node, times)]));
   const superseder = new Map();
   for (const edge of edges) {
     if (edge?.[2] !== SUPERSEDED) continue;
@@ -53,21 +74,34 @@ export function deriveTreeWindows(tree) {
   }
   const derivedNodes = nodes.map(node => {
     const target = superseder.get(node.n) || null;
+    const ts = tsOf.get(node.n) ?? null;
+    const targetTs = target ? tsOf.get(target.n) ?? null : null;
+    const sources = Array.isArray(node.src) ? node.src : [];
+    // Belief model: how many sources back this node, and the evidence timeline
+    // (each source plus the supersede event). Derived, never hand-edited.
+    const support = {
+      sources: sources.length,
+      sessions: new Set(sources.map(source => source.s)).size,
+    };
+    const refined = [
+      ...sources.map(source => ({ kind: 'source', session: source.s, round: source.r?.[0] ?? null })),
+      ...(target ? [{ kind: 'superseded', by: target.n, at: targetTs }] : []),
+    ];
     return {
       ...node,
-      valid_at: Number.isFinite(node.ts) ? node.ts : null,
-      invalid_at: target && Number.isFinite(target.ts) ? target.ts : null,
+      valid_at: ts,
+      invalid_at: target ? targetTs : null,
       superseded_by: target ? target.n : null,
+      support,
+      refined,
     };
   });
   const derivedEdges = edges.map(edge => {
     const [from, to, type] = edge;
-    const source = byNumber.get(from);
-    const target = byNumber.get(to);
     return [
       from, to, type,
-      Number.isFinite(source?.ts) ? source.ts : null,
-      type === SUPERSEDED && Number.isFinite(target?.ts) ? target.ts : null,
+      tsOf.get(from) ?? null,
+      type === SUPERSEDED ? tsOf.get(to) ?? null : null,
     ];
   });
   return { nodes: derivedNodes, edges: derivedEdges };
@@ -93,6 +127,12 @@ export function validateTreeWindows(tree, derived = deriveTreeWindows(tree)) {
       if (!target) issues.push(`#${node.n} 的 superseded_by 指向不存在的节点`);
       else if (!(target.valid_at > node.valid_at)) issues.push(`#${node.n} 被更早或同时间的 #${target.n} 推翻`);
     }
+    // Belief model invariants: support counts the sources, refined lists them.
+    const sourceCount = Array.isArray(node.src) ? node.src.length : 0;
+    if (node.support?.sources !== sourceCount) issues.push(`#${node.n} 的 support.sources 与 src 数量不一致`);
+    if (node.support?.sessions > sourceCount) issues.push(`#${node.n} 的 support.sessions 大于来源数`);
+    const refinedSources = (node.refined || []).filter(item => item.kind === 'source').length;
+    if (refinedSources !== sourceCount) issues.push(`#${node.n} 的 refined 来源条目与 src 数量不一致`);
   }
   for (const edge of derived.edges) {
     const [from, to, type, validAt, invalidAt] = edge;

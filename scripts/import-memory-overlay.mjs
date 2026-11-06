@@ -46,6 +46,16 @@ const currentIds = new Set((archive.conversations || []).map(item => item.id));
 const map = await readJson(await requireFile(join(source, 'overlay/archive-map.json')));
 const sessions = map.sessions || [];
 if (sessions.length !== currentIds.size) throw new Error(`archive-map 会话数 ${sessions.length} 与 archive ${currentIds.size} 不一致`);
+// 组内 L5 没有 ts，用会话首条时间 + 轮次偏移补出来（与候选生成同一口径）。
+const sessionTimes = new Map();
+for (const session of sessions) {
+  for (const l2 of [join(source, 'memory', `${session.id}.md`), join(source, 'inbox/memory', `${session.id}.md`)]) {
+    try {
+      const match = (await readFile(l2, 'utf8')).match(/^first:\s*(.+)$/m);
+      if (match) { sessionTimes.set(session.short, Date.parse(match[1].trim())); break; }
+    } catch { /* 没有 L2 就跳过 */ }
+  }
+}
 const mapIds = new Set(sessions.map(item => item.id));
 if (mapIds.size !== currentIds.size || [...currentIds].some(id => !mapIds.has(id))) throw new Error('archive-map 与当前 archive 的会话 ID 不一致');
 const groupCounts = Object.fromEntries(groupIds.map(id => [id, 0]));
@@ -84,19 +94,23 @@ for (const group of groupIds) {
   if (!existsSync(path)) continue;
   const doc = await readJson(path);
   if (!doc?.nodes?.length) continue;
+  // 组内 L5 也走同一套推导：时间窗 + 信念模型（support / refined）。
+  const derived = deriveTreeWindows(doc, sessionTimes);
+  const issues = validateTreeWindows(doc, derived);
+  if (issues.length) throw new Error(`${group} 的 L5 时间窗校验失败：${issues.slice(0, 5).join('；')}`);
   groupL5[group] = {
     id: doc.id || `l5-${group}`,
     label: doc.label || group,
     sessions: doc.sessions || [],
-    nodes: doc.nodes,
-    edges: doc.edges || [],
+    nodes: derived.nodes,
+    edges: derived.edges,
     open: doc.open || [],
   };
 }
 // The kernel tree stores edges as [from, to, type]. Windows are derived here,
 // not hand-edited into the kernel artifact, so they survive every kernel
 // regeneration. A broken window fails the import instead of reaching the page.
-const treeWindows = deriveTreeWindows(tree);
+const treeWindows = deriveTreeWindows(tree, sessionTimes);
 const treeIssues = validateTreeWindows(tree, treeWindows);
 if (treeIssues.length) throw new Error(`L5 时间窗校验失败：${treeIssues.slice(0, 5).join('；')}`);
 const treeStats = { path: 'global/tree.json', nodes: tree.nodes?.length || 0, edges: tree.edges?.length || 0, sessions: l3Global.coverage?.sessions || 0 };

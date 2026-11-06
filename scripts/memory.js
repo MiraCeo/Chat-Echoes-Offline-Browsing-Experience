@@ -192,6 +192,9 @@ import { search as searchMemory } from './memory-search-core.mjs';
           make('span', 'ceobe-memory-tree-type', `${node.t || 'event'} · ${node.s || ''}${node.w === 'core' ? ' · core' : ''}`),
         );
         item.append(head, make('p', '', node.x || ''));
+        if (node.support?.sources) {
+          item.append(make('p', 'ceobe-memory-tree-support', `支持：${node.support.sources} 个来源 · ${node.support.sessions} 个会话`));
+        }
         if (node.src?.length) {
           const sources = make('div', 'ceobe-memory-tree-sources');
           for (const source of node.src) {
@@ -392,6 +395,9 @@ import { search as searchMemory } from './memory-search-core.mjs';
       const date = formatDate(node.ts);
       if (date) head.append(make('time', 'ceobe-memory-tree-date', date));
       item.append(head, make('p', '', node.x || ''));
+      if (node.support?.sources) {
+        item.append(make('p', 'ceobe-memory-tree-support', `支持：${node.support.sources} 个来源 · ${node.support.sessions} 个会话`));
+      }
       if (node.invalid_at) {
         const later = Boolean(asOf) && dayOf(node.invalid_at) > asOf;
         const target = node.superseded_by ? ` · #${node.superseded_by}` : '';

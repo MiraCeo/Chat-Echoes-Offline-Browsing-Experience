@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {
-  dayOf, deriveTreeWindows, filterTreeAt, parseAsOf, validateTreeWindows,
+  dayOf, deriveTreeWindows, filterTreeAt, parseAsOf, sourceTime, validateTreeWindows,
 } from './memory-tree-time.js';
 
 // Local noon keeps the fixture on the same calendar day in every timezone.
@@ -36,6 +36,38 @@ assert.deepEqual(derived.edges[1], [2, 3, 'precedes', at(2026, 10, 13), null]);
 assert.deepEqual(derived.edges[2], [1, 3, 'caused_by', at(2026, 10, 11), null]);
 assert.equal(derived.edges[0][0], 1, '旧读法 edge[0] 仍可用');
 assert.equal(derived.edges[0][2], 'superseded', '旧读法 edge[2] 仍可用');
+
+// Belief model: support counts sources, refined lists the evidence timeline.
+const withSources = deriveTreeWindows({
+  nodes: [
+    { n: 1, t: 'decision', s: 'decided', x: '甲', ts: at(2026, 10, 11), src: [{ s: 'aaaaaaaa', r: [1, 1] }, { s: 'bbbbbbbb', r: [2, 2] }] },
+    { n: 2, t: 'decision', s: 'superseded', x: '乙', ts: at(2026, 10, 12), src: [{ s: 'aaaaaaaa', r: [3, 3] }] },
+    { n: 3, t: 'decision', s: 'decided', x: '丙', ts: at(2026, 10, 13) },
+  ],
+  edges: [[2, 3, 'superseded']],
+});
+const belief = number => withSources.nodes.find(item => item.n === number);
+assert.deepEqual(belief(1).support, { sources: 2, sessions: 2 });
+assert.deepEqual(belief(2).support, { sources: 1, sessions: 1 });
+assert.deepEqual(belief(3).support, { sources: 0, sessions: 0 });
+assert.equal(belief(1).refined.filter(item => item.kind === 'source').length, 2);
+assert.deepEqual(belief(2).refined.at(-1), { kind: 'superseded', by: 3, at: at(2026, 10, 13) });
+assert.deepEqual(validateTreeWindows(withSources, withSources), []);
+
+// Group trees have no ts: derive it from the session date plus the round, and
+// break same-round ties by the L4 node number so supersede edges point forward.
+const times = new Map([['aaaaaaaa', at(2026, 10, 11)]]);
+assert.equal(sourceTime({ src: [{ s: 'aaaaaaaa', r: [1, 1], n: 1 }] }, times), at(2026, 10, 11) + 5 * 60 * 1000 + 1000);
+assert.equal(sourceTime({ src: [{ s: 'zzzzzzzz', r: [1, 1] }] }, times), null);
+const noTs = deriveTreeWindows({
+  nodes: [
+    { n: 1, t: 'decision', s: 'superseded', x: '甲', src: [{ s: 'aaaaaaaa', r: [55, 55], n: 32 }] },
+    { n: 2, t: 'decision', s: 'decided', x: '乙', src: [{ s: 'aaaaaaaa', r: [55, 55], n: 33 }] },
+  ],
+  edges: [[1, 2, 'superseded']],
+}, times);
+assert.ok(noTs.nodes[1].valid_at > noTs.nodes[0].valid_at, '同轮次按 L4 节点号分先后');
+assert.deepEqual(validateTreeWindows({ nodes: noTs.nodes, edges: noTs.edges }, noTs), []);
 
 // Invariants hold on the clean tree.
 assert.deepEqual(validateTreeWindows(tree, derived), []);
