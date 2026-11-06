@@ -18,7 +18,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const projectRoot = resolve(import.meta.dirname, '..');
-const ALL_LAYERS = ['profile', 'l5', 'communities', 'entities', 'search', 'images'];
+const ALL_LAYERS = ['profile', 'l5', 'communities', 'entities', 'entity-index', 'search', 'images'];
 
 const readJson = async (path, fallback = null) => {
   try { return JSON.parse(await readFile(path, 'utf8')); }
@@ -62,6 +62,13 @@ async function exportLayer(root, out, layer, group) {
     const registry = JSON.parse(await readFile(from, 'utf8'));
     await cp(from, join(out, 'entities.json'));
     return { name: 'entities', file: 'entities.json', schema: 'ceobe.entities/1', entities: registry.entities?.length || 0, description: '实体注册表：canonical / aliases / kind / thread / tier' };
+  }
+  if (layer === 'entity-index') {
+    const from = join(root, 'replay/public/entity-index.json');
+    if (!existsSync(from)) return null;
+    const index = JSON.parse(await readFile(from, 'utf8'));
+    await cp(from, join(out, 'entity-index.json'));
+    return { name: 'entity-index', file: 'entity-index.json', schema: 'ceobe.entity-index/1', entities: index.entities?.length || 0, description: '实体反向索引：每个实体关联的事件（会话 / 轮次 / 状态）' };
   }
   if (layer === 'search') {
     const from = join(root, 'replay/public/unified-search.json');

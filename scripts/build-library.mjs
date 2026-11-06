@@ -21,6 +21,7 @@ import { buildMemoryPage } from './build-memory-page.mjs';
 import { buildMemoryNav } from './build-memory-nav.mjs';
 import { buildUnifiedIndex } from './build-unified-search.mjs';
 import { buildSearchPage } from './build-search-page.mjs';
+import { buildEntityIndexPage } from './memory-entity-index.mjs';
 import { writeTimelineIndex } from './timeline-index.mjs';
 import { buildChatMenu } from './build-chat-menu.mjs';
 import { createPageCache } from './page-cache.mjs';
@@ -262,6 +263,7 @@ async function buildReader(library, selectedId, onlyIds = null) {
   await step('project-detail', async () => buildProjectDetail(projectRoot, library));
   await step('timeline-page', async () => buildTimelinePage(projectRoot));
   await step('memory-page', async () => buildMemoryPage(projectRoot));
+  await step('entity-index', async () => buildEntityIndexPage(projectRoot));
   // 搜索页要在 decoratePages 之前建好，才能拿到侧栏控件与导航行。
   await step('search-page', async () => buildSearchPage(projectRoot));
   // 页面装饰指纹：渲染器 + 项目清单 + 这一页自己的会话条目 + 页面字节。

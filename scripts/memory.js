@@ -17,6 +17,7 @@ import { search as searchMemory } from './memory-search-core.mjs';
   let view = { groups: [], global: null, ungrouped: { count: 0, sessions: [] } };
   let searchIndex = [];
   let searchModel = null;
+  let entityIndex = null;
 
   const setStatus = text => { if (status) status.textContent = text; };
   const stamp = value => {
@@ -281,6 +282,39 @@ import { search as searchMemory } from './memory-search-core.mjs';
       content.append(flags);
     }
     if (bank.l5?.nodes?.length) content.append(renderGroupL5(bank.l5));
+    if (entityIndex?.entities?.length) content.append(renderEntityIndex(entityIndex));
+  }
+
+  /** 实体反向索引：点一个实体，展开它关联的事件。 */
+  function renderEntityIndex(index) {
+    const section = make('section', 'ceobe-memory-global-section ceobe-memory-entities');
+    section.id = 'memory-layer-entities';
+    section.append(make('h3', '', `实体 · ${index.entities.length}`));
+    section.append(make('p', 'ceobe-memory-tree-note', '按实体查它出现在哪些事件里；点开看关联节点。'));
+    const list = make('div', 'ceobe-memory-entity-list');
+    for (const entity of index.entities.slice(0, 60)) {
+      const details = make('details', 'ceobe-memory-entity');
+      details.append(make('summary', '', `${entity.canonical} · ${entity.events.length}`));
+      const events = make('div', 'ceobe-memory-entity-events');
+      for (const event of entity.events) {
+        const row = make('p', 'ceobe-memory-entity-event');
+        row.append(make('strong', '', `#${event.n}`), document.createTextNode(` ${event.text}`));
+        if (event.session) {
+          const session = findSession(event.session);
+          if (session) {
+            const link = make('button', 'ceobe-memory-source', `${event.session}${event.round ? ` · ${event.round} 轮` : ''}`);
+            link.type = 'button';
+            link.addEventListener('click', () => chooseSession(session));
+            row.append(' ', link);
+          }
+        }
+        events.append(row);
+      }
+      details.append(events);
+      list.append(details);
+    }
+    section.append(list);
+    return section;
   }
 
   function groupName(id) {
@@ -692,14 +726,18 @@ import { search as searchMemory } from './memory-search-core.mjs';
   const searchModelPromise = fetch(new URL('memory-search.json', location.href), { cache: 'no-store' })
     .then(response => (response.ok ? response.json() : null))
     .catch(() => null);
+  const entityIndexPromise = fetch(new URL('entity-index.json', location.href), { cache: 'no-store' })
+    .then(response => (response.ok ? response.json() : null))
+    .catch(() => null);
   Promise.all([
     fetch(new URL('memory-data.json', location.href), { cache: 'no-store' }).then(response => {
       if (!response.ok) throw new Error('本地记忆数据不可用');
       return response.json();
     }),
     searchModelPromise,
+    entityIndexPromise,
   ])
-    .then(([data, index]) => {
+    .then(([data, index, entities]) => {
       view = {
         groups: Array.isArray(data?.groups) ? data.groups : [],
         global: data?.global || null,
@@ -707,6 +745,7 @@ import { search as searchMemory } from './memory-search-core.mjs';
         ungrouped: data?.ungrouped || { count: 0, sessions: [] },
       };
       searchModel = index;
+      entityIndex = entities;
       buildSearchIndex();
       renderFreshness(data?.freshness);
       render(groupFromUrl(), sessionFromUrl());

@@ -54,6 +54,15 @@ export const TOOLS = [
     },
   },
   {
+    name: 'entity',
+    description: '按实体查它关联的事件（「关于 TourGrid 我知道什么」）。',
+    inputSchema: {
+      type: 'object',
+      properties: { name: { type: 'string', description: '实体名或别名' } },
+      required: ['name'],
+    },
+  },
+  {
     name: 'dump',
     description: '取整层原始数据。layer 取 profile / l5 / communities / entities / search / images。',
     inputSchema: {
@@ -82,6 +91,7 @@ export function createBundleReader(bundleDir) {
     l5: () => load('l5.json'),
     communities: () => load('communities.json'),
     entities: () => load('entities.json'),
+    entityIndex: () => load('entity-index.json'),
     search: () => load('search.json'),
     images: () => load('images.json'),
   };
@@ -138,6 +148,15 @@ export async function callTool(reader, name, args = {}) {
       return text([...threads.entries()].map(([thread, count]) => ({ thread, communities: count })));
     }
     return { content: [{ type: 'text', text: `未知 kind：${kind}` }], isError: true };
+  }
+  if (name === 'entity') {
+    const index = await reader.entityIndex();
+    if (!index) return { content: [{ type: 'text', text: '这个记忆包没有导出 entity-index 层。' }], isError: true };
+    const wanted = String(args.name || '').trim();
+    const entry = (index.entities || []).find(item => item.canonical === wanted)
+      || (index.entities || []).find(item => item.canonical.includes(wanted) || wanted.includes(item.canonical));
+    if (!entry) return { content: [{ type: 'text', text: `找不到实体：${wanted}` }], isError: true };
+    return text(entry);
   }
   if (name === 'dump') {
     const layer = String(args.layer || '');

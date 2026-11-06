@@ -436,6 +436,11 @@
 .ceobe-memory-tree-node[data-tree-node-core] { border-left: 3px solid #7f56d9; }
 .ceobe-memory-tree-node .ceobe-memory-tree-window { margin: 6px 0 0; color: #b54708; font-size: 10px; }
 .ceobe-memory-tree-node .ceobe-memory-tree-support { margin: 4px 0 0; color: #667085; font-size: 10px; }
+.ceobe-memory-entity-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ceobe-memory-entity { border: 1px solid #e4e7ec; border-radius: 8px; padding: 4px 8px; font-size: 11px; }
+.ceobe-memory-entity summary { cursor: pointer; color: #344054; }
+.ceobe-memory-entity-events { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; max-width: 520px; }
+.ceobe-memory-entity-event { margin: 0; font-size: 11px; color: #475467; line-height: 1.6; }
 .ceobe-memory-tree-details summary { cursor: pointer; color: #344054; font-size: 12px; font-weight: 500; }
 .ceobe-memory-tree-nodes {
   display: grid;
