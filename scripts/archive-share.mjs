@@ -45,8 +45,38 @@ const fetchWithRetry = async (target, attempts = 3) => {
   }
   throw lastError;
 };
-const response = await fetchWithRetry(url);
-const bytes = Buffer.from(await response.arrayBuffer());
+// chatgpt.com 现在对非浏览器客户端只返回一个 meta 壳（没有 React Flight 载荷），
+// 所以优先用真实浏览器抓渲染后的 HTML；浏览器不可用时退回 HTTP 抓取。
+const captureWithBrowser = async target => {
+  const { chromium } = await import('playwright');
+  const browser = await chromium.launch({ channel: process.platform === 'win32' ? 'msedge' : undefined, headless: true });
+  try {
+    const page = await browser.newPage();
+    const response = await page.goto(target, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    // Flight 载荷在 DOMContentLoaded 之后才流式写入，等对话轮次出现再取。
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid^="conversation-turn-"]').length > 0, { timeout: 20000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+    const html = await page.content();
+    return {
+      status: response?.status() ?? 200,
+      headers: new Map(Object.entries(response?.headers() ?? {})),
+      bytes: Buffer.from(html, 'utf8'),
+    };
+  } finally {
+    await browser.close();
+  }
+};
+let response;
+let bytes;
+try {
+  const captured = await captureWithBrowser(url.href);
+  response = { status: captured.status, headers: captured.headers, ok: captured.status >= 200 && captured.status < 300 };
+  bytes = captured.bytes;
+} catch (error) {
+  console.warn(`浏览器抓取失败（${error.message}），退回 HTTP 抓取…`);
+  response = await fetchWithRetry(url);
+  bytes = Buffer.from(await response.arrayBuffer());
+}
 mark('fetched');
 await mkdir(folder, { recursive: true });
 await mkdir(join(folder, 'raw'));
