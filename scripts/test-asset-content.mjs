@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
-import { extractDocxText, extractText, MAX_BYTES, TEXT_FILE } from './asset-content.mjs';
+import { extractDocxText, extractPdfText, extractText, MAX_BYTES, MAX_PDF_BYTES, TEXT_FILE } from './asset-content.mjs';
 
 // Text extensions are indexed; binaries are not.
 assert.ok(TEXT_FILE.test('项目介绍.md'));
@@ -80,4 +80,8 @@ assert.equal(extractText('项目介绍.docx', docx), '你好 世界 & 朋友');
 assert.equal(extractDocxText(makeZip([{ name: 'other.xml', text: '<x/>' }])), null);
 assert.equal(extractDocxText(Buffer.from('not a zip')), null);
 
-console.log('PASS asset content: extension filter, HTML stripping, size cap, docx unpacking');
+// PDF: invalid bytes and oversized files are rejected without throwing.
+assert.equal(await extractPdfText(Buffer.from('not a pdf')), null);
+assert.equal(await extractPdfText(Buffer.alloc(MAX_PDF_BYTES + 1)), null);
+
+console.log('PASS asset content: extension filter, HTML stripping, size cap, docx unpacking, pdf guards');

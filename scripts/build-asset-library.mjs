@@ -8,7 +8,7 @@ import { createLibraryStore } from './library-store.mjs';
 import { htmlSafeSvg } from './serialize-html.mjs';
 import { prepareLocalSidebar } from './local-sidebar.mjs';
 import { buildIndex } from './memory-search-core.mjs';
-import { extractText } from './asset-content.mjs';
+import { extractPdfText, extractText, PDF_FILE } from './asset-content.mjs';
 const hash = value => createHash('sha256').update(value).digest('hex').slice(0, 24);
 
 // 资源库每一步都要扫全部会话。缓存的键是“渲染输入”（library-stamps.json 里的 sourceHash:renderer）：
@@ -192,8 +192,10 @@ export async function buildAssetLibrary(root, library) {
     const rel = String(record.download || '').replace(/^\.\//, '');
     if (!rel) continue;
     let text = null;
-    try { text = extractText(record.name, await readFile(join(pub, rel))); }
-    catch { continue; }
+    try {
+      const bytes = await readFile(join(pub, rel));
+      text = PDF_FILE.test(record.name) ? await extractPdfText(bytes) : extractText(record.name, bytes);
+    } catch { continue; }
     if (!text) continue;
     assetDocs.push({ kind: '文件', title: record.name, text, target: { type: 'asset', id: record.id } });
   }

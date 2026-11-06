@@ -3,13 +3,17 @@
  *
  * Text-like attachments are read as UTF-8 (HTML/SVG stripped of tags); .docx
  * is a zip whose `word/document.xml` holds the body text, so it is unpacked
- * with a minimal zip reader. Files over the size cap are skipped.
+ * with a minimal zip reader; .pdf goes through pdfjs. Files over the size cap
+ * are skipped.
  */
 import { inflateRawSync } from 'node:zlib';
+import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 export const TEXT_FILE = /\.(md|markdown|txt|json|jsonl|csv|tsv|html?|css|js|mjs|ts|py|yml|yaml|xml|svg)$/i;
 export const DOCX_FILE = /\.docx$/i;
+export const PDF_FILE = /\.pdf$/i;
 export const MAX_BYTES = 200 * 1024;
+export const MAX_PDF_BYTES = 20 * 1024 * 1024;
 
 /** Central-directory entries: name → { method, compressedSize, localOffset }. */
 function readZipEntries(bytes) {
@@ -79,4 +83,27 @@ export function extractText(name, bytes) {
   let text = Buffer.from(bytes).toString('utf8');
   if (/\.(html?|svg)$/i.test(value)) text = text.replace(/<[^>]*>/g, ' ');
   return text.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Body text of a .pdf via pdfjs. Scanned PDFs (images only) yield little or no
+ * text; that is reported as an empty string rather than an error.
+ */
+export async function extractPdfText(bytes, { maxPages = 60 } = {}) {
+  if (!bytes || bytes.length > MAX_PDF_BYTES) return null;
+  let doc = null;
+  try {
+    doc = await getDocument({ data: new Uint8Array(bytes), useSystemFonts: true, isEvalSupported: false }).promise;
+    const parts = [];
+    for (let index = 1; index <= Math.min(doc.numPages, maxPages); index += 1) {
+      const page = await doc.getPage(index);
+      const content = await page.getTextContent();
+      parts.push(content.items.map(item => item.str).join(' '));
+    }
+    return parts.join('\n').replace(/\s+/g, ' ').trim();
+  } catch {
+    return null;
+  } finally {
+    try { await doc?.destroy(); } catch { /* ignore */ }
+  }
 }

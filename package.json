@@ -64,6 +64,7 @@
     "marked": "^15.0.12"
   },
   "devDependencies": {
+    "pdfjs-dist": "^6.5.438",
     "playwright": "^1.63.0",
     "vite": "^6.3.5"
   }
