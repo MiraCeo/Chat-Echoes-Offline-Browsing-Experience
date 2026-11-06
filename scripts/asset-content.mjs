@@ -85,22 +85,29 @@ export function extractText(name, bytes) {
   return text.replace(/\s+/g, ' ').trim();
 }
 
+/** A PDF with almost no text per page is a scan (images only). */
+export const isScannedPdf = (text, pages, minCharsPerPage = 50) =>
+  pages > 0 && String(text || '').length / pages < minCharsPerPage;
+
 /**
  * Body text of a .pdf via pdfjs. Scanned PDFs (images only) yield little or no
- * text; that is reported as an empty string rather than an error.
+ * text; `scanned` flags that case so the caller can report it instead of
+ * silently indexing an empty document.
  */
-export async function extractPdfText(bytes, { maxPages = 60 } = {}) {
+export async function extractPdfText(bytes, { maxPages = 60, minCharsPerPage = 50 } = {}) {
   if (!bytes || bytes.length > MAX_PDF_BYTES) return null;
   let doc = null;
   try {
     doc = await getDocument({ data: new Uint8Array(bytes), useSystemFonts: true, isEvalSupported: false }).promise;
+    const pages = doc.numPages;
     const parts = [];
-    for (let index = 1; index <= Math.min(doc.numPages, maxPages); index += 1) {
+    for (let index = 1; index <= Math.min(pages, maxPages); index += 1) {
       const page = await doc.getPage(index);
       const content = await page.getTextContent();
       parts.push(content.items.map(item => item.str).join(' '));
     }
-    return parts.join('\n').replace(/\s+/g, ' ').trim();
+    const text = parts.join('\n').replace(/\s+/g, ' ').trim();
+    return { text, pages, scanned: isScannedPdf(text, pages, minCharsPerPage) };
   } catch {
     return null;
   } finally {

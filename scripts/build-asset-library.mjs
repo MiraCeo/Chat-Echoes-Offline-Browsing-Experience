@@ -188,17 +188,30 @@ export async function buildAssetLibrary(root, library) {
   // 文件内容索引：文本类附件在构建期抽正文，供资料库按内容搜索。
   // 只索引文本扩展名、单文件上限 200 KB；HTML/SVG 去标签后再索引。
   const assetDocs = [];
+  const scannedPdfs = [];
   for (const record of records) {
     const rel = String(record.download || '').replace(/^\.\//, '');
     if (!rel) continue;
     let text = null;
     try {
       const bytes = await readFile(join(pub, rel));
-      text = PDF_FILE.test(record.name) ? await extractPdfText(bytes) : extractText(record.name, bytes);
+      if (PDF_FILE.test(record.name)) {
+        const pdf = await extractPdfText(bytes);
+        if (pdf) {
+          text = pdf.text;
+          if (pdf.scanned) {
+            record.scanned = true;
+            scannedPdfs.push(record.name);
+          }
+        }
+      } else {
+        text = extractText(record.name, bytes);
+      }
     } catch { continue; }
     if (!text) continue;
     assetDocs.push({ kind: '文件', title: record.name, text, target: { type: 'asset', id: record.id } });
   }
+  if (scannedPdfs.length) console.log(`Asset library: ${scannedPdfs.length} 个 PDF 疑似扫描版（每页文字过少），未进内容索引：${scannedPdfs.slice(0, 5).join('、')}${scannedPdfs.length > 5 ? '…' : ''}`);
   // 图片描述：sidecar 按 sha256 存，构建时 join 进资源记录和检索索引。
   const descriptions = JSON.parse(await readFile(join(root, 'data/private/memory-kernel/image-descriptions.json'), 'utf8').catch(() => '{"images":{}}'));
   const shaOf = value => basename(String(value || '')).replace(/\.[a-z0-9]+$/i, '');

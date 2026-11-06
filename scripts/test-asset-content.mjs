@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
-import { extractDocxText, extractPdfText, extractText, MAX_BYTES, MAX_PDF_BYTES, TEXT_FILE } from './asset-content.mjs';
+import { extractDocxText, extractPdfText, extractText, isScannedPdf, MAX_BYTES, MAX_PDF_BYTES, TEXT_FILE } from './asset-content.mjs';
 
 // Text extensions are indexed; binaries are not.
 assert.ok(TEXT_FILE.test('项目介绍.md'));
@@ -84,4 +84,11 @@ assert.equal(extractDocxText(Buffer.from('not a zip')), null);
 assert.equal(await extractPdfText(Buffer.from('not a pdf')), null);
 assert.equal(await extractPdfText(Buffer.alloc(MAX_PDF_BYTES + 1)), null);
 
-console.log('PASS asset content: extension filter, HTML stripping, size cap, docx unpacking, pdf guards');
+// Scanned-PDF detection: almost no text per page means a scan.
+assert.equal(isScannedPdf('', 10), true);
+assert.equal(isScannedPdf('短', 10), true);
+assert.equal(isScannedPdf('字'.repeat(2000), 10), false);
+assert.equal(isScannedPdf('字'.repeat(2000), 0), false, '零页不算扫描');
+assert.equal(isScannedPdf('字'.repeat(200), 10, 10), false, '阈值可调');
+
+console.log('PASS asset content: extension filter, HTML stripping, size cap, docx unpacking, pdf guards, scan detection');
