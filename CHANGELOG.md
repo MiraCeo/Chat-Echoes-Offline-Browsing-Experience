@@ -51,7 +51,12 @@
   有真实正文，已进索引；
 - 新增**统一搜索页** `search.html`：一个搜索框同时查记忆、文件与图片、聊天记录，
   结果按来源分组。记忆与资源用构建期合并的 `unified-search.json`（1206 条文档 / 2.1 MB），
-  聊天记录按需加载 `search-index.json` 并在浏览器里建 BM25 索引；侧栏新增「搜索」入口。
+  聊天记录按需加载 `search-index.json` 并在浏览器里建 BM25 索引；侧栏新增「搜索」入口；
+- 新增 `npm run memory:export`：导出**自描述记忆包**——`manifest.json`（层清单、schema、
+  文件哈希）+ `README.md`（怎么读）+ 分层文件（profile / l5 / communities / entities /
+  search / images），`--layers` 可选层；
+- 新增 `npm run memory:mcp`：记忆包的**只读 MCP 服务**（stdio JSON-RPC），四个工具
+  `search` / `get` / `list` / `dump`，不写、不联网。
 
 ## 未发布（1.3.1）
 
