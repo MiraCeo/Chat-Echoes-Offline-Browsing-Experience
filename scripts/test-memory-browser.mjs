@@ -32,7 +32,7 @@ try {
   assert.equal(await page.locator('#memory-layer-mainlines').count(), 1);
 
   await page.locator('[data-memory-group="g1"]').click();
-  await page.waitForFunction(() => document.querySelector('[data-memory-status]')?.textContent.includes('7 个会话'));
+  await page.waitForFunction(() => document.querySelector('[data-memory-status]')?.textContent.includes('8 个会话'));
   assert.match(await page.evaluate(() => location.search), /group=g1/);
   await page.locator('[data-memory-group="global"]').click();
   await page.waitForSelector('.ceobe-memory-global-stats');
@@ -45,7 +45,7 @@ try {
     themes: [...document.querySelectorAll('.ceobe-memory-theme')].map(node => node.textContent),
     delta: document.querySelector('.ceobe-memory-delta summary')?.textContent,
   }));
-  assert.match(g1memory.status, /7 个会话/);
+  assert.match(g1memory.status, /8 个会话/);
   assert.match(g1memory.status, /截至 2026-10-28/);
   assert.equal(g1memory.mainlines, 5, 'g1 应显示 5 条主线');
   assert.match(g1memory.themes.join(' '), /设计心理学/);
@@ -75,16 +75,16 @@ try {
     title: document.querySelector('.ceobe-memory-bank-head h2')?.textContent,
   }));
   assert.equal(global.title, '全局记忆');
-  assert.match(global.status, /31 个会话/);
-  assert.match(global.status, /1559 轮/);
+  assert.match(global.status, /32 个会话/);
+  assert.match(global.status, /1631 轮/);
   assert.equal(global.mainlines, 13, '全局应有 13 条主线');
   assert.equal(global.docs, 12, '全局应有 12 份 Markdown 分册');
-  assert.equal(global.sessions, 31, '全局应列 31 个会话');
+  assert.equal(global.sessions, 32, '全局应列 32 个会话');
   assert.match(global.overview || '', /全局总览正文/);
-  assert.match(global.stats.join(' '), /381/);
-  assert.match(global.stats.join(' '), /183/);
-  assert.equal(global.treeNodes, 381, 'L5 应渲染 381 个节点');
-  assert.equal(global.treeEdges, 183, 'L5 应渲染 183 条边');
+  assert.match(global.stats.join(' '), /406/);
+  assert.match(global.stats.join(' '), /194/);
+  assert.equal(global.treeNodes, 406, 'L5 应渲染 406 个节点');
+  assert.equal(global.treeEdges, 194, 'L5 应渲染 194 条边');
   assert.equal(await page.locator('[data-memory-layer-nav] button').count(), 5, '全局视图应有层级导航');
   await page.locator('[data-memory-layer-target="memory-layer-tree"]').click();
   assert.equal(await page.locator('#memory-layer-tree').count(), 1);
@@ -108,8 +108,8 @@ try {
     input: document.querySelector('[data-memory-asof]')?.value,
   }));
   assert.match(asOf.title || '', /截至 2026-10-22/);
-  assert.ok(asOf.nodes > 0 && asOf.nodes < 381, 'as_of 应过滤掉之后的节点');
-  assert.ok(asOf.edges > 0 && asOf.edges < 183, 'as_of 应过滤掉之后的边');
+  assert.ok(asOf.nodes > 0 && asOf.nodes < 406, 'as_of 应过滤掉之后的节点');
+  assert.ok(asOf.edges > 0 && asOf.edges < 194, 'as_of 应过滤掉之后的边');
   assert.match(asOf.status || '', /个节点在此之后/);
   assert.equal(asOf.input, '2026-10-22');
 
@@ -120,7 +120,7 @@ try {
   assert.ok(laterText.some(text => text.includes('当时成立，后来被推翻')), 'as_of 应标出当时成立、后来被推翻的节点');
 
   await page.locator('.ceobe-memory-tree-clear').click();
-  await page.waitForFunction(() => document.querySelectorAll('[data-tree-node]').length === 381);
+  await page.waitForFunction(() => document.querySelectorAll('[data-tree-node]').length === 406);
   assert.doesNotMatch(await page.evaluate(() => location.search), /as_of=/);
 
   await page.locator('.ceobe-memory-thread').first().locator('summary').click();
@@ -183,7 +183,7 @@ try {
   assert.equal(g1.hidden, false);
   await page.waitForSelector('[data-project-memory-summary]');
   assert.match(await page.locator('[data-project-memory-summary]').innerText(), /01–07 序列/);
-  assert.match(await page.locator('[data-project-memory-summary]').innerText(), /7 个会话/);
+  assert.match(await page.locator('[data-project-memory-summary]').innerText(), /8 个会话/);
 
   await page.goto(base + 'memory.html?group=global', { waitUntil: 'networkidle' });
   await page.locator('.ceobe-memory-tree-details').first().locator('summary').click();
