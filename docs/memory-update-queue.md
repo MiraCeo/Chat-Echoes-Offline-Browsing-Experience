@@ -40,6 +40,7 @@
 npm run memory:queue               # 检测 + 生成工单（只读）
 npm run memory:queue -- --apply    # 执行机械步骤（stage + register）
 npm run memory:queue -- --prompts  # 把判断步骤写成可直接派发的提示词
+npm run memory:queue -- --workflow # 生成可直接交给 workflow 工具的脚本
 npm run memory:queue -- --verify   # 检查判断步骤的产物是否齐全、是否过校验器
 npm run memory:queue -- --finalize # 判断步骤完成后收尾（import + library）
 ```
@@ -107,6 +108,18 @@ threads.md / profile.md
 - 归并树 → 检查文件存在。
 
 有缺项或校验失败时退出码 1，可以接在 CI 里。
+
+### `--workflow`
+
+生成 `data/private/memory-kernel/queue-workflow.js`，提示词内嵌，结构是：
+
+```js
+const tasks = [{ name: 'bbbbbbbb-l1', prompt: '...' }, ...];
+const results = await parallel(tasks.map(task => () => agent(task.prompt, { label: task.name })));
+return results.map((result, index) => ({ name: tasks[index].name, ok: Boolean(result) }));
+```
+
+把文件内容交给 `workflow` 工具，子代理会并行跑完所有判断步骤。**这是人工介入最少的一档**：一条 `--apply` + 一次 workflow 调用 + 一条 `--verify` + 一条 `--finalize`。
 
 ## 人工还剩什么
 

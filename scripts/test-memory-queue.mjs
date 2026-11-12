@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { plan, prompts, register, stage, verify } from './memory-queue.mjs';
+import { plan, prompts, register, stage, verify, workflowScript } from './memory-queue.mjs';
 
 const root = await mkdtemp(join(tmpdir(), 'ceobe-memory-queue-'));
 const write = async (path, value) => {
@@ -97,6 +97,12 @@ try {
   const result = await verify(queue, root);
   assert.equal(result.missing.length, 3, 'L1/L2/L4 产物还没做');
   assert.equal(result.passed.length, 2, '两棵树已存在，算通过');
+
+  const script = workflowScript(queue, root);
+  assert.match(script, /const tasks =/);
+  assert.match(script, /parallel\(/);
+  assert.match(script, /bbbbbbbb-l1/);
+  assert.match(script, /l5-group/);
 
   console.log('PASS memory queue: plan detects new sessions, stage writes manifest, register updates archive-map/index/L3, prompts and verify work');
 } finally {

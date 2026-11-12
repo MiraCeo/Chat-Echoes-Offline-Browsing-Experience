@@ -304,17 +304,17 @@ const LAYER_RULES = {
 };
 const LAYER_LABELS = { l1: 'L1 索引摘要', l2: 'L2 记忆文档', l4: 'L4 事件树' };
 
-/** 把判断步骤写成可直接派发的提示词。 */
-export async function prompts(queue, root = projectRoot) {
+/** 生成判断步骤的提示词列表（不落盘）。 */
+export function buildPrompts(queue, root = projectRoot) {
   const source = join(root, 'data/private/memory-kernel/source');
-  const dir = join(root, 'data/private/memory-kernel/queue-prompts');
-  await mkdir(dir, { recursive: true });
-  const written = [];
+  const list = [];
 
   for (const session of queue.sessions) {
     for (const task of session.tasks) {
       const label = LAYER_LABELS[task.id];
-      const text = `你是 CEOBE 记忆内核的 ${label} 生成员。为一个新会话生成 ${label}。
+      list.push({
+        name: `${session.short}-${task.id}`,
+        text: `你是 CEOBE 记忆内核的 ${label} 生成员。为一个新会话生成 ${label}。
 
 ## 输入
 - 会话原文：${join(source, 'inbox/conversations', session.id + '.md')}
@@ -328,22 +328,22 @@ ${join(source, task.output)}
 ${LAYER_RULES[task.id]}
 
 写完后跑校验器，把结果贴出来。只读上面列的文件，不要读其他会话的同层产物（避免照抄）。
-`;
-      const path = join(dir, `${session.short}-${task.id}.md`);
-      await writeFile(path, text, 'utf8');
-      written.push(path);
+`,
+      });
     }
   }
 
   for (const merge of queue.merges) {
-    const list = queue.sessions.map(item => `  - ${item.short} ${item.title}：inbox/events/${item.id}.json`).join('\n');
-    const text = `你是 CEOBE 记忆内核的 L5 归并员。把新会话的 L4 并入 ${merge.input}。
+    const rows = queue.sessions.map(item => `  - ${item.short} ${item.title}：inbox/events/${item.id}.json`).join('\n');
+    list.push({
+      name: merge.id,
+      text: `你是 CEOBE 记忆内核的 L5 归并员。把新会话的 L4 并入 ${merge.input}。
 
 ## 输入
 - L5 提示词：${join(source, 'PROMPT-L5.md')}
 - 现有树：${join(source, merge.input)}
 - 新会话 L4：
-${list}
+${rows}
 - 校验器：${join(source, 'validate-tree.mjs')}
 
 ## 输出
@@ -355,15 +355,15 @@ ${join(source, merge.output)}（先备份到同目录的 .pre-merge-<时间戳>.
 - 新会话推翻旧判断的，加 superseded 边（从被推翻者指向推翻者）；
 - 节点字段 n/t/s/w/thread/x/e/src，边 [from,to,rel]；
 - 写完后跑 node validate-tree.mjs --tree ${merge.output} --events inbox/events,events-v3，把结果贴出来。
-`;
-    const path = join(dir, `${merge.id}.md`);
-    await writeFile(path, text, 'utf8');
-    written.push(path);
+`,
+    });
   }
 
   for (const doc of queue.docs) {
-    const text = doc.id === 'threads'
-      ? `你是 CEOBE 记忆内核的分册维护员。把新会话补进受影响的分册。
+    list.push({
+      name: doc.id,
+      text: doc.id === 'threads'
+        ? `你是 CEOBE 记忆内核的分册维护员。把新会话补进受影响的分册。
 
 ## 输入
 - 分册目录：${join(source, 'global/threads')}
@@ -376,7 +376,7 @@ ${join(source, merge.output)}（先备份到同目录的 .pre-merge-<时间戳>.
 - 只写原文里有的内容；
 - 写完后对每个改过的分册跑 validate-thread.mjs，把结果贴出来。
 `
-      : `你是 CEOBE 记忆内核的 profile 维护员。重写一页纸记忆档案。
+        : `你是 CEOBE 记忆内核的 profile 维护员。重写一页纸记忆档案。
 
 ## 输入
 - 先跑：npm run memory:profile -- --assemble（生成 profile-input.json）
@@ -387,13 +387,33 @@ ${join(source, merge.output)}（先备份到同目录的 .pre-merge-<时间戳>.
 - 保留「我是谁 / 在手的事 / 等着的事 / 近期变化 / 当前主线 / 未决清单 / 不要擅自补全 / 短版」结构；
 - 每条带出处，带 [自述] / [观察] / [待核实] 标签；
 - 写完后跑 --check，把结果贴出来。
-`;
-    const path = join(dir, `${doc.id}.md`);
-    await writeFile(path, text, 'utf8');
-    written.push(path);
+`,
+    });
   }
 
+  return list;
+}
+
+/** 把判断步骤写成可直接派发的提示词文件。 */
+export async function prompts(queue, root = projectRoot) {
+  const dir = join(root, 'data/private/memory-kernel/queue-prompts');
+  await mkdir(dir, { recursive: true });
+  const written = [];
+  for (const item of buildPrompts(queue, root)) {
+    const path = join(dir, `${item.name}.md`);
+    await writeFile(path, item.text, 'utf8');
+    written.push(path);
+  }
   return written;
+}
+
+/** 生成可直接交给 workflow 工具的脚本（提示词内嵌，子代理并行跑）。 */
+export function workflowScript(queue, root = projectRoot) {
+  const tasks = buildPrompts(queue, root).map(item => ({ name: item.name, prompt: item.text }));
+  return `const tasks = ${JSON.stringify(tasks, null, 2)};
+const results = await parallel(tasks.map(task => () => agent(task.prompt, { label: task.name })));
+return results.map((result, index) => ({ name: tasks[index].name, ok: Boolean(result) }));
+`;
 }
 
 /** 检查判断步骤的产物是否齐全、是否过校验器。 */
@@ -451,6 +471,13 @@ if (isMain) {
     const written = await prompts(queue);
     console.log(`已生成 ${written.length} 份提示词：`);
     for (const path of written) console.log(`  ${path}`);
+  } else if (has('--workflow')) {
+    const queue = await plan();
+    const body = workflowScript(queue);
+    const path = join(projectRoot, 'data/private/memory-kernel/queue-workflow.js');
+    await writeFile(path, body, 'utf8');
+    console.log(`已生成 workflow 脚本：${path}`);
+    console.log('用 workflow 工具运行它（把文件内容作为 script 传入），子代理会并行跑完所有判断步骤。');
   } else if (has('--verify')) {
     const queue = await plan();
     const result = await verify(queue);
