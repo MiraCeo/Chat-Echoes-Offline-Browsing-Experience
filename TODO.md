@@ -268,8 +268,13 @@
   实测 5 个分册超限（记忆力 3081/1431、工具链 3075/1704、CEOBE与AI记忆 3431/2691、
   CEOBE（早期）2108/1858），4 个有重复出处（记忆力 5 处）。
 - [ ] **gq 组重抽**（第二组验证）：框架已稳定，10 个会话，可开始。
-- [ ] **更新队列**（1.4 前置）：导入新会话后自动补 L1/L2/L4、归并 L5、更新索引与分册；
-  现在每加一个会话要手工改 6 个文件（manifest / archive-map / ceobe-index / L3 / L3.1 / L5）。
+- [x] **更新队列（机械部分）**（2026-11-12）：`npm run memory:queue` 检测新会话并生成工单；
+  `--apply` 自动做 stage（复制会话 + 写 inbox/manifest）和 register（写 archive-map /
+  ceobe-index / L3 coverage，计数一律从 sessions 重算）；`--finalize` 跑 import + library。
+  判断步骤（L1/L2/L4、L5 归并、分册、profile）只出工单，不自动执行。
+  设计见 [更新队列](docs/memory-update-queue.md)。
+- [ ] **更新队列（判断部分）**：把 L1/L2/L4 的派发也自动化（子代理调度），
+  以及 L5 归并的「候选对」预筛（复用 `memory:candidates`）。
 
 > 「模型交接层」不是新增的第 8 项，是 P1-2 / P1-3 / P2-3 的共同目标：
 > 一页纸（profile）+ 一个索引（index）+ 一个查询入口（MCP）。
