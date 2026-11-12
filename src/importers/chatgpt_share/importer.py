@@ -432,6 +432,126 @@ def _normalise_message(node_id: str, message: Mapping[str, Any]) -> dict[str, An
     }
 
 
+def extract_protocol2_payload(html: str) -> dict[str, Any] | None:
+    """Find the JSON blob the newer share page embeds (conversationSourceProtocol 2)."""
+
+    for body in _extract_scripts(html):
+        text = body.strip()
+        if not text.startswith("{") or "conversationSourceProtocol" not in text:
+            continue
+        try:
+            data = json.loads(text)
+        except ValueError:
+            continue
+        if (
+            isinstance(data, Mapping)
+            and str(data.get("conversationSourceProtocol")) == "2"
+            and isinstance(data.get("conversation"), Mapping)
+        ):
+            return dict(data)
+    return None
+
+
+def _import_protocol2(
+    data: Mapping[str, Any],
+    html: str,
+    *,
+    source_url: str | None,
+    source_file: str | None,
+) -> dict[str, Any]:
+    """Adapt the protocol-2 share payload (a flat message array) to the canonical schema."""
+
+    conversation_data = data.get("conversation")
+    if not isinstance(conversation_data, Mapping):
+        raise ValueError("Share conversation missing")
+    raw_messages = conversation_data.get("messages")
+    if not isinstance(raw_messages, list) or not raw_messages:
+        raise ValueError("Share conversation has no messages")
+
+    nodes: dict[str, Any] = {}
+    messages: dict[str, Any] = {}
+    order: list[str] = []
+    previous: str | None = None
+    for raw in raw_messages:
+        if not isinstance(raw, Mapping):
+            continue
+        message_id = str(raw.get("id") or f"message-{len(order)}")
+        role = raw.get("role")
+        text = raw.get("content") if isinstance(raw.get("content"), str) else ""
+        uploads = raw.get("maskedUploads") if isinstance(raw.get("maskedUploads"), list) else []
+        attachments = [
+            {"type": "attachment", "name": str(upload), "mime_type": "image/*" if upload == "image" else None}
+            for upload in uploads
+        ]
+        messages[message_id] = {
+            "id": message_id,
+            "role": role,
+            "author": {"role": role},
+            "created_at": None,
+            "updated_at": None,
+            "status": None,
+            "end_turn": None,
+            "recipient": None,
+            "channel": None,
+            "content": {
+                "type": "text",
+                "blocks": [{"type": "text", "text": text}] if text else [],
+                "raw": dict(raw),
+            },
+            "attachments": attachments,
+            "citations": [],
+            "content_references": [],
+            "metadata": {},
+            "visible": True,
+            "raw": dict(raw),
+        }
+        nodes[message_id] = {
+            "id": message_id,
+            "parent_id": previous,
+            "children": [],
+            "message_id": message_id,
+            "raw": dict(raw),
+        }
+        if previous is not None:
+            nodes[previous]["children"].append(message_id)
+        order.append(message_id)
+        previous = message_id
+
+    html_bytes = html.encode("utf-8")
+    canonical = str(data.get("canonicalPath") or "")
+    share_id = canonical.rstrip("/").split("/")[-1] or None
+    conversation = {
+        "schema_version": SCHEMA_VERSION,
+        "kind": "ceobe.conversation",
+        "id": conversation_data.get("id") or share_id,
+        "title": conversation_data.get("title") or "ChatGPT conversation",
+        "created_at": None,
+        "updated_at": None,
+        "current_node_id": order[-1] if order else None,
+        "source": {
+            "type": "chatgpt_share",
+            "share_id": share_id,
+            "url": source_url,
+            "file": source_file,
+            "captured_at": datetime.now(timezone.utc).isoformat(),
+            "sha256": hashlib.sha256(html_bytes).hexdigest(),
+            "format": "chatgpt_share_protocol2_html",
+        },
+        "linear_node_ids": order,
+        "linear_message_ids": order,
+        "nodes": nodes,
+        "messages": messages,
+        "metadata": {"userMessageCount": conversation_data.get("userMessageCount")},
+        "raw_payload": {"protocol": 2, "conversation": dict(conversation_data), "loader_chunks": []},
+    }
+    conversation["completeness"] = assess_capture_completeness(conversation, html)
+    conversation["import_report"] = audit_conversation(
+        conversation,
+        {"linear_conversation": [{"id": node_id} for node_id in order]},
+    )
+    return conversation
+
+
 def import_share_html(
     html: str,
     *,
@@ -439,6 +559,12 @@ def import_share_html(
     source_file: str | None = None,
 ) -> dict[str, Any]:
     """Convert saved ChatGPT share HTML into the CEOBE canonical schema."""
+
+    # 新版分享页把对话放在一个 conversationSourceProtocol=2 的 JSON blob 里，
+    # 没有 React Flight 载荷；先试这个，再退回旧格式。
+    protocol2 = extract_protocol2_payload(html)
+    if protocol2 is not None:
+        return _import_protocol2(protocol2, html, source_url=source_url, source_file=source_file)
 
     slots = extract_loader_payload(html)
     decoded = decode_loader_payload(slots)

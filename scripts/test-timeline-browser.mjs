@@ -71,7 +71,7 @@ try {
   if (expected) {
     assert.ok(state.months.length >= 1, '至少有一个月份分组');
     assert.equal(state.monthCounts.length, state.months.length, '每个月都有会话/对话轮次统计');
-    assert.ok(state.monthCounts.every(text => /^\d+ 个会话 · [\d,]+ 轮对话$/.test(text)), '月统计格式');
+    assert.ok(state.monthCounts.every(text => /^\d+ 个会话( · [\d,]+ 轮对话)?$/.test(text)), '月统计格式');
   }
 
   // 时间顺序：默认最新在前，可切到最早在前，并在刷新后保留。
@@ -126,7 +126,7 @@ try {
   assert.deepEqual(cardsState.labels.slice(0, 3), ['用户输入：', '模型输出：', '活跃天数：']);
   assert.ok(cardsState.models.every(Boolean), '每张卡片右上都有模型');
   assert.equal(cardsState.multiMarkers, 0, '多模型只显示主模型，不加共N个');
-  assert.ok(cardsState.active.every(text => /^\d+\/\d+$/.test(text)), '活跃列显示 N/M');
+  assert.ok(cardsState.active.every(text => /^(\d+\/\d+|—)$/.test(text)), '活跃列显示 N/M（无时间戳时为 —）');
   assert.ok(cardsState.activityTones.every(value => ['is-low', 'is-mid', 'is-high'].includes(value)), '活跃段只有三档颜色');
   assert.equal(cardsState.rounds, expected, '每张卡片都显示轮数');
   assert.equal(new Set(cardsState.heights).size, 1, '固定卡片应等高');
@@ -161,8 +161,10 @@ try {
     };
   });
   assert.equal(axis.view, 'axis');
-  assert.equal(axis.cards, expected, '时间轴详情应有全部会话卡片');
-  assert.equal(axis.bars, expected, '缩略图应有全部会话条');
+  // 没有时间戳的会话放不上时间轴，只统计有时间的那些。
+  const datedCount = index.conversations.filter(item => Number.isFinite(item.first)).length;
+  assert.equal(axis.cards, datedCount, '时间轴详情应有全部有时间的会话卡片');
+  assert.equal(axis.bars, datedCount, '缩略图应有全部有时间的会话条');
   assert.equal(axis.windowRole, 'slider', '视口框应可聚焦/键盘操作');
   assert.ok(Number.parseFloat(axis.windowWidth) > 0, '视口框应有宽度');
   assert.equal(axis.detailLeft, axis.detailMax, '时间轴默认停在最新');
@@ -217,18 +219,22 @@ try {
   });
   assert.equal(mobileAxis.overflowX, false, '窄屏时间轴不应横向溢出');
   assert.equal(mobileAxis.windowVisible, true, '窄屏视口框应在缩略图可视范围内');
-  assert.equal(mobileAxis.cards, expected);
+  assert.equal(mobileAxis.cards, datedCount);
   await page.locator('[data-ceobe-view="timeline"]').click();
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.reload({ waitUntil: 'networkidle' });
 
-  // 跳转：首条进入会话页，并高亮首条消息。
+  // 跳转：首条带锚点的进入会话页，并高亮首条消息。
   if (expected) {
-    const first = page.locator('.ceobe-timeline-row').first();
+    // 卡片布局会持久化到 localStorage，跳转前切回列表布局才有行。
+    await page.locator('[data-ceobe-timeline-layout="list"]').click();
+    await page.waitForTimeout(120);
+    const first = page.locator('.ceobe-timeline-row[href*="#bookmark="]').first();
     const href = await first.getAttribute('href');
     await first.click();
+    await page.waitForURL(/\/conversations\//, { timeout: 10000 });
     await page.waitForLoadState('networkidle');
-    await page.waitForSelector('.ceobe-bookmark-highlight', { timeout: 5000 });
+    await page.waitForSelector('.ceobe-bookmark-highlight', { timeout: 10000 });
     const landed = await page.evaluate(() => ({ path: location.pathname, hash: location.hash, hasHighlight: Boolean(document.querySelector('.ceobe-bookmark-highlight')) }));
     assert.match(landed.path, /\/conversations\/[^/]+\.html$/);
     if (href.includes('#bookmark=')) assert.ok(landed.hash.startsWith('#bookmark='), '跳到首条消息锚点');
@@ -268,7 +274,7 @@ try {
       cards: document.querySelectorAll('.ceobe-timeline-card').length,
       stats: document.querySelectorAll('.ceobe-timeline-card-stats').length,
       models: [...document.querySelectorAll('.ceobe-timeline-card-model-value')].every(node => node.textContent.length > 0),
-      active: [...document.querySelectorAll('.ceobe-timeline-card-stat-active .ceobe-timeline-card-stat-value')].every(node => /^\d+\/\d+$/.test(node.textContent)),
+      active: [...document.querySelectorAll('.ceobe-timeline-card-stat-active .ceobe-timeline-card-stat-value')].every(node => /^(\d+\/\d+|—)$/.test(node.textContent)),
     }));
     assert.equal(utcCards.cards, expected);
     assert.equal(utcCards.stats, expected);
@@ -276,7 +282,7 @@ try {
     assert.equal(utcCards.active, true, 'UTC 浏览器仍显示活跃天数');
     await utcPage.locator('[data-ceobe-view="axis"]').click();
     await utcPage.waitForFunction(() => document.querySelectorAll('.ceobe-axis-card').length > 0);
-    assert.equal(await utcPage.locator('.ceobe-axis-card').count(), expected, 'UTC 浏览器时间轴仍有全部会话');
+    assert.equal(await utcPage.locator('.ceobe-axis-card').count(), datedCount, 'UTC 浏览器时间轴仍有全部有时间的会话');
     assert.deepEqual(utcErrors, [], 'UTC 浏览器没有页面错误');
     await utcContext.close();
   }
