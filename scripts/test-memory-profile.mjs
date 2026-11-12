@@ -48,15 +48,22 @@ try {
   assert.equal(input.open.length, 2);
   assert.equal(input.report_count, 2, 'report-input-* 不算报告');
   assert.deepEqual(input.reports.map(report => report.community), ['tourgrid-01', 'tourgrid-02'], '按 rank 排序');
+  assert.equal(input.blocks.who.items[0].epistemic, 'stated', 'current 映射为自述');
+  assert.equal(input.reports[0].epistemic, 'observed', '社区报告是观察');
+  assert.equal(input.epistemic_labels.stated, '自述');
 
   const good = [
     '# 记忆档案',
-    '## 我是谁', '- 甲（出处：aaaaaaaa 第 1–7 轮）',
-    '## 在手的事', '- 乙（出处：aaaaaaaa 第 1–7 轮）',
-    '## 等着的事', '- 丙（出处：aaaaaaaa 第 1–7 轮）',
-    '## 近期变化', '- 丁（出处：aaaaaaaa 第 1–7 轮）',
+    '> 范围：不是完整复刻。',
+    '> 维护：追加更新记录，不覆盖旧事件。',
+    '## 我是谁', '- [自述] 甲（出处：aaaaaaaa 第 1–7 轮）',
+    '## 在手的事', '- [自述] 乙（出处：aaaaaaaa 第 1–7 轮）',
+    '## 等着的事', '- [待核实] 丙（出处：aaaaaaaa 第 1–7 轮）',
+    '## 近期变化', '- [自述] 丁（出处：aaaaaaaa 第 1–7 轮）',
     '## 当前主线', '- TourGrid',
-    '## 未决清单', '- 未决一',
+    '## 未决清单', '- [待核实] 未决一',
+    '## 不要擅自补全', '- [待核实] 不要把等待认定为失败',
+    '## 短版', '> 一段可直接复制的背景。',
     'x'.repeat(400),
   ].join('\n');
   assert.deepEqual(checkProfile(good), []);

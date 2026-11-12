@@ -12,7 +12,7 @@
  */
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const projectRoot = resolve(import.meta.dirname, '..');
@@ -26,6 +26,11 @@ const readJson = async (path, fallback = null) => {
 };
 
 const BLOCK_LABELS = { who: '我是谁', doing: '在手的事', waiting: '等着的事', changes: '近期变化' };
+
+// 认知标签：出处回答「哪来的」，标签回答「这算事实还是推断」。
+// L3.1 的 status 只有 current / unresolved / historical，映射到三档。
+const EPISTEMIC = { current: 'stated', unresolved: 'unverified', historical: 'stated' };
+const EPISTEMIC_LABELS = { stated: '自述', observed: '观察', unverified: '待核实' };
 
 /** Gather L3.1 blocks, L3 mainlines, community reports and L5 open items. */
 export async function assembleProfile(root, { group = 'g1', topReports = 12 } = {}) {
@@ -51,6 +56,7 @@ export async function assembleProfile(root, { group = 'g1', topReports = 12 } = 
         key: item.key,
         text: item.text,
         status: item.status || null,
+        epistemic: EPISTEMIC[item.status] || 'stated',
         thread: item.thread_ref || null,
         evidence: (item.evidence || []).map(evidence => `${String(evidence.session_id).slice(0, 8)} 第 ${evidence.rounds?.[0]}–${evidence.rounds?.[1]} 轮`),
       })),
@@ -77,9 +83,12 @@ export async function assembleProfile(root, { group = 'g1', topReports = 12 } = 
       title: report.title,
       summary: report.summary,
       findings: report.findings || [],
+      boundary: report.boundary || null,
+      epistemic: 'observed',
       rank: report.rank ?? null,
     })),
     report_count: reports.length,
+    epistemic_labels: EPISTEMIC_LABELS,
   };
 }
 
@@ -91,9 +100,20 @@ export function checkProfile(markdown) {
   }
   if (!markdown.includes('## 当前主线')) issues.push('缺少「当前主线」小节');
   if (!markdown.includes('## 未决清单')) issues.push('缺少「未决清单」小节');
+  if (!markdown.includes('## 不要擅自补全')) issues.push('缺少「不要擅自补全」小节');
+  if (!markdown.includes('## 短版')) issues.push('缺少「短版」小节');
   if (!/出处[:：]/.test(markdown)) issues.push('没有任何出处标注');
+  if (!/\[(自述|观察|待核实)\]/.test(markdown)) issues.push('没有任何认知标签（[自述]/[观察]/[待核实]）');
+  if (!/范围[:：]/.test(markdown)) issues.push('缺少范围声明');
+  if (!/维护[:：]/.test(markdown)) issues.push('缺少维护规则');
   if (markdown.length < 400) issues.push('正文过短（<400 字）');
   return issues;
+}
+
+/** Pull the copy-paste brief out of the profile. */
+export function extractBrief(markdown) {
+  const match = markdown.match(/## 短版[^\n]*\n([\s\S]*?)(?=\n## |$)/);
+  return match ? match[1].trim() : '';
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
@@ -111,12 +131,21 @@ if (isMain) {
       console.error(`找不到 profile：${path}`);
       process.exit(1);
     }
-    const issues = checkProfile(await readFile(path, 'utf8'));
+    const markdown = await readFile(path, 'utf8');
+    const issues = checkProfile(markdown);
     if (issues.length) {
       console.error(`profile 检查未通过：\n- ${issues.join('\n- ')}`);
       process.exit(1);
     }
-    console.log('PASS memory profile: 四个小节、当前主线、未决清单、出处标注齐全');
+    const brief = extractBrief(markdown);
+    if (!brief) {
+      console.error('profile 检查未通过：\n- 「短版」小节为空');
+      process.exit(1);
+    }
+    const briefPath = join(dirname(path), 'memory-brief.md');
+    await writeFile(briefPath, brief + '\n', 'utf8');
+    console.log(`PASS memory profile: 四个小节、当前主线、未决清单、不要擅自补全、短版、出处与认知标签齐全`);
+    console.log(`已写入 ${briefPath}（${brief.length} 字）`);
   } else {
     const group = option('--group') || 'g1';
     const input = await assembleProfile(root, { group, topReports: Number(option('--top') || 12) });

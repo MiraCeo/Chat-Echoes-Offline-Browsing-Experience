@@ -34,7 +34,9 @@ async function exportLayer(root, out, layer, group) {
     const from = join(source, 'profile/memory-profile.md');
     if (!existsSync(from)) return null;
     await cp(from, join(out, 'profile.md'));
-    return { name: 'profile', file: 'profile.md', schema: 'markdown', description: '一页纸：我是谁 / 在手的事 / 等着的事 / 近期变化 + 主线 + 未决 + 社区报告' };
+    const brief = join(source, 'profile/memory-brief.md');
+    if (existsSync(brief)) await cp(brief, join(out, 'brief.md'));
+    return { name: 'profile', file: 'profile.md', schema: 'markdown', description: '一页纸：我是谁 / 在手的事 / 等着的事 / 近期变化 + 主线 + 未决 + 不要擅自补全 + 社区报告 + 短版（另出 brief.md）' };
   }
   if (layer === 'l5') {
     const from = join(source, `source/global/l5-${group}.json`);
