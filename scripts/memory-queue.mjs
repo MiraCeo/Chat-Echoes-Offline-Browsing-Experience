@@ -4,6 +4,8 @@
  *
  *   npm run memory:queue               # 检测 + 生成工单（只读，不写内核）
  *   npm run memory:queue -- --apply    # 执行机械步骤（stage + register）
+ *   npm run memory:queue -- --prompts  # 把判断步骤写成可直接派发的提示词
+ *   npm run memory:queue -- --verify   # 检查判断步骤的产物是否齐全、是否过校验器
  *   npm run memory:queue -- --finalize # 判断步骤完成后收尾（import + library）
  *
  * 机械步骤（脚本能做）：复制会话、写 manifest / archive-map / ceobe-index、
@@ -293,6 +295,139 @@ function finalize() {
   }
 }
 
+const PROMPT_DIR = join(projectRoot, 'data/private/memory-kernel/queue-prompts');
+
+const LAYER_RULES = {
+  l1: '- 严格按提示词和 schema；summary ≤160 字、tags 3–6 个、status 用 fresh；\n- source.last_message_id 和 source_hash 从会话原文取；原文没有 frontmatter 时用 unknown 和该 md 的真实 SHA-256。',
+  l2: '- 严格按提示词分节，只写原文里有的内容；\n- frontmatter 要有 id / title / first / last / rounds / turns / last_message_id / source_hash / generated_at / generator。',
+  l4: '- L2 定路径，原文定全集；\n- 动态上限：core ≤ 12、supporting ≤ 2 × core、optional 不进 L4；\n- 节点字段 n/t/s/w/r/x/e，边 [from,to,rel]，superseded 从被推翻者指向推翻者。',
+};
+const LAYER_LABELS = { l1: 'L1 索引摘要', l2: 'L2 记忆文档', l4: 'L4 事件树' };
+
+/** 把判断步骤写成可直接派发的提示词。 */
+export async function prompts(queue, root = projectRoot) {
+  const source = join(root, 'data/private/memory-kernel/source');
+  const dir = join(root, 'data/private/memory-kernel/queue-prompts');
+  await mkdir(dir, { recursive: true });
+  const written = [];
+
+  for (const session of queue.sessions) {
+    for (const task of session.tasks) {
+      const label = LAYER_LABELS[task.id];
+      const text = `你是 CEOBE 记忆内核的 ${label} 生成员。为一个新会话生成 ${label}。
+
+## 输入
+- 会话原文：${join(source, 'inbox/conversations', session.id + '.md')}
+- 提示词：${join(source, task.prompt)}
+- 校验器：${join(source, task.validator)}
+
+## 输出
+${join(source, task.output)}
+
+## 要求
+${LAYER_RULES[task.id]}
+
+写完后跑校验器，把结果贴出来。只读上面列的文件，不要读其他会话的同层产物（避免照抄）。
+`;
+      const path = join(dir, `${session.short}-${task.id}.md`);
+      await writeFile(path, text, 'utf8');
+      written.push(path);
+    }
+  }
+
+  for (const merge of queue.merges) {
+    const list = queue.sessions.map(item => `  - ${item.short} ${item.title}：inbox/events/${item.id}.json`).join('\n');
+    const text = `你是 CEOBE 记忆内核的 L5 归并员。把新会话的 L4 并入 ${merge.input}。
+
+## 输入
+- L5 提示词：${join(source, 'PROMPT-L5.md')}
+- 现有树：${join(source, merge.input)}
+- 新会话 L4：
+${list}
+- 校验器：${join(source, 'validate-tree.mjs')}
+
+## 输出
+${join(source, merge.output)}（先备份到同目录的 .pre-merge-<时间戳>.json）
+
+## 要求
+- 保留现有节点的编号和内容，新节点从最大编号 +1 开始；
+- 同一件事的节点合并（src 并集、重要度取最高），否则新增；
+- 新会话推翻旧判断的，加 superseded 边（从被推翻者指向推翻者）；
+- 节点字段 n/t/s/w/thread/x/e/src，边 [from,to,rel]；
+- 写完后跑 node validate-tree.mjs --tree ${merge.output} --events inbox/events,events-v3，把结果贴出来。
+`;
+    const path = join(dir, `${merge.id}.md`);
+    await writeFile(path, text, 'utf8');
+    written.push(path);
+  }
+
+  for (const doc of queue.docs) {
+    const text = doc.id === 'threads'
+      ? `你是 CEOBE 记忆内核的分册维护员。把新会话补进受影响的分册。
+
+## 输入
+- 分册目录：${join(source, 'global/threads')}
+- 新会话 L2：${queue.sessions.map(item => `inbox/memory/${item.id}.md`).join('、')}
+- 校验器：${join(source, 'validate-thread.mjs')}
+
+## 要求
+- 只改受影响的分册，不硬塞；
+- 时间轴追加条目、判断演变加节、当前状态更新、证据索引补行；
+- 只写原文里有的内容；
+- 写完后对每个改过的分册跑 validate-thread.mjs，把结果贴出来。
+`
+      : `你是 CEOBE 记忆内核的 profile 维护员。重写一页纸记忆档案。
+
+## 输入
+- 先跑：npm run memory:profile -- --assemble（生成 profile-input.json）
+- 现有 profile：${join(source, 'profile/memory-profile.md')}
+- 校验器：npm run memory:profile -- --check <path>
+
+## 要求
+- 保留「我是谁 / 在手的事 / 等着的事 / 近期变化 / 当前主线 / 未决清单 / 不要擅自补全 / 短版」结构；
+- 每条带出处，带 [自述] / [观察] / [待核实] 标签；
+- 写完后跑 --check，把结果贴出来。
+`;
+    const path = join(dir, `${doc.id}.md`);
+    await writeFile(path, text, 'utf8');
+    written.push(path);
+  }
+
+  return written;
+}
+
+/** 检查判断步骤的产物是否齐全、是否过校验器。 */
+export async function verify(queue, root = projectRoot) {
+  const source = join(root, 'data/private/memory-kernel/source');
+  const missing = [];
+  const passed = [];
+  const failed = [];
+
+  for (const session of queue.sessions) {
+    for (const task of session.tasks) {
+      const output = join(source, task.output);
+      if (!existsSync(output)) { missing.push(`${session.short} ${task.id}`); continue; }
+      const result = spawnSync(process.execPath, [join(source, task.validator), ...validatorArgs(task, output)], { cwd: source, encoding: 'utf8' });
+      if (result.status === 0) passed.push(`${session.short} ${task.id}`);
+      else failed.push(`${session.short} ${task.id}: ${(result.stdout || result.stderr || '').trim().split('\n').slice(-2).join(' ')}`);
+    }
+  }
+
+  for (const merge of queue.merges) {
+    const output = join(source, merge.output);
+    if (!existsSync(output)) { missing.push(merge.id); continue; }
+    passed.push(merge.id);
+  }
+
+  return { missing, passed, failed };
+}
+
+function validatorArgs(task, output) {
+  if (task.id === 'l1') return ['--input', 'inbox', '--output', 'inbox/output'];
+  if (task.id === 'l2') return ['--input', 'inbox', '--memory', 'inbox/memory'];
+  return ['--input', 'inbox', '--events', 'inbox/events'];
+}
+
 const isMain = process.argv[1] && import.meta.url === new URL(`file://${process.argv[1].replaceAll('\\', '/')}`).href;
 if (isMain) {
   if (has('--apply')) {
@@ -311,6 +446,18 @@ if (isMain) {
       for (const merge of queue.merges) console.log(`  ${merge.id}: ${merge.input} → ${merge.output}`);
       for (const doc of queue.docs) console.log(`  ${doc.id}: ${doc.note}`);
     }
+  } else if (has('--prompts')) {
+    const queue = await plan();
+    const written = await prompts(queue);
+    console.log(`已生成 ${written.length} 份提示词：`);
+    for (const path of written) console.log(`  ${path}`);
+  } else if (has('--verify')) {
+    const queue = await plan();
+    const result = await verify(queue);
+    if (result.missing.length) console.log(`缺产物：${result.missing.join('、')}`);
+    if (result.failed.length) { console.log('校验失败：'); for (const item of result.failed) console.log(`  ${item}`); }
+    console.log(`通过 ${result.passed.length} 项${result.missing.length || result.failed.length ? '，仍有待办' : '，全部完成'}`);
+    if (result.missing.length || result.failed.length) process.exitCode = 1;
   } else if (has('--finalize')) {
     finalize();
   } else {

@@ -39,6 +39,8 @@
 ```
 npm run memory:queue               # 检测 + 生成工单（只读）
 npm run memory:queue -- --apply    # 执行机械步骤（stage + register）
+npm run memory:queue -- --prompts  # 把判断步骤写成可直接派发的提示词
+npm run memory:queue -- --verify   # 检查判断步骤的产物是否齐全、是否过校验器
 npm run memory:queue -- --finalize # 判断步骤完成后收尾（import + library）
 ```
 
@@ -82,6 +84,29 @@ npm run memory:queue -- --finalize # 判断步骤完成后收尾（import + libr
 ### `--finalize`
 
 跑 `memory:import` + `library`，然后 `npm test` 验证。
+
+### `--prompts`
+
+把工单里的每个判断步骤写成一份可直接派发的提示词，落在
+`data/private/memory-kernel/queue-prompts/`：
+
+```
+<short>-l1.md / <short>-l2.md / <short>-l4.md
+l5-group.md / l5-global.md
+threads.md / profile.md
+```
+
+每份都写清输入路径、输出路径、提示词、校验器和该层的硬约束。派发时直接读文件，不用现写。
+
+### `--verify`
+
+检查判断步骤的产物：
+
+- 缺文件 → 列出来；
+- 有文件 → 跑对应校验器（`validate-output` / `validate-memory` / `validate-events`）；
+- 归并树 → 检查文件存在。
+
+有缺项或校验失败时退出码 1，可以接在 CI 里。
 
 ## 人工还剩什么
 
