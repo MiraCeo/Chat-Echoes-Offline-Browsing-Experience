@@ -29,7 +29,13 @@ try {
       { id: 'other', label: '其他', mainline: false },
     ],
   }));
-  await write(join(source, 'global/l5-g1.json'), JSON.stringify({ open: ['未决一', '未决二'] }));
+  await write(join(source, 'global/l5-g1.json'), JSON.stringify({
+    open: ['未决一', '未决二'],
+    nodes: [
+      { n: 1, x: '普通节点', t: 'decision', s: 'decided', w: 'core' },
+      { n: 2, x: '等待不等于失败', t: 'open', s: 'pending', w: 'core', do_not_infer: true, why: '只能确认没被拒' },
+    ],
+  }));
   await write(join(communities, 'report-a.json'), JSON.stringify({
     community: 'tourgrid-01', title: '标题一', summary: '摘要一', findings: ['要点一'], rank: 0.9,
   }));
@@ -51,6 +57,9 @@ try {
   assert.equal(input.blocks.who.items[0].epistemic, 'stated', 'current 映射为自述');
   assert.equal(input.reports[0].epistemic, 'observed', '社区报告是观察');
   assert.equal(input.epistemic_labels.stated, '自述');
+  assert.equal(input.do_not_infer.length, 1, '只收集标了 do_not_infer 的节点');
+  assert.equal(input.do_not_infer[0].n, 2);
+  assert.equal(input.do_not_infer[0].why, '只能确认没被拒');
 
   const good = [
     '# 记忆档案',

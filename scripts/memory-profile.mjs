@@ -78,6 +78,10 @@ export async function assembleProfile(root, { group = 'g1', topReports = 12 } = 
     blocks,
     mainlines,
     open: (tree?.open || []).slice(0, 20),
+    // 显式否定知识：事实可以引用，但不能从它推出更强的结论。
+    do_not_infer: (tree?.nodes || [])
+      .filter(node => node.do_not_infer)
+      .map(node => ({ n: node.n, text: node.x, why: node.why || null, thread: node.thread || null })),
     reports: reports.slice(0, topReports).map(report => ({
       community: report.community,
       title: report.title,
