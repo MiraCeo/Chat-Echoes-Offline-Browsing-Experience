@@ -483,6 +483,23 @@ def _import_protocol2(
             {"type": "attachment", "name": str(upload), "mime_type": "image/*" if upload == "image" else None}
             for upload in uploads
         ]
+        # 生成图带真实 fileId，可以走下载接口；maskedUploads 只有占位，拿不到。
+        generated = raw.get("publicGeneratedImages") if isinstance(raw.get("publicGeneratedImages"), list) else []
+        for image in generated:
+            if not isinstance(image, Mapping):
+                continue
+            file_info = image.get("file") if isinstance(image.get("file"), Mapping) else {}
+            file_id = file_info.get("fileId")
+            if not file_id:
+                continue
+            attachments.append({
+                "type": "generated_image",
+                "pointer": str(file_id),
+                "mime_type": "image/png",
+                "width": image.get("width"),
+                "height": image.get("height"),
+                "name": f"generated-{file_id}.png",
+            })
         messages[message_id] = {
             "id": message_id,
             "role": role,

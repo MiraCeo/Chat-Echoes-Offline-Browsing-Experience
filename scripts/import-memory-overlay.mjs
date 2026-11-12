@@ -21,7 +21,7 @@ const target = join(projectRoot, 'data/private/memory-kernel/memory-view.json');
 const groupIds = ['gq', 'g1', 'g-early', 'g-oct'];
 const groupLabels = {
   gq: '国庆组',
-  g1: '01–07 序列',
+  g1: '01–10 组',
   'g-early': '早期账号',
   'g-oct': '十月账号',
 };
