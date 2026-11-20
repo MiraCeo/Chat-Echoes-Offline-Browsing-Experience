@@ -123,7 +123,9 @@ export async function downloadResources(conversation, folder, { fetcher = fetch,
         }[mime] || '.bin');
         resource.local_path = `assets/${sha256}${extension}`;
         await writeFile(resolve(folder, resource.local_path), bytes, { flag: 'wx' }).catch(error => { if (error.code !== 'EEXIST') throw error; });
-        Object.assign(resource, { status: 'downloaded', sha256, bytes: size, mime_type: mime || resource.mime_type, downloaded_from: url });
+        // 下载响应常把类型写成 application/octet-stream；附件自己声明的类型更具体，优先用它。
+        const resolvedMime = mime && mime !== 'application/octet-stream' ? mime : resource.mime_type;
+        Object.assign(resource, { status: 'downloaded', sha256, bytes: size, mime_type: resolvedMime || null, downloaded_from: url });
         delete resource.reason;
         break;
       } catch (error) { resource.attempts.push({ url: candidate, error: error.message }); resource.status = 'failed'; resource.reason = error.message; }

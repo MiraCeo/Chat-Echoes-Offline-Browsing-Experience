@@ -57,10 +57,18 @@ const captureWithBrowser = async target => {
     await page.waitForFunction(() => document.querySelectorAll('[data-testid^="conversation-turn-"]').length > 0, { timeout: 20000 }).catch(() => {});
     await page.waitForTimeout(1500);
     const html = await page.content();
+    // 协议 2 的载荷没有时间戳，页面顶部只有一个相对时间（「今天 12:12」「星期日 22:54」
+    // 「10月29日周四 17:14」）。抓下来当提示，不是事实时间。
+    const headerTime = await page.evaluate(() => {
+      const text = document.body?.innerText || '';
+      const match = text.match(/(?:星期[一二三四五六日天]|周[一二三四五六日天]|今天|昨天|前天|\d{1,2}月\d{1,2}日)\s*\d{1,2}:\d{2}/);
+      return match ? match[0] : null;
+    }).catch(() => null);
     return {
       status: response?.status() ?? 200,
       headers: new Map(Object.entries(response?.headers() ?? {})),
       bytes: Buffer.from(html, 'utf8'),
+      headerTime,
     };
   } finally {
     await browser.close();
@@ -68,10 +76,12 @@ const captureWithBrowser = async target => {
 };
 let response;
 let bytes;
+let headerTime = null;
 try {
   const captured = await captureWithBrowser(url.href);
   response = { status: captured.status, headers: captured.headers, ok: captured.status >= 200 && captured.status < 300 };
   bytes = captured.bytes;
+  headerTime = captured.headerTime || null;
 } catch (error) {
   console.warn(`浏览器抓取失败（${error.message}），退回 HTTP 抓取…`);
   response = await fetchWithRetry(url);
@@ -84,6 +94,7 @@ await writeFile(join(folder, 'raw', 'share.html'), bytes, { flag: 'wx' });
 const capture = { source_url: url.href, captured_at: capturedAt, status: response.status,
   content_type: response.headers.get('content-type'), bytes: bytes.length,
   sha256: createHash('sha256').update(bytes).digest('hex'),
+  ...(headerTime ? { header_time: headerTime } : {}),
   scope: 'Original HTTP HTML response. Conversation assets are tracked separately in import-report.json; citation websites and application runtime are not mirrored.' };
 await writeFile(join(folder, 'capture.json'), JSON.stringify(capture, null, 2), { flag: 'wx' });
 // 失败时默认不留快照：假链接或失效链接不该在档案里占位。需要排查时加 --keep-failed。
@@ -145,6 +156,8 @@ for (const asset of conversation.import_report.assets) {
 conversation.import_report.complete_offline_archive = conversation.resources.every(resource => resource.status === 'downloaded') &&
   conversation.import_report.status === 'structure_checked' &&
   conversation.completeness?.structured_payload?.status === 'usable';
+// 协议 2 没有时间戳；把页面顶部的相对时间留作提示（不是事实时间）。
+if (headerTime) conversation.header_time = headerTime;
 mark('files-written');
 await writeFile(join(folder, 'conversation.ceobe.json'), JSON.stringify(conversation, null, 2));
 await writeFile(join(folder, 'conversation.md'), exportConversationMarkdown(conversation, { timestamps: true }), { flag: 'wx' });
