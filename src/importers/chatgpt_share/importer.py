@@ -500,6 +500,21 @@ def _import_protocol2(
                 "height": image.get("height"),
                 "name": f"generated-{file_id}.png",
             })
+        # 2026-11 起的新字段：Python 工具产出的文件（多为图片），同样带真实 fileId。
+        python_files = raw.get("publicPythonFiles") if isinstance(raw.get("publicPythonFiles"), list) else []
+        for item in python_files:
+            if not isinstance(item, Mapping):
+                continue
+            file_id = item.get("fileId")
+            if not file_id:
+                continue
+            kind = item.get("kind") or "file"
+            attachments.append({
+                "type": "generated_image" if kind == "image" else "generated_file",
+                "pointer": str(file_id),
+                "mime_type": "image/png" if kind == "image" else None,
+                "name": item.get("name") or f"generated-{file_id}",
+            })
         messages[message_id] = {
             "id": message_id,
             "role": role,

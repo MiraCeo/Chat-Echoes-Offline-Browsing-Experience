@@ -90,8 +90,9 @@
   const aiOf = item => {
     const entry = summaries.get(item.id);
     if (!entry || entry.status !== 'fresh') return { summary: '', tags: [], tagOverflow: 0 };
+    // 摘要声明了来源消息就必须逐字对上；会话没有 last_message_id（协议 2 的分享页
+    // 不提供消息级时间戳）时不能放行，否则过期摘要会挂到新会话上。
     if (entry.source?.last_message_id
-      && item.last_message_id
       && entry.source.last_message_id !== item.last_message_id) return { summary: '', tags: [], tagOverflow: 0 };
     const summary = typeof entry.summary === 'string' ? entry.summary.trim() : '';
     const allTags = Array.isArray(entry.tags)

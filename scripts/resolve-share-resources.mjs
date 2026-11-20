@@ -17,7 +17,9 @@ export async function resolveShareResources(conversation, shareUrl) {
     let publicHeaders;
     page.on('request', request => {
       const url = new URL(request.url());
-      if (url.origin !== 'https://chatgpt.com' || !url.pathname.startsWith('/backend-anon/')) return;
+      // 2026-11 起分享页的请求走 /unauth-mweb/，不再只有 /backend-anon/；
+      // 只要带 oai-* 头就收，下载接口本身仍是 /backend-anon/files/download/。
+      if (url.origin !== 'https://chatgpt.com') return;
       const headers = request.headers();
       const discovered = Object.fromEntries(Object.entries(headers).filter(([key]) => key.startsWith('oai-') || key.startsWith('x-openai-')));
       if (Object.keys(discovered).length) publicHeaders = discovered;
